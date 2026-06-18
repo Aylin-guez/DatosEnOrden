@@ -6,6 +6,8 @@
 
 ### Agregado
 
+- Exportador HTML `python scripts/export_trace_graph.py --external-id ...` para generar `graph_exports/<external-id>.html` con el primer grafo visible de trazabilidad.
+
 - Resumen compacto de trazabilidad `python scripts/trace_summary.py --external-id ...` para revisar comprador, proveedor, evidencia y conteos persistidos.
 
 - Inspector de trazabilidad de solo lectura `python scripts/inspect_trace.py --external-id ...` para revisar la cadena persistida sin llamar a ChileCompra.

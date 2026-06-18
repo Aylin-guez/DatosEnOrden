@@ -396,3 +396,25 @@ source_record[1]:
   claims count=2
   public relationships count=2
 ```
+
+## Primer grafo exportable
+
+Para generar un HTML visible con el primer grafo persistido:
+
+```powershell
+python scripts/export_trace_graph.py --external-id 2097-241-SE14
+```
+
+El archivo resultante queda en:
+
+```text
+graph_exports/2097-241-SE14.html
+```
+
+Ese HTML representa:
+
+- comprador
+- orden de compra
+- proveedor
+
+con datos ya persistidos en PostgreSQL.

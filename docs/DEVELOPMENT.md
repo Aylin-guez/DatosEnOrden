@@ -231,6 +231,22 @@ Este comando:
 - muestra comprador, proveedor, nombre del contrato, URL de evidencia y conteos
 - no llama a la API externa ni imprime secretos
 
+## Exportacion de grafo visible
+
+Para generar el primer grafo visible en HTML:
+
+```powershell
+python scripts/export_trace_graph.py --external-id 2097-241-SE14
+```
+
+Por defecto escribe:
+
+```text
+graph_exports/2097-241-SE14.html
+```
+
+Este archivo se genera solo con datos ya persistidos en PostgreSQL. No consulta la API de ChileCompra y no expone secretos.
+
 ## Regla de trabajo
 
 Ningun cambio de modelo persistente debe hacerse solo en SQLAlchemy o solo en SQL. La fuente operativa de evolucion es Alembic.
