@@ -3,16 +3,28 @@ import os
 from pathlib import Path
 
 
-def _load_dotenv(path: Path = Path(".env")) -> None:
-    if not path.exists():
-        return
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
+
+def _dotenv_candidates() -> tuple[Path, ...]:
+    return (
+        PROJECT_ROOT / ".env",
+        Path.cwd() / ".env",
+    )
+
+
+def _load_dotenv() -> None:
+    for path in _dotenv_candidates():
+        if not path.exists():
             continue
-        key, value = stripped.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+        for line in path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            key, value = stripped.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        return
 
 
 class Settings:

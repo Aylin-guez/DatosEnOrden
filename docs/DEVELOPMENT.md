@@ -58,6 +58,16 @@ DATABASE_URL=postgresql+psycopg://datosenorden:datosenorden@localhost:5432/datos
 alembic upgrade head
 ```
 
+## Verificacion segura de configuracion
+
+Para confirmar que la aplicacion esta leyendo `.env` sin mostrar contrasenas:
+
+```powershell
+python -c "from sqlalchemy.engine import make_url; from datosenorden.core.config import get_settings; print(make_url(get_settings().database_url).render_as_string(hide_password=True))"
+```
+
+La salida debe mostrar el usuario, host y base de datos, pero ocultar la contrasena.
+
 ## Crear o resetear la base local
 
 Crear desde cero:
@@ -130,6 +140,8 @@ Si `alembic upgrade head` falla con `password authentication failed`:
 ```powershell
 psql -U datosenorden -h localhost -d datosenorden
 ```
+
+- Usa la verificacion segura anterior para comprobar que `.env` se esta leyendo correctamente sin exponer secretos.
 
 ### Error de rol o base inexistente
 
