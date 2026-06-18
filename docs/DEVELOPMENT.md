@@ -170,6 +170,37 @@ SELECT count(*) FROM evidence;
 SELECT count(*) FROM relationship_public;
 ```
 
+## Helper local completo
+
+Cuando quieras limpiar la base local, aplicar migraciones, sembrar el seed y verificar conteos en una sola pasada:
+
+```powershell
+python scripts/reset_migrate_seed_verify.py
+```
+
+Este helper:
+
+- usa `DATABASE_URL` desde `.env`
+- ejecuta `alembic downgrade base`
+- ejecuta `alembic upgrade head`
+- ejecuta `scripts/seed_traceability_flow.py`
+- imprime conteos finales sin revelar secretos
+
+Salida esperada:
+
+```text
+local_reset_migrate_seed_verify: source_record=1 claim=1 evidence=1 relationship_public=1
+```
+
+Si quieres inspeccionar la base manualmente después:
+
+```sql
+SELECT count(*) FROM source_record;
+SELECT count(*) FROM claim;
+SELECT count(*) FROM evidence;
+SELECT count(*) FROM relationship_public;
+```
+
 ## Regla de trabajo
 
 Ningun cambio de modelo persistente debe hacerse solo en SQLAlchemy o solo en SQL. La fuente operativa de evolucion es Alembic.

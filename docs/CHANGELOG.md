@@ -6,6 +6,11 @@
 
 ### Agregado
 
+- Helper local `reset_migrate_seed_verify` para resetear PostgreSQL, migrar, sembrar el seed local y verificar conteos.
+- Documentacion de uso del helper en Windows sin Docker.
+
+### Agregado
+
 - Fase 3.1 con seed local marcado como `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA` para validar persistencia sin ticket de ChileCompra.
 - Comando `python scripts/seed_traceability_flow.py`.
 - Verificacion SQL de conteos para `source_record`, `claim`, `evidence` y `relationship_public`.

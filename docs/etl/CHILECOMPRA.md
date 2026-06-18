@@ -287,3 +287,13 @@ SELECT count(*) FROM claim;
 SELECT count(*) FROM evidence;
 SELECT count(*) FROM relationship_public;
 ```
+
+## Helper local completo
+
+El flujo local completo para resetear, migrar, sembrar y verificar es:
+
+```powershell
+python scripts/reset_migrate_seed_verify.py
+```
+
+Ese helper es solo para validacion local de persistencia. No usa ticket de ChileCompra ni llama a la API real.
