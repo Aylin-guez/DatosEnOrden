@@ -6,6 +6,19 @@
 
 ### Agregado
 
+- Fase 3.1 con seed local marcado como `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA` para validar persistencia sin ticket de ChileCompra.
+- Comando `python scripts/seed_traceability_flow.py`.
+- Verificacion SQL de conteos para `source_record`, `claim`, `evidence` y `relationship_public`.
+
+### Agregado
+
+- Fase 3.0 con ruta de carga persistida para ChileCompra por codigo de orden y por limite.
+- Verificacion segura de `DATABASE_URL` sin exponer contrasenas.
+- Carga de `.env` fijada al root del repositorio en Windows.
+- Pruebas de configuracion para carga de `.env` y prioridad de `DATABASE_URL`.
+
+### Agregado
+
 - Validacion Fase 2.6 con el primer caso minimo de ChileCompra.
 - Resumen de pipeline con conteos de `source_record`, `claim`, `evidence` y `relationship_public`.
 - Test de cadena completa para un conjunto minimo de datos de compra publica.

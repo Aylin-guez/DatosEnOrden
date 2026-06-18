@@ -30,7 +30,7 @@ Reglas operativas:
 - Las consultas masivas deben respetar limites y condiciones de uso.
 - Toda publicacion debe mantener atribucion clara a la fuente.
 
-## Flujo Fase 2.6
+## Flujo Fase 2.6 y 3.0
 
 ```text
 ChileCompra API
@@ -66,6 +66,44 @@ Ese unico registro genera:
 - 2 `claim`
 - 2 `evidence`
 - 2 `relationship_public`
+
+## Persistencia real Fase 3.0
+
+La persistencia minima real usa la misma orden de compra ya documentada.
+
+Comando por codigo:
+
+```powershell
+python scripts/run_chilecompra_etl.py --purchase-order 2097-241-SE14
+```
+
+Alternativa por fecha con limite:
+
+```powershell
+python scripts/run_chilecompra_etl.py --date 2026-01-01 --resource purchase-orders --limit 1
+```
+
+Si la API retorna mas de un registro, `--limit 1` recorta el lote antes del mapeo y persiste solo el primer registro procesable.
+
+## Verificacion SQL
+
+Despues de la carga, revisar conteos con:
+
+```sql
+SELECT count(*) FROM source_record;
+SELECT count(*) FROM claim;
+SELECT count(*) FROM evidence;
+SELECT count(*) FROM relationship_public;
+```
+
+Si quieres ver el registro cargado:
+
+```sql
+SELECT id, record_type, external_id, status
+FROM source_record
+ORDER BY created_at DESC
+LIMIT 5;
+```
 
 ### Claims generados
 
@@ -198,13 +236,19 @@ python scripts/run_chilecompra_etl.py --date 2026-01-01 --resource purchase-orde
 Ejecutar el caso minimo persistiendo datos:
 
 ```powershell
-python scripts/run_chilecompra_etl.py --date 2026-01-01 --resource purchase-orders
+python scripts/run_chilecompra_etl.py --purchase-order 2097-241-SE14
 ```
 
 Ejecutar la validacion de fase:
 
 ```powershell
 pytest tests/test_chilecompra_phase_26.py -q
+```
+
+Ejecutar la validacion de configuracion local:
+
+```powershell
+python -c "from sqlalchemy.engine import make_url; from datosenorden.core.config import get_settings; print(make_url(get_settings().database_url).render_as_string(hide_password=True))"
 ```
 
 ## Manejo de errores
@@ -214,3 +258,32 @@ Errores de extraccion abortan el recurso.
 Errores de mapeo rechazan el registro y se registran en `GraphBatch.errors`.
 
 Si existen rechazos, el `import_job` queda como `failed` aunque los registros validos puedan persistirse. Esto fuerza revision.
+
+## Ticket faltante
+
+Si falta `DATOSENORDEN_CHILECOMPRA_TICKET`, el script debe detenerse con un mensaje claro y seguro:
+
+```text
+Falta DATOSENORDEN_CHILECOMPRA_TICKET. Configura el ticket en .env o en PowerShell y vuelve a ejecutar.
+```
+
+No se imprime el valor del ticket ni el contenido de `DATABASE_URL`.
+
+## Seed local sin ticket
+
+Para validar solo la persistencia local y no la conectividad con ChileCompra, usa el seed marcado como no oficial:
+
+```powershell
+python scripts/seed_traceability_flow.py
+```
+
+Ese flujo inserta `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA` y no llama a la API real.
+
+La verificación SQL es la misma:
+
+```sql
+SELECT count(*) FROM source_record;
+SELECT count(*) FROM claim;
+SELECT count(*) FROM evidence;
+SELECT count(*) FROM relationship_public;
+```

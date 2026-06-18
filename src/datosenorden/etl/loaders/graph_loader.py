@@ -100,7 +100,7 @@ class GraphLoader:
                 "raw_count": batch.raw_count,
                 "rejected_count": batch.rejected_count,
                 "dry_run": dry_run,
-                "schema_phase": "2.5",
+                "schema_phase": "3.0",
             },
         )
         self._session.add(import_job)

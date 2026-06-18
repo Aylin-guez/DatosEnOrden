@@ -1,11 +1,12 @@
 from dataclasses import dataclass
+from dataclasses import replace
 from datetime import date
 
 from sqlalchemy.orm import Session
 
 from datosenorden.etl.chilecompra.client import ChileCompraClient
 from datosenorden.etl.chilecompra.mappers import ChileCompraGraphMapper
-from datosenorden.etl.chilecompra.normalizers import ChileCompraNormalizer
+from datosenorden.etl.chilecompra.normalizers import ChileCompraNormalizer, NormalizedPayload
 from datosenorden.etl.core.contracts import GraphBatch
 from datosenorden.etl.loaders.graph_loader import GraphLoader
 
@@ -37,12 +38,23 @@ class ChileCompraPipeline:
         return self._load_batch("tenders", batch, dry_run)
 
     def run_purchase_orders_for_day(
-        self, day: date, status: str = "todos", dry_run: bool = False
+        self,
+        day: date,
+        status: str = "todos",
+        dry_run: bool = False,
+        limit: int | None = None,
     ) -> PipelineResult:
         response = self._client.list_purchase_orders(day=day, status=status)
         normalized = self._normalizer.normalize(response, query_date=day)
+        normalized = self._limit_records(normalized, limit)
         batch = self._mapper.map_purchase_orders(normalized)
         return self._load_batch("purchase_orders", batch, dry_run)
+
+    def run_purchase_order_by_code(self, code: str, dry_run: bool = False) -> PipelineResult:
+        response = self._client.get_purchase_order(code)
+        normalized = self._normalizer.normalize(response)
+        batch = self._mapper.map_purchase_orders(normalized)
+        return self._load_batch("purchase_order", batch, dry_run)
 
     def _load_batch(self, resource: str, batch: GraphBatch, dry_run: bool) -> PipelineResult:
         self._loader.load(batch, dry_run=dry_run)
@@ -57,3 +69,11 @@ class ChileCompraPipeline:
             public_relationship_count=len(batch.public_relationships),
             errors=batch.errors,
         )
+
+    @staticmethod
+    def _limit_records(normalized: NormalizedPayload, limit: int | None) -> NormalizedPayload:
+        if limit is None:
+            return normalized
+        if limit < 1:
+            raise ValueError("limit must be greater than zero")
+        return replace(normalized, records=normalized.records[:limit])

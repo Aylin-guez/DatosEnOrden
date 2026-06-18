@@ -151,6 +151,25 @@ Si el usuario o la base no existen, recrea ambos con los comandos de esta guia y
 alembic upgrade head
 ```
 
+## Seed local sin ticket
+
+Mientras no exista `DATOSENORDEN_CHILECOMPRA_TICKET`, puedes validar persistencia local con un seed marcado como no oficial:
+
+```powershell
+python scripts/seed_traceability_flow.py
+```
+
+Ese comando inserta `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA` en la base local para probar la cadena de persistencia sin llamar a ChileCompra.
+
+Verifica los conteos con:
+
+```sql
+SELECT count(*) FROM source_record;
+SELECT count(*) FROM claim;
+SELECT count(*) FROM evidence;
+SELECT count(*) FROM relationship_public;
+```
+
 ## Regla de trabajo
 
 Ningun cambio de modelo persistente debe hacerse solo en SQLAlchemy o solo en SQL. La fuente operativa de evolucion es Alembic.
