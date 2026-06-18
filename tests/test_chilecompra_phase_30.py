@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from datosenorden.etl.chilecompra.client import ApiResponse
+from datosenorden.etl.chilecompra.debug import summarize_normalized_record, summarize_payload_shape
+from datosenorden.etl.chilecompra.normalizers import ChileCompraNormalizer
 from datosenorden.etl.chilecompra.pipeline import ChileCompraPipeline
 from datosenorden.etl.loaders.graph_loader import GraphLoader
 from run_chilecompra_etl import main
@@ -24,11 +26,15 @@ def _purchase_order_response(code: str) -> ApiResponse:
                 {
                     "Codigo": code,
                     "Nombre": "Compra de servicios",
-                    "CodigoOrganismo": "6945",
-                    "NombreOrganismo": "Direccion de Compras y Contratacion Publica",
-                    "CodigoProveedor": "17793",
-                    "NombreProveedor": "Camara de Comercio de Santiago A.G.",
                     "FechaEnvio": "2026-01-01T12:00:00",
+                    "Comprador": {
+                        "CodigoOrganismo": "6945",
+                        "NombreOrganismo": "Direccion de Compras y Contratacion Publica",
+                    },
+                    "Proveedor": {
+                        "CodigoProveedor": "17793",
+                        "NombreProveedor": "Camara de Comercio de Santiago A.G.",
+                    },
                 }
             ],
         },
@@ -80,20 +86,28 @@ def test_purchase_orders_limit_applies_before_mapping(monkeypatch) -> None:
                 {
                     "Codigo": "2097-241-SE14",
                     "Nombre": "Compra de servicios",
-                    "CodigoOrganismo": "6945",
-                    "NombreOrganismo": "Direccion de Compras y Contratacion Publica",
-                    "CodigoProveedor": "17793",
-                    "NombreProveedor": "Camara de Comercio de Santiago A.G.",
                     "FechaEnvio": "2026-01-01T12:00:00",
+                    "Comprador": {
+                        "CodigoOrganismo": "6945",
+                        "NombreOrganismo": "Direccion de Compras y Contratacion Publica",
+                    },
+                    "Proveedor": {
+                        "CodigoProveedor": "17793",
+                        "NombreProveedor": "Camara de Comercio de Santiago A.G.",
+                    },
                 },
                 {
                     "Codigo": "2097-242-SE14",
                     "Nombre": "Compra secundaria",
-                    "CodigoOrganismo": "6945",
-                    "NombreOrganismo": "Direccion de Compras y Contratacion Publica",
-                    "CodigoProveedor": "17793",
-                    "NombreProveedor": "Camara de Comercio de Santiago A.G.",
                     "FechaEnvio": "2026-01-01T12:30:00",
+                    "Comprador": {
+                        "CodigoOrganismo": "6945",
+                        "NombreOrganismo": "Direccion de Compras y Contratacion Publica",
+                    },
+                    "Proveedor": {
+                        "CodigoProveedor": "17793",
+                        "NombreProveedor": "Camara de Comercio de Santiago A.G.",
+                    },
                 },
             ],
         },
@@ -135,3 +149,18 @@ def test_main_reports_missing_ticket_without_secrets(monkeypatch, capsys) -> Non
     assert exit_code == 1
     assert "Falta DATOSENORDEN_CHILECOMPRA_TICKET" in captured.err
     assert "DATOSENORDEN_CHILECOMPRA_TICKET is required" in captured.err
+
+
+def test_debug_helpers_keep_sensitive_values_out_of_output() -> None:
+    response = _purchase_order_response("2097-241-SE14")
+    normalized = ChileCompraNormalizer().normalize(response)
+
+    payload_summary = summarize_payload_shape(response.payload)
+    normalized_summary = summarize_normalized_record(normalized.records[0])
+
+    assert "ticket" not in payload_summary.lower()
+    assert "ticket" not in normalized_summary.lower()
+    assert "Camara de Comercio" not in payload_summary
+    assert "Camara de Comercio" not in normalized_summary
+    assert "Comprador_keys" in payload_summary
+    assert "Proveedor_keys" in payload_summary

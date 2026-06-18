@@ -4,6 +4,7 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
+from datosenorden.etl.chilecompra.client import ApiResponse
 from datosenorden.etl.chilecompra.client import ChileCompraClient
 from datosenorden.etl.chilecompra.mappers import ChileCompraGraphMapper
 from datosenorden.etl.chilecompra.normalizers import ChileCompraNormalizer, NormalizedPayload
@@ -52,6 +53,9 @@ class ChileCompraPipeline:
 
     def run_purchase_order_by_code(self, code: str, dry_run: bool = False) -> PipelineResult:
         response = self._client.get_purchase_order(code)
+        return self.run_purchase_order_response(response, dry_run=dry_run)
+
+    def run_purchase_order_response(self, response: ApiResponse, dry_run: bool = False) -> PipelineResult:
         normalized = self._normalizer.normalize(response)
         batch = self._mapper.map_purchase_orders(normalized)
         return self._load_batch("purchase_order", batch, dry_run)

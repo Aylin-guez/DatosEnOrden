@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import date
 from typing import Any
 
@@ -27,6 +28,66 @@ from datosenorden.etl.core.time import parse_chilecompra_date
 
 class ChileCompraGraphMapper:
     source_name = "ChileCompra API Mercado Publico"
+    _PURCHASE_ORDER_BUYER_SECTION_KEYS = (
+        "Comprador",
+        "CompradorOrganismo",
+        "DatosComprador",
+        "OrganismoComprador",
+        "UnidadCompra",
+    )
+    _PURCHASE_ORDER_BUYER_CODE_KEYS = (
+        "CodigoOrganismo",
+        "CodigoUnidadCompra",
+        "CodigoComprador",
+    )
+    _PURCHASE_ORDER_BUYER_NAME_KEYS = (
+        "NombreOrganismo",
+        "NombreUnidadCompra",
+        "NombreComprador",
+        "RazonSocial",
+    )
+    _PURCHASE_ORDER_BUYER_FALLBACK_CODE_KEYS = (
+        "CodigoOrganismo",
+        "CodigoUnidadCompra",
+        "CodigoComprador",
+    )
+    _PURCHASE_ORDER_BUYER_FALLBACK_NAME_KEYS = (
+        "NombreOrganismo",
+        "NombreUnidadCompra",
+        "NombreComprador",
+        "RazonSocial",
+    )
+    _PURCHASE_ORDER_SUPPLIER_SECTION_KEYS = (
+        "Adjudicatario",
+        "DatosProveedor",
+        "Empresa",
+        "Proveedor",
+        "ProveedorAdjudicado",
+    )
+    _PURCHASE_ORDER_SUPPLIER_CODE_KEYS = (
+        "CodigoEmpresa",
+        "CodigoProveedor",
+        "CodigoAdjudicatario",
+        "RutProveedor",
+        "RUTProveedor",
+    )
+    _PURCHASE_ORDER_SUPPLIER_NAME_KEYS = (
+        "NombreEmpresa",
+        "NombreProveedor",
+        "RazonSocial",
+    )
+    _PURCHASE_ORDER_SUPPLIER_FALLBACK_CODE_KEYS = (
+        "CodigoEmpresa",
+        "CodigoProveedor",
+        "CodigoAdjudicatario",
+        "RutProveedor",
+        "RUTProveedor",
+    )
+    _PURCHASE_ORDER_SUPPLIER_FALLBACK_NAME_KEYS = (
+        "NombreEmpresa",
+        "NombreProveedor",
+        "RazonSocial",
+    )
 
     def map_tenders(self, payload: NormalizedPayload) -> GraphBatch:
         return self._map_records(payload, dataset_name="chilecompra-licitaciones", mode="tender")
@@ -48,6 +109,19 @@ class ChileCompraGraphMapper:
                     mapped = self._map_tender_record(record, payload.retrieved_at)
                 else:
                     mapped = self._map_purchase_order_record(record, payload.retrieved_at)
+                source_record = mapped["source_record"]
+                if not mapped["claims"]:
+                    reason = source_record.error_log or (
+                        f"{mode}: no claims could be derived from available fields; "
+                        f"raw_keys={sorted(record.keys())}"
+                    )
+                    source_record = replace(
+                        source_record,
+                        status=WorkflowStatus.REJECTED,
+                        error_log=reason,
+                    )
+                    mapped = {**mapped, "source_record": source_record}
+                    errors.append(reason)
                 source_records[
                     (mapped["source_record"].record_type, mapped["source_record"].external_id)
                 ] = mapped["source_record"]
@@ -102,10 +176,7 @@ class ChileCompraGraphMapper:
         code = self._required(record, "CodigoExterno", "Codigo")
         source_record = self._source_record("chilecompra:tender", code, record, retrieved_at)
         tender_name = clean_text(record.get("Nombre")) or f"Licitacion {code}"
-        buyer_code = self._optional(record, "CodigoOrganismo", "CodigoUnidadCompra")
-        buyer_name = clean_text(
-            record.get("NombreOrganismo") or record.get("NombreUnidadCompra") or record.get("Comprador")
-        )
+        buyer_code, buyer_name = self._extract_buyer_identity(record)
 
         tender = EntityRecord(
             entity_type=EntityType.TENDER,
@@ -164,12 +235,8 @@ class ChileCompraGraphMapper:
         code = self._required(record, "Codigo", "CodigoExterno")
         source_record = self._source_record("chilecompra:purchase_order", code, record, retrieved_at)
         order_name = clean_text(record.get("Nombre")) or f"Orden de compra {code}"
-        buyer_code = self._optional(record, "CodigoOrganismo", "CodigoUnidadCompra")
-        buyer_name = clean_text(
-            record.get("NombreOrganismo") or record.get("NombreUnidadCompra") or record.get("Comprador")
-        )
-        supplier_code = self._optional(record, "CodigoProveedor", "CodigoEmpresa")
-        supplier_name = clean_text(record.get("NombreProveedor") or record.get("Proveedor"))
+        buyer_code, buyer_name = self._extract_buyer_identity(record)
+        supplier_code, supplier_name = self._extract_supplier_identity(record)
 
         contract = EntityRecord(
             entity_type=EntityType.CONTRACT,
@@ -308,6 +375,94 @@ class ChileCompraGraphMapper:
             value = clean_text(record.get(key))
             if value:
                 return value
+        return None
+
+    def _extract_buyer_identity(self, record: dict[str, Any]) -> tuple[str | None, str | None]:
+        section = self._find_section(record, self._PURCHASE_ORDER_BUYER_SECTION_KEYS)
+        code = (
+            self._first_text(section, self._PURCHASE_ORDER_BUYER_CODE_KEYS + ("Codigo",))
+            if section is not None
+            else None
+        )
+        name = (
+            self._first_text(section, self._PURCHASE_ORDER_BUYER_NAME_KEYS + ("Nombre", "Comprador"))
+            if section is not None
+            else None
+        )
+        fallback_code = self._first_text(record, self._PURCHASE_ORDER_BUYER_FALLBACK_CODE_KEYS)
+        fallback_name = self._first_text(record, self._PURCHASE_ORDER_BUYER_FALLBACK_NAME_KEYS)
+        return (code or fallback_code, name or fallback_name)
+
+    def _extract_supplier_identity(self, record: dict[str, Any]) -> tuple[str | None, str | None]:
+        section = self._find_section(record, self._PURCHASE_ORDER_SUPPLIER_SECTION_KEYS)
+        code = (
+            self._first_text(section, self._PURCHASE_ORDER_SUPPLIER_CODE_KEYS + ("Codigo", "Rut", "RUT"))
+            if section is not None
+            else None
+        )
+        name = (
+            self._first_text(section, self._PURCHASE_ORDER_SUPPLIER_NAME_KEYS + ("Nombre", "Proveedor"))
+            if section is not None
+            else None
+        )
+        fallback_code = self._first_text(record, self._PURCHASE_ORDER_SUPPLIER_FALLBACK_CODE_KEYS)
+        fallback_name = self._first_text(record, self._PURCHASE_ORDER_SUPPLIER_FALLBACK_NAME_KEYS)
+        return (code or fallback_code, name or fallback_name)
+
+    @classmethod
+    def _first_text(cls, record: dict[str, Any], keys: tuple[str, ...]) -> str | None:
+        for key in keys:
+            value = cls._find_value(record, key)
+            text = clean_text(value)
+            if text:
+                return text
+        return None
+
+    @classmethod
+    def _find_value(cls, node: Any, target_key: str) -> Any | None:
+        target = normalized_key(target_key)
+        if target is None:
+            return None
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if normalized_key(key) == target:
+                    if not isinstance(value, (dict, list)):
+                        return value
+                    found = cls._find_value(value, target_key)
+                    if found is not None:
+                        return found
+            for value in node.values():
+                found = cls._find_value(value, target_key)
+                if found is not None:
+                    return found
+        elif isinstance(node, list):
+            for item in node:
+                found = cls._find_value(item, target_key)
+                if found is not None:
+                    return found
+        return None
+
+    @classmethod
+    def _find_section(cls, node: Any, keys: tuple[str, ...]) -> dict[str, Any] | None:
+        target_keys = {normalized_key(key) for key in keys if normalized_key(key) is not None}
+        if not target_keys:
+            return None
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if normalized_key(key) in target_keys and isinstance(value, dict):
+                    return value
+                if normalized_key(key) in target_keys and isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            return item
+                found = cls._find_section(value, keys)
+                if found is not None:
+                    return found
+        elif isinstance(node, list):
+            for item in node:
+                found = cls._find_section(item, keys)
+                if found is not None:
+                    return found
         return None
 
     @staticmethod

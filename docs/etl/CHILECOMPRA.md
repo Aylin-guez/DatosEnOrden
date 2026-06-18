@@ -54,11 +54,13 @@ Para validar la fase se usa un conjunto minimo de una sola orden de compra:
 
 - `Codigo`: `2097-241-SE14`
 - `Nombre`: `Compra de servicios`
-- `CodigoOrganismo`: `6945`
-- `NombreOrganismo`: `Direccion de Compras y Contratacion Publica`
-- `CodigoProveedor`: `17793`
-- `NombreProveedor`: `Camara de Comercio de Santiago A.G.`
 - `FechaEnvio`: `2026-01-01T12:00:00`
+- `Comprador`:
+  - `CodigoOrganismo`: `6945`
+  - `NombreOrganismo`: `Direccion de Compras y Contratacion Publica`
+- `Proveedor`:
+  - `CodigoProveedor`: `17793`
+  - `NombreProveedor`: `Camara de Comercio de Santiago A.G.`
 
 Ese unico registro genera:
 
@@ -84,6 +86,22 @@ python scripts/run_chilecompra_etl.py --date 2026-01-01 --resource purchase-orde
 ```
 
 Si la API retorna mas de un registro, `--limit 1` recorta el lote antes del mapeo y persiste solo el primer registro procesable.
+
+Modo seguro de inspeccion del payload:
+
+```powershell
+python scripts/run_chilecompra_etl.py --purchase-order 2097-241-SE14 --debug-payload
+```
+
+Ese modo imprime solo:
+
+- claves de primer nivel del payload
+- cantidad de registros en `Listado`
+- claves del primer registro
+- claves de secciones como `Comprador` y `Proveedor`
+- campos relevantes normalizados
+
+No imprime ticket, contrasenas ni el contenido completo de campos sensibles.
 
 ## Verificacion SQL
 
@@ -201,6 +219,32 @@ Regla:
 
 - Sin evidencia no hay claim publicable.
 - Sin claim no hay relacion publica.
+
+## Forma de payload soportada
+
+El mapeador de ordenes de compra acepta tanto payloads planos como payloads con secciones anidadas. La forma que valida esta fase es:
+
+```text
+Listado[0]
+  Codigo
+  Nombre
+  FechaEnvio
+  Comprador
+    CodigoOrganismo
+    NombreOrganismo
+  Proveedor
+    CodigoProveedor
+    NombreProveedor
+```
+
+Reglas de mapeo:
+
+- El codigo de la orden sale de `Codigo` o `CodigoExterno`.
+- El comprador puede venir en `Comprador`, `OrganismoComprador` o `UnidadCompra`.
+- El proveedor puede venir en `Proveedor`, `Empresa`, `Adjudicatario` o `DatosProveedor`.
+- Si hay comprador y proveedor, se generan dos claims y dos relaciones publicas.
+- Si solo hay uno de los dos, se genera el que exista y se conserva la trazabilidad.
+- Si no se puede derivar ningun claim, el `source_record` queda `rejected` con `error_log` explicito en vez de quedar silenciosamente vacio.
 
 ## Validacion esperada
 

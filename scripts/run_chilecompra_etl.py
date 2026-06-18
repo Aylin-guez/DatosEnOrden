@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from datosenorden.db.session import SessionLocal
 from datosenorden.etl.chilecompra.client import ChileCompraClient
 from datosenorden.etl.chilecompra.config import get_chilecompra_settings
+from datosenorden.etl.chilecompra.debug import summarize_normalized_record, summarize_payload_shape
+from datosenorden.etl.chilecompra.normalizers import ChileCompraNormalizer
 from datosenorden.etl.chilecompra.pipeline import ChileCompraPipeline
 
 
@@ -37,6 +39,11 @@ def parse_args(argv: Sequence[str] | None = None):
         type=_positive_int,
         default=None,
         help="Maximo de registros a procesar desde consultas por fecha",
+    )
+    parser.add_argument(
+        "--debug-payload",
+        action="store_true",
+        help="Imprime claves y forma del payload sin mostrar secretos",
     )
     parser.add_argument("--dry-run", action="store_true", help="Ejecuta sin persistir cambios")
     return parser.parse_args(argv)
@@ -66,7 +73,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         pipeline = ChileCompraPipeline(client=client, session=session)
         results = []
         if args.purchase_order:
-            results.append(pipeline.run_purchase_order_by_code(args.purchase_order, dry_run=args.dry_run))
+            response = client.get_purchase_order(args.purchase_order)
+            if args.debug_payload:
+                print(summarize_payload_shape(response.payload))
+                normalized_preview = ChileCompraNormalizer().normalize(response)
+                if normalized_preview.records:
+                    print(summarize_normalized_record(normalized_preview.records[0]))
+            results.append(pipeline.run_purchase_order_response(response, dry_run=args.dry_run))
         else:
             day = date.fromisoformat(args.date)
             if args.resource in ("tenders", "all"):

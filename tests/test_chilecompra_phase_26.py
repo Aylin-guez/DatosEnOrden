@@ -9,24 +9,29 @@ from datosenorden.etl.loaders.graph_loader import GraphLoader
 
 
 def test_chilecompra_minimal_purchase_order_flow_builds_full_chain(monkeypatch) -> None:
+    payload = {
+        "Version": "v1",
+        "FechaCreacion": "2026-01-01T00:00:00",
+        "Listado": [
+            {
+                "Codigo": "2097-241-SE14",
+                "Nombre": "Compra de servicios",
+                "FechaEnvio": "2026-01-01T12:00:00",
+                "Comprador": {
+                    "CodigoOrganismo": "6945",
+                    "NombreOrganismo": "Direccion de Compras y Contratacion Publica",
+                },
+                "Proveedor": {
+                    "CodigoProveedor": "17793",
+                    "NombreProveedor": "Camara de Comercio de Santiago A.G.",
+                },
+            }
+        ],
+    }
     response = ApiResponse(
         url="https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json",
         params={"fecha": "01012026", "estado": "todos"},
-        payload={
-            "Version": "v1",
-            "FechaCreacion": "2026-01-01T00:00:00",
-            "Listado": [
-                {
-                    "Codigo": "2097-241-SE14",
-                    "Nombre": "Compra de servicios",
-                    "CodigoOrganismo": "6945",
-                    "NombreOrganismo": "Direccion de Compras y Contratacion Publica",
-                    "CodigoProveedor": "17793",
-                    "NombreProveedor": "Camara de Comercio de Santiago A.G.",
-                    "FechaEnvio": "2026-01-01T12:00:00",
-                }
-            ],
-        },
+        payload=payload,
     )
 
     client = MagicMock()

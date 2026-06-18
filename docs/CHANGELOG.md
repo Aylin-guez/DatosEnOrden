@@ -6,6 +6,12 @@
 
 ### Agregado
 
+- Modo seguro `--debug-payload` para inspeccionar la forma del payload de ChileCompra sin exponer ticket ni valores sensibles.
+- Mapeo robusto de ordenes de compra con soporte para secciones anidadas `Comprador` y `Proveedor`.
+- Rechazo explicito cuando un registro no puede derivar ningun claim, en vez de persistir un lote vacio sin explicacion.
+
+### Agregado
+
 - Helper local `reset_migrate_seed_verify` para resetear PostgreSQL, migrar, sembrar el seed local y verificar conteos.
 - Documentacion de uso del helper en Windows sin Docker.
 
