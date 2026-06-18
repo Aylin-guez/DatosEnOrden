@@ -1,95 +1,47 @@
-# DatosEnOrden - Roadmap
+# DatosEnOrden - Roadmap conceptual
 
-## Capa 1
+Este roadmap describe capas de producto y dominio. El roadmap técnico operativo vive en [TECHNICAL_ROADMAP.md](TECHNICAL_ROADMAP.md).
 
-Portal de indicadores públicos.
+## Capa 1: Portal de indicadores públicos
 
-## Capa 2
+Base de navegación ciudadana para indicadores públicos verificables.
 
-Compras públicas y contratos.
+## Capa 2: Compras públicas y contratos
 
-## Capa 3
+Integración de licitaciones, órdenes de compra, proveedores, organismos compradores y contratos.
 
-Transparencia institucional.
+## Capa 3: Transparencia institucional
 
-## Capa 4
+Información institucional publicada por organismos públicos, con trazabilidad documental.
 
-Datos electorales.
+## Capa 4: Datos electorales
 
-## Capa 5
+Entidades electorales, partidos, candidaturas, elecciones, votaciones y resultados oficiales.
 
-Promesómetro basado en evidencia.
+## Capa 5: Promesómetro basado en evidencia
 
-## Capa 6
+Seguimiento de promesas públicas como capa separada de interpretación, siempre respaldada por evidencia.
 
-Grafo público de relaciones verificables.
+## Capa 6: Grafo público de relaciones verificables
 
-## Capa 7
+Modelo navegable de entidades y relaciones respaldadas por fuentes.
 
-Asistente ciudadano basado en IA.
+## Capa 7: API pública
 
-## Capa 8
+Endpoints estables para consultar entidades, relaciones, fuentes, evidencias y datasets.
 
-Sistema de detección de anomalías.
+## Capa 8: Asistente ciudadano basado en IA
 
-## Capa 9
+Capa conversacional que responda con citas y límites claros. No debe inventar información ni ocultar incertidumbre.
 
-Versionado y trazabilidad histórica.
+## Capa 9: Detección de anomalías
 
-## Capa 10
+Análisis estadístico separado del dato base. Las anomalías deben presentarse como señales, no como conclusiones.
 
-Infraestructura nacional de datos abiertos.
+## Capa 10: Versionado histórico
 
----
+Capacidad de reconstruir estados anteriores de la base de conocimiento.
 
-## Línea paralela A
+## Capa 11: Infraestructura nacional de datos abiertos
 
-API pública de DatosEnOrden.
-
-Objetivo:
-
-Normalizar y exponer información pública compleja mediante endpoints simples y consistentes.
-
-Ejemplos:
-
-/api/empresa
-
-/api/persona
-
-/api/organismo
-
-/api/contratos
-
-/api/licitaciones
-
-/api/grafo
-
----
-
-## Línea paralela B
-
-Motor de evidencia.
-
-Objetivo:
-
-Permitir rastrear el origen de cada dato y relación almacenada.
-
----
-
-## Línea paralela C
-
-Documentación pública.
-
-Objetivo:
-
-Mantener registro histórico del desarrollo, decisiones técnicas y evolución del proyecto.
-
----
-
-## Estado actual
-
-Fase: Fundación.
-
-Próximo objetivo:
-
-Diseñar el esquema PostgreSQL inicial.
+Ecosistema reutilizable para investigación, auditoría cívica, educación y desarrollo de aplicaciones públicas.

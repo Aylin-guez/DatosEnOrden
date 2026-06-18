@@ -1,73 +1,60 @@
-# DatosEnOrden
-
-## Visión
+# DatosEnOrden - Visión
 
 DatosEnOrden es una plataforma abierta cuyo objetivo es transformar información pública dispersa, compleja y difícil de interpretar en conocimiento accesible, verificable y reutilizable.
 
-El proyecto nace de una idea simple:
+La idea central es simple:
 
-Toda persona debería poder entender cómo funcionan las instituciones públicas utilizando datos abiertos y evidencia verificable.
+> Toda persona debería poder entender cómo funcionan las instituciones públicas utilizando datos abiertos y evidencia verificable.
 
-DatosEnOrden no busca promover partidos políticos, ideologías o candidatos.
-
-Su objetivo es organizar información pública para facilitar el análisis, la transparencia y la participación ciudadana.
-
----
+DatosEnOrden no promueve partidos políticos, ideologías, candidatos ni conclusiones predeterminadas. Organiza evidencia para que personas, comunidades, periodistas, investigadores y organizaciones puedan analizarla con mayor claridad.
 
 ## Principios
 
 ### 1. Evidencia primero
 
-Toda afirmación debe estar respaldada por una fuente verificable.
+Toda afirmación almacenada como dato debe estar respaldada por una fuente verificable.
 
 Sin fuente, no existe.
 
 ### 2. Neutralidad de los datos
 
-Los datos y visualizaciones deben representar la información disponible sin interpretación política incorporada.
+Los datos representan información disponible. La interpretación política, editorial o valórica debe vivir fuera del núcleo de datos.
 
-### 3. Transparencia total
+### 3. Opiniones separadas de los datos
 
-La metodología, el código y las transformaciones realizadas sobre los datos serán públicas.
+El sistema puede permitir análisis, visualizaciones o anotaciones futuras, pero esas capas deben estar separadas del dato base y marcadas como interpretación.
 
-### 4. Software abierto
+### 4. Transparencia total
 
-El desarrollo será público y versionado.
-
-El repositorio será parte de la documentación histórica del proyecto.
+El código, los modelos de datos, las migraciones, las transformaciones y las decisiones técnicas deben estar disponibles públicamente.
 
 ### 5. Reproducibilidad
 
-Cualquier persona debe poder reconstruir los resultados utilizando las mismas fuentes.
+Una persona externa debe poder reconstruir los resultados desde las mismas fuentes, versiones y procesos.
 
----
+### 6. Trazabilidad histórica
+
+Los datos públicos cambian. DatosEnOrden debe preservar contexto: fuente, fecha de recuperación, versión de dataset, proceso de importación y cambios relevantes.
 
 ## Misión
 
-Construir la base de conocimiento pública más completa, verificable y reutilizable de Chile.
-
----
+Construir una base de conocimiento pública, verificable y reutilizable sobre información pública de Chile.
 
 ## Objetivo de largo plazo
 
-Convertirse en una infraestructura pública de datos capaz de alimentar:
+DatosEnOrden debe poder alimentar:
 
-* Portales ciudadanos
-* Dashboards
-* Investigaciones académicas
-* Periodismo de datos
-* Organizaciones civiles
-* Aplicaciones de terceros
-* APIs abiertas
+- Portales ciudadanos.
+- Dashboards.
+- Investigaciones académicas.
+- Periodismo de datos.
+- Organizaciones civiles.
+- APIs abiertas.
+- Aplicaciones de terceros.
+- Sistemas de análisis histórico.
 
----
+## Límite ético y técnico
 
-## Filosofía
+DatosEnOrden organiza evidencia. No debe convertir datos incompletos en acusaciones, puntajes personales, rankings políticos opacos ni conclusiones automatizadas sin contexto.
 
-Los datos son el terreno común.
-
-Las opiniones pertenecen a las personas.
-
-DatosEnOrden organizará evidencia.
-
-Las conclusiones quedarán en manos de los usuarios.
+Los datos son el terreno común. Las conclusiones pertenecen a los usuarios.
