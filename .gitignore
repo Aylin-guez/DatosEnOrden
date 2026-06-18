@@ -14,4 +14,12 @@ data/raw/
 data/processed/
 data/tmp/
 docs/prompt/
+docs/prompts/
+private/
+brainstorm/
+investor_notes/
+future_business/
+market_research/
+*.secret
+*.private
 *.log
