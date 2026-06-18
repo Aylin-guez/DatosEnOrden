@@ -378,3 +378,21 @@ Salida esperada:
 - conteo de relaciones publicas
 
 Este resumen solo usa PostgreSQL persistido.
+
+Salida real observada actualmente:
+
+```text
+trace_summary: external_id=2097-241-SE14 source_records=1
+
+source_record[1]:
+  id=6a0d2d24-5fe9-4dad-adfb-db5eceedf2b4
+  status=normalized
+  record_type=chilecompra:purchase_order
+  external_id=2097-241-SE14
+  buyer organization=SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO
+  supplier/company=MARLENE BEATRIZ FLORES PATIÑO
+  contract/purchase order name=Insumos dentales especialidades
+  public evidence URL=https://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?qs=2097-241-SE14
+  claims count=2
+  public relationships count=2
+```
