@@ -26,7 +26,6 @@ La prioridad de esta fase es construir una base estable: esquema PostgreSQL, mig
 - SQLAlchemy 2.x
 - Alembic
 - FastAPI
-- Docker Compose
 
 ## Estructura
 
@@ -59,11 +58,9 @@ pip install -e ".[dev]"
 Copy-Item .env.example .env
 ```
 
-3. Levantar PostgreSQL:
+3. Preparar PostgreSQL nativo:
 
-```powershell
-docker compose up -d postgres
-```
+Revisa la guia de [Desarrollo local](docs/DEVELOPMENT.md) para crear la base, configurar `DATABASE_URL` y ejecutar las migraciones.
 
 4. Aplicar migraciones:
 

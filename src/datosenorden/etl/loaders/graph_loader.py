@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from decimal import Decimal
 import json
 from typing import Any
@@ -70,7 +70,7 @@ class GraphLoader:
             for record in batch.public_relationships:
                 self._upsert_public_relationship(record, entity_cache, claim_cache)
 
-            import_job.finished_at = datetime.now(UTC)
+            import_job.finished_at = datetime.now(timezone.utc)
             import_job.status = "succeeded" if not batch.errors else "failed"
             import_job.records_processed = batch.raw_count - batch.rejected_count
 
@@ -92,7 +92,7 @@ class GraphLoader:
     ) -> ImportJob:
         import_job = ImportJob(
             dataset_id=dataset_id,
-            started_at=datetime.now(UTC),
+            started_at=datetime.now(timezone.utc),
             status="running",
             records_processed=0,
             error_log="\n".join(batch.errors) if batch.errors else None,

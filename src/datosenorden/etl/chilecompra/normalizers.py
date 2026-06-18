@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date, datetime, UTC
+from datetime import date, datetime, timezone
 from typing import Any
 
 from datosenorden.etl.chilecompra.client import ApiResponse
@@ -35,7 +35,7 @@ class ChileCompraNormalizer:
             api_version=self._string_or_none(payload.get("Version")),
             api_created_at=self._string_or_none(payload.get("FechaCreacion")),
             query_date=query_date,
-            retrieved_at=datetime.now(UTC),
+            retrieved_at=datetime.now(timezone.utc),
             records=normalized_records,
             raw_payload_hash=stable_json_hash(payload),
             raw_payload=payload,

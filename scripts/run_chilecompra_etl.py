@@ -44,7 +44,9 @@ def main() -> None:
     for result in results:
         print(
             f"{result.resource}: raw={result.raw_count} rejected={result.rejected_count} "
-            f"loaded={result.loaded}"
+            f"loaded={result.loaded} source_records={result.source_record_count} "
+            f"claims={result.claim_count} evidences={result.evidence_count} "
+            f"public_relationships={result.public_relationship_count}"
         )
         for error in result.errors:
             print(f"ERROR: {error}")

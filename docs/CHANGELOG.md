@@ -6,6 +6,12 @@
 
 ### Agregado
 
+- Validacion Fase 2.6 con el primer caso minimo de ChileCompra.
+- Resumen de pipeline con conteos de `source_record`, `claim`, `evidence` y `relationship_public`.
+- Test de cadena completa para un conjunto minimo de datos de compra publica.
+
+### Agregado
+
 - Schema v0.3 con `source_record`, `claim` y `relationship_public`.
 - Migracion Alembic de Fase 2.5.
 - Politica legal y etica minima.

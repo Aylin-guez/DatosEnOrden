@@ -16,6 +16,10 @@ class PipelineResult:
     raw_count: int
     rejected_count: int
     loaded: bool
+    source_record_count: int
+    claim_count: int
+    evidence_count: int
+    public_relationship_count: int
     errors: tuple[str, ...]
 
 
@@ -47,5 +51,9 @@ class ChileCompraPipeline:
             raw_count=batch.raw_count,
             rejected_count=batch.rejected_count,
             loaded=not dry_run,
+            source_record_count=len(batch.source_records),
+            claim_count=len(batch.claims),
+            evidence_count=len(batch.evidence),
+            public_relationship_count=len(batch.public_relationships),
             errors=batch.errors,
         )

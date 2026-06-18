@@ -321,13 +321,13 @@ class ChileCompraGraphMapper:
         record: dict[str, Any],
         payload_retrieved_at,
     ) -> SourceRecordPayload:
-        from datetime import datetime, UTC
+        from datetime import datetime, timezone
 
         return SourceRecordPayload(
             external_id=code,
             record_type=record_type,
             payload_hash=stable_json_hash(record),
             raw_payload=record,
-            retrieved_at=payload_retrieved_at or datetime.now(UTC),
+            retrieved_at=payload_retrieved_at or datetime.now(timezone.utc),
             status=WorkflowStatus.NORMALIZED,
         )

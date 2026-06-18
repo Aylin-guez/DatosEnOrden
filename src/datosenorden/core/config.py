@@ -20,8 +20,11 @@ class Settings:
         _load_dotenv()
         self.environment = os.getenv("DATOSENORDEN_ENV", "local")
         self.database_url = os.getenv(
-            "DATOSENORDEN_DATABASE_URL",
-            "postgresql+psycopg://datosenorden:datosenorden@localhost:5432/datosenorden",
+            "DATABASE_URL",
+            os.getenv(
+                "DATOSENORDEN_DATABASE_URL",
+                "postgresql+psycopg://datosenorden:datosenorden@localhost:5432/datosenorden",
+            ),
         )
 
 

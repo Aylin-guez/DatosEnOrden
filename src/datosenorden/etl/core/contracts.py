@@ -1,7 +1,11 @@
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from enum import StrEnum
+from enum import Enum
 from typing import Any
+
+
+class StrEnum(str, Enum):
+    """Compatibility fallback for Python versions without enum.StrEnum."""
 
 
 class WorkflowStatus(StrEnum):
