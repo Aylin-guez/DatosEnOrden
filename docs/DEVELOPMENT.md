@@ -201,6 +201,21 @@ SELECT count(*) FROM evidence;
 SELECT count(*) FROM relationship_public;
 ```
 
+## Inspeccion de trazabilidad persistida
+
+Para revisar una compra ya persistida sin llamar a ChileCompra:
+
+```powershell
+python scripts/inspect_trace.py --external-id 2097-241-SE14
+```
+
+Este comando:
+
+- usa `DATABASE_URL` desde `.env`
+- solo lee PostgreSQL
+- imprime `source_record`, `claim`, `evidence` y `relationship_public`
+- no muestra secretos ni consulta la API externa
+
 ## Regla de trabajo
 
 Ningun cambio de modelo persistente debe hacerse solo en SQLAlchemy o solo en SQL. La fuente operativa de evolucion es Alembic.

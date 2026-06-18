@@ -341,3 +341,21 @@ python scripts/reset_migrate_seed_verify.py
 ```
 
 Ese helper es solo para validacion local de persistencia. No usa ticket de ChileCompra ni llama a la API real.
+
+## Inspeccion de trazabilidad persistida
+
+Para ver la cadena oficial ya guardada en PostgreSQL para una orden de compra concreta:
+
+```powershell
+python scripts/inspect_trace.py --external-id 2097-241-SE14
+```
+
+El reporte muestra:
+
+- `source_record` con `id`, `status`, `record_type` y `external_id`
+- `claim` enlazados a ese `source_record`
+- `evidence` enlazada a cada `claim`
+- `relationship_public` derivada de cada `claim`
+- entidades involucradas con nombre y tipo
+
+Este comando es solo lectura y no llama a la API de ChileCompra.
