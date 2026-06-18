@@ -57,6 +57,20 @@ class TraceSourceRecordSummary:
     claims: tuple[TraceClaimSummary, ...]
 
 
+@dataclass(frozen=True)
+class TraceCompactSummary:
+    source_record_id: str
+    source_record_status: str
+    record_type: str
+    external_id: str
+    buyer_organization: str | None
+    supplier_company: str | None
+    contract_name: str | None
+    public_evidence_url: str | None
+    claims_count: int
+    public_relationships_count: int
+
+
 def inspect_traceability_chain(session: Session, external_id: str) -> tuple[TraceSourceRecordSummary, ...]:
     source_records = session.scalars(
         select(SourceRecord)
@@ -182,6 +196,62 @@ def render_traceability_chain(traces: tuple[TraceSourceRecordSummary, ...], exte
                     f"{relationship.target_entity.entity_type} | {relationship.target_entity.name}"
                     f" | external_id={_format_optional(relationship.target_entity.external_id)}"
                 )
+    return "\n".join(lines)
+
+
+def summarize_traceability_chain(traces: tuple[TraceSourceRecordSummary, ...]) -> tuple[TraceCompactSummary, ...]:
+    summaries: list[TraceCompactSummary] = []
+    for source_record in traces:
+        buyer_organization = None
+        supplier_company = None
+        contract_name = None
+        public_evidence_url = None
+        public_relationships_count = 0
+
+        for claim in source_record.claims:
+            if contract_name is None and claim.object_entity is not None:
+                contract_name = claim.object_entity.name
+            if public_evidence_url is None and claim.evidences:
+                public_evidence_url = claim.evidences[0].url
+            public_relationships_count += len(claim.relationship_public)
+
+            if claim.subject_entity.entity_type == "PUBLIC_ORGANIZATION" and buyer_organization is None:
+                buyer_organization = claim.subject_entity.name
+            if claim.subject_entity.entity_type == "COMPANY" and supplier_company is None:
+                supplier_company = claim.subject_entity.name
+
+        summaries.append(
+            TraceCompactSummary(
+                source_record_id=source_record.id,
+                source_record_status=source_record.status,
+                record_type=source_record.record_type,
+                external_id=source_record.external_id,
+                buyer_organization=buyer_organization,
+                supplier_company=supplier_company,
+                contract_name=contract_name,
+                public_evidence_url=public_evidence_url,
+                claims_count=len(source_record.claims),
+                public_relationships_count=public_relationships_count,
+            )
+        )
+    return tuple(summaries)
+
+
+def render_trace_summary(summaries: tuple[TraceCompactSummary, ...], external_id: str) -> str:
+    lines = [f"trace_summary: external_id={external_id} source_records={len(summaries)}"]
+    for index, summary in enumerate(summaries, start=1):
+        lines.append("")
+        lines.append(f"source_record[{index}]:")
+        lines.append(f"  id={summary.source_record_id}")
+        lines.append(f"  status={summary.source_record_status}")
+        lines.append(f"  record_type={summary.record_type}")
+        lines.append(f"  external_id={summary.external_id}")
+        lines.append(f"  buyer organization={_format_optional(summary.buyer_organization)}")
+        lines.append(f"  supplier/company={_format_optional(summary.supplier_company)}")
+        lines.append(f"  contract/purchase order name={_format_optional(summary.contract_name)}")
+        lines.append(f"  public evidence URL={_format_optional(summary.public_evidence_url)}")
+        lines.append(f"  claims count={summary.claims_count}")
+        lines.append(f"  public relationships count={summary.public_relationships_count}")
     return "\n".join(lines)
 
 

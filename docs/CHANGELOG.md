@@ -6,6 +6,8 @@
 
 ### Agregado
 
+- Resumen compacto de trazabilidad `python scripts/trace_summary.py --external-id ...` para revisar comprador, proveedor, evidencia y conteos persistidos.
+
 - Inspector de trazabilidad de solo lectura `python scripts/inspect_trace.py --external-id ...` para revisar la cadena persistida sin llamar a ChileCompra.
 - Documentacion de inspeccion persistida en `docs/DEVELOPMENT.md` y `docs/etl/CHILECOMPRA.md`.
 

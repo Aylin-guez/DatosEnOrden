@@ -359,3 +359,22 @@ El reporte muestra:
 - entidades involucradas con nombre y tipo
 
 Este comando es solo lectura y no llama a la API de ChileCompra.
+
+## Resumen compacto de trazabilidad
+
+Para un resumen breve de la misma orden persistida:
+
+```powershell
+python scripts/trace_summary.py --external-id 2097-241-SE14
+```
+
+Salida esperada:
+
+- comprador
+- proveedor
+- nombre del contrato u orden
+- URL de evidencia publica
+- conteo de claims
+- conteo de relaciones publicas
+
+Este resumen solo usa PostgreSQL persistido.

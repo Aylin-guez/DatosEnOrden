@@ -216,6 +216,21 @@ Este comando:
 - imprime `source_record`, `claim`, `evidence` y `relationship_public`
 - no muestra secretos ni consulta la API externa
 
+## Resumen compacto de trazabilidad
+
+Para ver un resumen legible y breve de una orden persistida:
+
+```powershell
+python scripts/trace_summary.py --external-id 2097-241-SE14
+```
+
+Este comando:
+
+- usa `DATABASE_URL` desde `.env`
+- solo lee PostgreSQL
+- muestra comprador, proveedor, nombre del contrato, URL de evidencia y conteos
+- no llama a la API externa ni imprime secretos
+
 ## Regla de trabajo
 
 Ningun cambio de modelo persistente debe hacerse solo en SQLAlchemy o solo en SQL. La fuente operativa de evolucion es Alembic.
