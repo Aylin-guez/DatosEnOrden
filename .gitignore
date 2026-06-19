@@ -16,6 +16,7 @@ data/tmp/
 docs/prompt/
 docs/prompts/
 private/
+private/database/backups/
 brainstorm/
 investor_notes/
 future_business/
@@ -24,3 +25,4 @@ market_research/
 *.private
 *.log
 graph_exports/
+mine/

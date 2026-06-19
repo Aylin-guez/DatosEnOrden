@@ -139,6 +139,31 @@ PUBLIC_ORGANIZATION -> CONTRACT
 COMPANY -> CONTRACT
 ```
 
+## Prototipo DIPRES de enlace cruzado
+
+La fase 5.0 introduce un sample local de DIPRES para demostrar que el grafo puede unir datos de dos datasets distintos usando una entidad compartida ya persistida en ChileCompra.
+
+Flujo:
+
+```text
+DIPRES sample
+-> source_record
+-> claim
+-> evidence
+-> BUDGET entity
+-> matched PUBLIC_ORGANIZATION entity
+-> existing purchase order / supplier graph
+```
+
+El sample local genera dos claims de presupuesto:
+
+```text
+PUBLIC_ORGANIZATION HAS_APPROVED_BUDGET value
+PUBLIC_ORGANIZATION HAS_EXECUTED_BUDGET value
+```
+
+Tambien genera un claim de enlace cruzado desde un nodo `BUDGET` hacia la organizacion compartida. Ese enlace queda marcado con coincidencia normalizada y una confidence exploratoria. El resultado es un primer grafo navegable que mezcla DIPRES y ChileCompra en el mismo espacio persistido.
+
 ## Extraccion
 
 Implementada en `src/datosenorden/etl/chilecompra/client.py`.
@@ -470,3 +495,132 @@ El resumen muestra:
 - total suppliers
 - total claims
 - total relationships
+
+## Exploracion del dataset Fase 4.1
+
+Antes de agregar nuevas fuentes, la Fase 4.1 inspecciona el dataset ChileCompra ya persistido.
+
+Reglas:
+
+- Solo lectura.
+- No llama a la API de ChileCompra.
+- No requiere ticket.
+- Usa solo PostgreSQL y los modelos actuales.
+- No crea ni modifica `source_record`, `claim`, `evidence` ni `relationship_public`.
+
+Para imprimir la exploracion en consola:
+
+```powershell
+python scripts/explore_dataset.py
+```
+
+La salida incluye:
+
+- top buyers by purchase orders
+- top suppliers by purchase orders
+- purchase orders by status
+- rejected source_records grouped by error_log
+- claims grouped by predicate
+- relationship_public grouped by relationship_type
+
+Para generar un reporte HTML local:
+
+```powershell
+python scripts/export_dataset_report.py
+```
+
+El archivo generado queda en:
+
+```text
+reports/dataset_report.html
+```
+
+El reporte incluye:
+
+- metricas resumen
+- tablas
+- graficos simples de barras
+- timestamp de generacion
+
+## Explorador de entidades Fase 4.2
+
+La Fase 4.2 permite pasar de estadisticas de dataset a exploracion centrada en entidades.
+
+Reglas:
+
+- Solo lectura.
+- No llama a la API de ChileCompra.
+- No agrega nuevas fuentes.
+- No modifica la arquitectura ni el schema.
+- Usa solo entidades, claims, evidencias y `relationship_public` ya persistidos.
+
+Buscar proveedores por nombre, sin distinguir mayusculas/minusculas:
+
+```powershell
+python scripts/search_supplier.py "SKY"
+```
+
+La salida muestra cada proveedor encontrado con:
+
+- `name`
+- `external_id`
+- `id`
+- `purchase_orders`
+- `claims`
+- `relationships`
+
+Buscar compradores:
+
+```powershell
+python scripts/search_buyer.py "EJERCITO"
+```
+
+Ver detalle de una entidad concreta:
+
+```powershell
+python scripts/entity_details.py --entity-id <entity_id>
+```
+
+El detalle muestra:
+
+- entidad base
+- claims donde participa como sujeto u objeto
+- relaciones publicas donde participa como origen o destino
+- evidencia enlazada a sus claims
+- entidades relacionadas
+
+Exportar perfil HTML:
+
+```powershell
+python scripts/export_entity_profile.py --entity-id <entity_id>
+```
+
+El archivo generado queda en:
+
+```text
+profiles/<entity_id>.html
+```
+
+Ese perfil usa el mismo estilo visual base que `reports/dataset_report.html` y permite revisar manualmente claims, relaciones, evidencias y entidades relacionadas.
+
+## Navegacion de grafo Fase 4.3
+
+La Fase 4.3 agrega la primera capa de navegacion entre entidades ya persistidas.
+
+Nuevos comandos:
+
+```powershell
+python scripts/entity_neighbors.py --entity-id <entity_id>
+python scripts/entity_graph.py --entity-id <entity_id> --depth 2
+python scripts/export_entity_graph.py --entity-id <entity_id>
+python scripts/relationship_summary.py
+```
+
+Reglas:
+
+- usan solo PostgreSQL persistido
+- no crean ni modifican `source_record`, `claim`, `evidence` ni `relationship_public`
+- no agregan nuevas fuentes ni IA
+- no cambian el esquema ni la arquitectura
+
+El perfil HTML de una entidad ahora enlaza vecinos directos y rutas de navegacion para que el grafo deje de sentirse aislado.

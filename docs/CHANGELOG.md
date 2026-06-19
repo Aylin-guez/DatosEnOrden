@@ -2,9 +2,27 @@
 
 > El codigo construye el sistema. La documentacion conserva la memoria.
 
+## 2026-06-19
+
+### Agregado
+
+- Fase 5.0 DIPRES Prototype con sample local en `data/sample/dipres_budget_sample.json`, importador `scripts/load_dipres_sample.py`, resumen presupuestario `scripts/budget_summary.py` y enlace cruzado Budget -> Organization -> Purchase Orders -> Suppliers.
+- Mantenimiento del grafo para admitir el nodo `BUDGET`, claims de presupuesto y coincidencias normalizadas con entidades de ChileCompra ya persistidas.
+- Pruebas para el sample DIPRES, el importador, el resumen presupuestario y la navegacion del grafo desde un nodo presupuestario.
+- Fase 4.3 Entity Graph Navigation con vecinos directos, recorrido configurable del grafo y exportacion HTML en `graph_exports/entity_<entity_id>.html`.
+- Modulo de mantenimiento extendido para exponer vecinos, recorridos de grafo, conteo de tipos de relacion y enlaces de navegacion en perfiles de entidad.
+- Scripts `entity_neighbors.py`, `entity_graph.py`, `export_entity_graph.py` y `relationship_summary.py` para navegar el grafo persistido solo con PostgreSQL.
+- Perfiles HTML de entidad enriquecidos con vecinos directos, conteos de relaciones y enlaces a perfiles/grafos relacionados.
+- Pruebas para lookup de vecinos, traversal de grafo, export HTML y resumen de relaciones.
+- Helpers locales privados de sincronizacion de base con `pg_dump`/`pg_restore` en `scripts/db/`, dumpes timestamped en `private/database/backups/` y verificacion de conteos para mover la base entre home y work sin exponer secretos.
+
 ## 2026-06-18
 
 ### Agregado
+
+- Fase 4.2 Entity Explorer con busqueda de proveedores y compradores, detalle de entidad y exportacion HTML en `profiles/<entity_id>.html`.
+- Modulo `src/datosenorden/maintenance/entity_explorer.py` para centralizar consultas read-only de entidades, claims, evidencias y `relationship_public`.
+- Scripts `search_supplier.py`, `search_buyer.py`, `entity_details.py` y `export_entity_profile.py` para explorar manualmente el grafo persistido sin nuevas fuentes ni API externa.
 
 - Expansion inicial del dataset con `python scripts/load_sample_purchase_orders.py --limit 100` y resumen persistido con `python scripts/dataset_summary.py`.
 - Conteos finales para `source_records`, `claims`, `evidences`, `relationship_public`, compradores y proveedores distintos.

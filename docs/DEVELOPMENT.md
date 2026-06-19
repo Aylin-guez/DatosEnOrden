@@ -278,6 +278,188 @@ Ese resumen muestra:
 - total claims
 - total relationships
 
+## Explorador de entidades
+
+La Fase 4.2 agrega una primera capa de exploracion centrada en entidades persistidas. Todos los comandos son de solo lectura, usan `DATABASE_URL` desde `.env` y no llaman a la API de ChileCompra.
+
+Buscar proveedores:
+
+```powershell
+python scripts/search_supplier.py "SKY"
+```
+
+Buscar compradores:
+
+```powershell
+python scripts/search_buyer.py "EJERCITO"
+```
+
+Ver el detalle navegable de una entidad:
+
+```powershell
+python scripts/entity_details.py --entity-id <entity_id>
+```
+
+Exportar perfil HTML de una entidad:
+
+```powershell
+python scripts/export_entity_profile.py --entity-id <entity_id>
+```
+
+Por defecto escribe:
+
+```text
+profiles/<entity_id>.html
+```
+
+El perfil muestra resumen de entidad, claims, relaciones publicas, evidencias y entidades relacionadas para navegar manualmente el grafo persistido.
+
+## Navegacion de grafo Fase 4.3
+
+La Fase 4.3 agrega la primera capa navegable de grafo sobre datos ya persistidos en PostgreSQL.
+
+Todos los comandos son de solo lectura, no agregan fuentes nuevas, no usan IA y no cambian la arquitectura.
+
+Ver vecinos directos de una entidad:
+
+```powershell
+python scripts/entity_neighbors.py --entity-id <entity_id>
+```
+
+Recorrer el grafo con profundidad configurable:
+
+```powershell
+python scripts/entity_graph.py --entity-id <entity_id> --depth 2
+```
+
+Exportar un HTML del grafo:
+
+```powershell
+python scripts/export_entity_graph.py --entity-id <entity_id>
+```
+
+Por defecto escribe:
+
+```text
+graph_exports/entity_<entity_id>.html
+```
+
+Ver un resumen global de tipos de relaciones:
+
+```powershell
+python scripts/relationship_summary.py
+```
+
+Los perfiles de entidad ahora incluyen:
+
+- vecinos directos
+- conteos por tipo de relacion
+- enlaces de navegacion hacia perfiles y grafos relacionados
+
+## Helpers de inspeccion del dataset
+
+Para descubrir rapidamente que entidades existen en PostgreSQL y obtener IDs validos para navegacion:
+
+Listar compradores por cantidad de ordenes de compra:
+
+```powershell
+python scripts/list_buyers.py
+```
+
+Listar proveedores por cantidad de ordenes de compra:
+
+```powershell
+python scripts/list_suppliers.py
+```
+
+Listar entidades generales con limite configurable:
+
+```powershell
+python scripts/list_entities.py --limit 50
+```
+
+Listar contratos:
+
+```powershell
+python scripts/list_contracts.py
+```
+
+Estas utilidades son de solo lectura, usan solo PostgreSQL persistido y reutilizan `entity_explorer`.
+
+## Phase 5.0 DIPRES prototype
+
+Para probar el primer enlace entre dos datasets locales, carga el sample DIPRES marcado como `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA`:
+
+```powershell
+python scripts/load_dipres_sample.py
+```
+
+Ese comando:
+
+- usa el sample local en `data/sample/dipres_budget_sample.json`
+- busca una coincidencia por nombre de organizacion normalizado contra entidades ya persistidas
+- guarda `source_record`, `claim`, `evidence`, `entities` y `relationship_public`
+- crea un nodo `BUDGET` que apunta a la organizacion compartida
+
+Despues puedes inspeccionar el resumen presupuestario y navegar el grafo:
+
+```powershell
+python scripts/budget_summary.py
+python scripts/list_entities.py --limit 50
+python scripts/entity_graph.py --entity-id <budget-entity-id> --depth 3
+python scripts/export_entity_graph.py --entity-id <budget-entity-id>
+```
+
+La navegacion queda encadenada como:
+
+```text
+BUDGET
+-> PUBLIC_ORGANIZATION
+-> CONTRACT
+-> COMPANY
+```
+
+El objetivo de esta fase es demostrar que DatosEnOrden ya puede conectar informacion de dos datasets distintos usando entidades compartidas persistidas en PostgreSQL.
+
+## sync DB from home to work
+
+Flujo local para copiar la base de datos entre PCs usando un dump privado en `private/database/backups/` o un folder local/USB.
+
+En la computadora de origen:
+
+```powershell
+python scripts\db\export_local_db.py
+```
+
+Eso crea un dump timestamped en `private/database/backups/`.
+
+Copia el archivo `.dump` al USB o al folder local que uses para moverlo.
+
+En la computadora de destino:
+
+```powershell
+python scripts\db\import_local_db.py --dump-file <ruta-al-dump> --confirm
+```
+
+El script muestra un warning antes de reemplazar la base local. Si falta `--confirm`, no ejecuta el restore.
+
+Verifica el resultado:
+
+```powershell
+python scripts\db\verify_db_counts.py
+```
+
+## sync DB from work to home
+
+El flujo es el mismo en sentido inverso:
+
+1. En la computadora de trabajo, exporta con `python scripts\db\export_local_db.py`.
+2. Copia el dump privado al USB o folder local.
+3. En la computadora de casa, restaura con `python scripts\db\import_local_db.py --dump-file <ruta-al-dump> --confirm`.
+4. Verifica los conteos con `python scripts\db\verify_db_counts.py`.
+
+Si `pg_dump` o `pg_restore` no estan en `PATH`, agrega la carpeta `bin` de PostgreSQL, por ejemplo `C:\Program Files\PostgreSQL\16\bin`.
+
 ## Regla de trabajo
 
 Ningun cambio de modelo persistente debe hacerse solo en SQLAlchemy o solo en SQL. La fuente operativa de evolucion es Alembic.

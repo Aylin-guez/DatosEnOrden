@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DatosEnOrden dataset report</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --panel: #ffffff;
+      --ink: #1f2933;
+      --muted: #52616b;
+      --line: #d8dee4;
+      --accent: #0f766e;
+      --bar: #d9f0ec;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+    h1, h2 { margin: 0; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.1rem; margin-bottom: 12px; }
+    .timestamp { color: var(--muted); margin-top: 8px; }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .metric, section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .metric { padding: 14px; }
+    .metric strong { display: block; font-size: 1.6rem; }
+    .metric span { color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 16px;
+    }
+    section { padding: 16px; overflow: hidden; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    td.count { text-align: right; width: 80px; }
+    .chart { display: grid; gap: 8px; margin-bottom: 12px; }
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 1fr) 2fr 52px;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .bar-track { height: 10px; background: #edf1f4; border-radius: 999px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--accent); }
+    .empty { color: var(--muted); margin: 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>DatosEnOrden dataset report</h1>
+      <div class="timestamp">Generated at 2026-06-19T02:22:56.948400+00:00</div>
+    </header>
+    <div class="metrics"><div class="metric"><strong>20</strong><span>purchase_orders</span></div><div class="metric"><strong>20</strong><span>source_records</span></div><div class="metric"><strong>13</strong><span>rejected_source_records</span></div><div class="metric"><strong>14</strong><span>claims</span></div><div class="metric"><strong>7</strong><span>evidences</span></div><div class="metric"><strong>14</strong><span>relationship_public</span></div></div>
+    <div class="grid">
+      <section>
+        <h2>Top buyers by purchase orders</h2>
+        <div class="chart"><div class="bar-row"><span>DIVISION LOGISTICA DEL EJER...</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>4</strong></div><div class="bar-row"><span>SERVICIO SALUD OCCIDENTE HO...</span><div class="bar-track"><div class="bar-fill" style="width: 50%"></div></div><strong>2</strong></div><div class="bar-row"><span>DIRECCION DE EDUCACION PUBL...</span><div class="bar-track"><div class="bar-fill" style="width: 25%"></div></div><strong>1</strong></div></div>
+        <table><thead><tr><th>Label</th><th>Count</th></tr></thead><tbody><tr><td>DIVISION LOGISTICA DEL EJERCITO</td><td class="count">4</td></tr><tr><td>SERVICIO SALUD OCCIDENTE HOSPITAL DR FELIX BULNES CERDA</td><td class="count">2</td></tr><tr><td>DIRECCION DE EDUCACION PUBLICA</td><td class="count">1</td></tr></tbody></table>
+      </section>
+    
+      <section>
+        <h2>Top suppliers by purchase orders</h2>
+        <div class="chart"><div class="bar-row"><span>SKY AIRLINE S A</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>4</strong></div><div class="bar-row"><span>SERVICIOS Y ASESORIAS HEALT...</span><div class="bar-track"><div class="bar-fill" style="width: 50%"></div></div><strong>2</strong></div><div class="bar-row"><span>LATAM AIRLINES GROUP S.A.</span><div class="bar-track"><div class="bar-fill" style="width: 25%"></div></div><strong>1</strong></div></div>
+        <table><thead><tr><th>Label</th><th>Count</th></tr></thead><tbody><tr><td>SKY AIRLINE S A</td><td class="count">4</td></tr><tr><td>SERVICIOS Y ASESORIAS HEALTHSTORE S A</td><td class="count">2</td></tr><tr><td>LATAM AIRLINES GROUP S.A.</td><td class="count">1</td></tr></tbody></table>
+      </section>
+    
+      <section>
+        <h2>Purchase orders by status</h2>
+        <div class="chart"><div class="bar-row"><span>rejected</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>13</strong></div><div class="bar-row"><span>normalized</span><div class="bar-track"><div class="bar-fill" style="width: 54%"></div></div><strong>7</strong></div></div>
+        <table><thead><tr><th>Label</th><th>Count</th></tr></thead><tbody><tr><td>rejected</td><td class="count">13</td></tr><tr><td>normalized</td><td class="count">7</td></tr></tbody></table>
+      </section>
+    
+      <section>
+        <h2>Rejected source_records by error_log</h2>
+        <div class="chart"><div class="bar-row"><span>purchase_order: no claims c...</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>10</strong></div><div class="bar-row"><span>purchase_order: detail fetc...</span><div class="bar-track"><div class="bar-fill" style="width: 10%"></div></div><strong>1</strong></div><div class="bar-row"><span>purchase_order: detail fetc...</span><div class="bar-track"><div class="bar-fill" style="width: 10%"></div></div><strong>1</strong></div><div class="bar-row"><span>purchase_order: detail fetc...</span><div class="bar-track"><div class="bar-fill" style="width: 10%"></div></div><strong>1</strong></div></div>
+        <table><thead><tr><th>Label</th><th>Count</th></tr></thead><tbody><tr><td>purchase_order: no claims could be derived from available fields; raw_keys=[&#x27;Codigo&#x27;, &#x27;CodigoEstado&#x27;, &#x27;Nombre&#x27;]</td><td class="count">10</td></tr><tr><td>purchase_order: detail fetch failed for 1001-90-SE26: Failed to fetch ordenesdecompra.json: Client error &#x27;429 Too Many Requests&#x27; for url &#x27;https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json?codigo=1001-90-SE26&amp;ticket=F3307B3E-4A0B-4EF4-93B1-87997A1BCFAA&#x27; For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429</td><td class="count">1</td></tr><tr><td>purchase_order: detail fetch failed for 1002772-6257-SE26: Failed to fetch ordenesdecompra.json: Client error &#x27;429 Too Many Requests&#x27; for url &#x27;https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json?codigo=1002772-6257-SE26&amp;ticket=F3307B3E-4A0B-4EF4-93B1-87997A1BCFAA&#x27; For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429</td><td class="count">1</td></tr><tr><td>purchase_order: detail fetch failed for 1002772-6583-AG26: Failed to fetch ordenesdecompra.json: Client error &#x27;429 Too Many Requests&#x27; for url &#x27;https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json?codigo=1002772-6583-AG26&amp;ticket=F3307B3E-4A0B-4EF4-93B1-87997A1BCFAA&#x27; For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429</td><td class="count">1</td></tr></tbody></table>
+      </section>
+    
+      <section>
+        <h2>Claims by predicate</h2>
+        <div class="chart"><div class="bar-row"><span>ISSUES_PURCHASE_ORDER</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>7</strong></div><div class="bar-row"><span>RECEIVES_CONTRACT</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>7</strong></div></div>
+        <table><thead><tr><th>Label</th><th>Count</th></tr></thead><tbody><tr><td>ISSUES_PURCHASE_ORDER</td><td class="count">7</td></tr><tr><td>RECEIVES_CONTRACT</td><td class="count">7</td></tr></tbody></table>
+      </section>
+    
+      <section>
+        <h2>relationship_public by relationship_type</h2>
+        <div class="chart"><div class="bar-row"><span>ISSUES_PURCHASE_ORDER</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>7</strong></div><div class="bar-row"><span>RECEIVES_CONTRACT</span><div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div><strong>7</strong></div></div>
+        <table><thead><tr><th>Label</th><th>Count</th></tr></thead><tbody><tr><td>ISSUES_PURCHASE_ORDER</td><td class="count">7</td></tr><tr><td>RECEIVES_CONTRACT</td><td class="count">7</td></tr></tbody></table>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

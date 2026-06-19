@@ -1,0 +1,19 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "dataset_name": "dipres-budget-sample",
+  "source_name": "DatosEnOrden DIPRES Sample",
+  "records": [
+    {
+      "external_id": "dipres-budget-2026-servicio-de-salud-arauco",
+      "ministry_name": "MINISTERIO DE SALUD",
+      "service_name": "SERVICIO DE SALUD ARAUCO",
+      "fiscal_year": 2026,
+      "approved_budget": 1000000000,
+      "executed_budget": 950000000,
+      "currency": "CLP",
+      "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample for the first cross-dataset link prototype.",
+      "match_hint": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+    }
+  ]
+}
