@@ -418,3 +418,36 @@ Ese HTML representa:
 - proveedor
 
 con datos ya persistidos en PostgreSQL.
+
+## Expansion inicial del dataset
+
+Para pasar de una sola orden de compra a un conjunto pequeno usando la integracion existente:
+
+```powershell
+python scripts/load_sample_purchase_orders.py --limit 100
+```
+
+El comando recorre una ventana reciente de dias hacia atras y persiste los registros hasta alcanzar el limite o agotar la ventana.
+
+Al finalizar imprime:
+
+- `source_records count`
+- `claims count`
+- `evidences count`
+- `relationship_public count`
+- `distinct buyers count`
+- `distinct suppliers count`
+
+Para ver un resumen del dataset persistido:
+
+```powershell
+python scripts/dataset_summary.py
+```
+
+El resumen muestra:
+
+- total purchase orders
+- total public organizations
+- total suppliers
+- total claims
+- total relationships

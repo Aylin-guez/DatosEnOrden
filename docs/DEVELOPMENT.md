@@ -247,6 +247,37 @@ graph_exports/2097-241-SE14.html
 
 Este archivo se genera solo con datos ya persistidos en PostgreSQL. No consulta la API de ChileCompra y no expone secretos.
 
+## Expansion inicial del dataset
+
+Para cargar un conjunto pequeno pero util de ordenes de compra usando la integracion existente:
+
+```powershell
+python scripts/load_sample_purchase_orders.py --limit 100
+```
+
+El comando recorre un ventana reciente de dias hacia atras hasta alcanzar el limite o agotar la ventana de busqueda. Al terminar imprime:
+
+- `source_records count`
+- `claims count`
+- `evidences count`
+- `relationship_public count`
+- `distinct buyers count`
+- `distinct suppliers count`
+
+Para resumir el dataset persistido:
+
+```powershell
+python scripts/dataset_summary.py
+```
+
+Ese resumen muestra:
+
+- total purchase orders
+- total public organizations
+- total suppliers
+- total claims
+- total relationships
+
 ## Regla de trabajo
 
 Ningun cambio de modelo persistente debe hacerse solo en SQLAlchemy o solo en SQL. La fuente operativa de evolucion es Alembic.

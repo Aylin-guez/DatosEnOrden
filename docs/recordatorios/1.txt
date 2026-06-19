@@ -1,0 +1,38 @@
+• Sí puedes seguir este chat mientras esta conversación siga abierta: yo mantengo el
+  contexto de lo que hicimos aquí.
+
+  Si me inicias en otra sesión o desde otro PC, no voy a “recordar” automáticamente todo el
+  chat como tal. Pero sí podré reconstruir bastante contexto leyendo el repositorio,
+  especialmente:
+
+  - docs/ARCHITECTURE.md
+  - docs/SCHEMA.md
+  - docs/DECISIONS.md
+  - docs/TECHNICAL_ROADMAP.md
+  - docs/etl/CHILECOMPRA.md
+  - migraciones Alembic
+  - modelos en src/datosenorden/models/
+  - contratos ETL en src/datosenorden/etl/core/
+
+  Lo que no viajará por Git, correctamente, es:
+
+  - docs/prompt/
+  - .env
+
+  Para seguir desde el PC del trabajo, basta con:
+
+  git clone <URL_DEL_REPO>
+  cd DatosEnOrden
+  pip install -e ".[dev]"
+  Copy-Item .env.example .env
+
+  Luego editas .env localmente si necesitas credenciales como el ticket de ChileCompra.
+
+  Mi recomendación: usa el repo como fuente de verdad pública y deja docs/prompt/ como tu
+  carpeta privada de dirección estratégica. Si abres una sesión nueva conmigo, dime algo
+  como:
+
+  Lee el repo completo de DatosEnOrden y continúa desde la Fase 2.5. No leas ni subas docs/
+  prompt/.
+
+  Con eso puedo retomar bien desde el estado real del código.

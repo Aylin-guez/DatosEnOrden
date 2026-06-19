@@ -6,6 +6,9 @@
 
 ### Agregado
 
+- Expansion inicial del dataset con `python scripts/load_sample_purchase_orders.py --limit 100` y resumen persistido con `python scripts/dataset_summary.py`.
+- Conteos finales para `source_records`, `claims`, `evidences`, `relationship_public`, compradores y proveedores distintos.
+
 - Exportador HTML `python scripts/export_trace_graph.py --external-id ...` para generar `graph_exports/<external-id>.html` con el primer grafo visible de trazabilidad.
 
 - Resumen compacto de trazabilidad `python scripts/trace_summary.py --external-id ...` para revisar comprador, proveedor, evidencia y conteos persistidos.
