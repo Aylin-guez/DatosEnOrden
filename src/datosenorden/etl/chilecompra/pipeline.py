@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from dataclasses import replace
 from datetime import date
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -9,7 +10,10 @@ from datosenorden.etl.chilecompra.client import ChileCompraClient
 from datosenorden.etl.chilecompra.mappers import ChileCompraGraphMapper
 from datosenorden.etl.chilecompra.normalizers import ChileCompraNormalizer, NormalizedPayload
 from datosenorden.etl.core.contracts import GraphBatch
+from datosenorden.etl.core.text import clean_text
 from datosenorden.etl.loaders.graph_loader import GraphLoader
+
+DETAIL_ERROR_KEY = "_datosenorden_error_log"
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,7 @@ class ChileCompraPipeline:
         response = self._client.list_purchase_orders(day=day, status=status)
         normalized = self._normalizer.normalize(response, query_date=day)
         normalized = self._limit_records(normalized, limit)
+        normalized = self._hydrate_purchase_order_details(normalized)
         batch = self._mapper.map_purchase_orders(normalized)
         return self._load_batch("purchase_orders", batch, dry_run)
 
@@ -81,3 +86,40 @@ class ChileCompraPipeline:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
         return replace(normalized, records=normalized.records[:limit])
+
+    def _hydrate_purchase_order_details(self, normalized: NormalizedPayload) -> NormalizedPayload:
+        detailed_records: list[dict[str, Any]] = []
+
+        for record in normalized.records:
+            code = self._purchase_order_code(record)
+            if code is None:
+                detailed_records.append(record)
+                continue
+
+            try:
+                detail_response = self._client.get_purchase_order(code)
+                detail_payload = self._normalizer.normalize(detail_response, query_date=normalized.query_date)
+            except Exception as exc:  # noqa: BLE001
+                detailed_records.append(
+                    {
+                        **record,
+                        DETAIL_ERROR_KEY: f"purchase_order: detail fetch failed for {code}: {exc}",
+                    }
+                )
+                continue
+
+            if detail_payload.records:
+                detailed_records.extend(detail_payload.records)
+            else:
+                detailed_records.append(
+                    {
+                        **record,
+                        DETAIL_ERROR_KEY: f"purchase_order: detail payload returned no records for {code}",
+                    }
+                )
+
+        return replace(normalized, records=tuple(detailed_records))
+
+    @staticmethod
+    def _purchase_order_code(record: dict[str, Any]) -> str | None:
+        return clean_text(record.get("Codigo")) or clean_text(record.get("CodigoExterno"))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
+from typing import Callable
 
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
@@ -24,6 +25,18 @@ class PurchaseOrderLoadCounts:
     evidences: int
     relationship_public: int
     days_scanned: int
+    raw_found: int = 0
+    rejected: int = 0
+
+
+@dataclass(frozen=True)
+class DailyPurchaseOrderLoadProgress:
+    scanned_date: date
+    raw_found: int
+    loaded: int
+    rejected: int
+    claims: int
+    relationships: int
 
 
 @dataclass(frozen=True)
@@ -51,6 +64,7 @@ def load_sample_purchase_orders(
     limit: int,
     anchor_date: date | None = None,
     lookback_days: int = DEFAULT_LOOKBACK_DAYS,
+    progress_callback: Callable[[DailyPurchaseOrderLoadProgress], None] | None = None,
 ) -> PurchaseOrderLoadCounts:
     if limit < 1:
         raise ValueError("limit must be greater than zero")
@@ -63,6 +77,8 @@ def load_sample_purchase_orders(
     total_claims = 0
     total_evidences = 0
     total_relationships = 0
+    total_raw_found = 0
+    total_rejected = 0
     days_scanned = 0
     current_day = anchor_date or date.today()
 
@@ -73,12 +89,28 @@ def load_sample_purchase_orders(
         day = current_day - timedelta(days=offset)
         days_scanned += 1
         result = pipeline.run_purchase_orders_for_day(day, status="todos", dry_run=False, limit=remaining)
+        raw_found = result.raw_count
+        rejected = result.rejected_count
 
+        total_raw_found += raw_found
         total_source_records += result.source_record_count
         total_claims += result.claim_count
         total_evidences += result.evidence_count
         total_relationships += result.public_relationship_count
+        total_rejected += rejected
         remaining -= result.source_record_count
+
+        if progress_callback is not None:
+            progress_callback(
+                DailyPurchaseOrderLoadProgress(
+                    scanned_date=day,
+                    raw_found=raw_found,
+                    loaded=result.source_record_count,
+                    rejected=rejected,
+                    claims=result.claim_count,
+                    relationships=result.public_relationship_count,
+                )
+            )
 
     return PurchaseOrderLoadCounts(
         source_records=total_source_records,
@@ -86,6 +118,8 @@ def load_sample_purchase_orders(
         evidences=total_evidences,
         relationship_public=total_relationships,
         days_scanned=days_scanned,
+        raw_found=total_raw_found,
+        rejected=total_rejected,
     )
 
 

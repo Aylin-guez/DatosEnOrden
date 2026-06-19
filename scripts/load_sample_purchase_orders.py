@@ -27,6 +27,15 @@ def parse_args(argv: Sequence[str] | None = None):
     return parser.parse_args(argv)
 
 
+def _print_progress(progress) -> None:  # noqa: ANN001
+    print(
+        "sample_purchase_orders_progress: "
+        f"date={progress.scanned_date.isoformat()} raw_found={progress.raw_found} "
+        f"loaded={progress.loaded} rejected={progress.rejected} "
+        f"claims={progress.claims} relationships={progress.relationships}"
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
 
@@ -45,7 +54,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         with SessionLocal() as session:
-            load_counts = load_sample_purchase_orders(client, session, limit=args.limit)
+            load_counts = load_sample_purchase_orders(
+                client,
+                session,
+                limit=args.limit,
+                progress_callback=_print_progress,
+            )
             dataset_counts = read_purchase_order_dataset_counts(session)
     except Exception as exc:  # noqa: BLE001
         print("No se pudo cargar el dataset de muestra de ChileCompra.", file=sys.stderr)
@@ -55,7 +69,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(
         f"sample_purchase_orders_loaded: source_records={load_counts.source_records} "
         f"claims={load_counts.claims} evidences={load_counts.evidences} "
-        f"relationship_public={load_counts.relationship_public} days_scanned={load_counts.days_scanned}"
+        f"relationship_public={load_counts.relationship_public} days_scanned={load_counts.days_scanned} "
+        f"raw_found={load_counts.raw_found} rejected={load_counts.rejected}"
     )
     print(render_purchase_order_dataset_counts(dataset_counts))
     return 0

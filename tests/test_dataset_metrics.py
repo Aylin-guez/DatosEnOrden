@@ -4,6 +4,7 @@ from datetime import date
 from types import SimpleNamespace
 
 from datosenorden.maintenance.dataset_metrics import DatasetSummaryCounts
+from datosenorden.maintenance.dataset_metrics import DailyPurchaseOrderLoadProgress
 from datosenorden.maintenance.dataset_metrics import PurchaseOrderDatasetCounts
 from datosenorden.maintenance.dataset_metrics import load_sample_purchase_orders
 from datosenorden.maintenance.dataset_metrics import read_dataset_summary
@@ -14,6 +15,7 @@ from datosenorden.maintenance.dataset_metrics import render_purchase_order_datas
 
 def test_load_sample_purchase_orders_iterates_until_limit(monkeypatch) -> None:
     calls: list[tuple[date, int | None]] = []
+    progress_events: list[DailyPurchaseOrderLoadProgress] = []
 
     class FakePipeline:
         def __init__(self, client, session):  # noqa: ANN001
@@ -23,6 +25,8 @@ def test_load_sample_purchase_orders_iterates_until_limit(monkeypatch) -> None:
             calls.append((day, limit))
             if day == date(2026, 6, 18):
                 return SimpleNamespace(
+                    raw_count=3,
+                    rejected_count=0,
                     source_record_count=3,
                     claim_count=6,
                     evidence_count=6,
@@ -30,12 +34,16 @@ def test_load_sample_purchase_orders_iterates_until_limit(monkeypatch) -> None:
                 )
             if day == date(2026, 6, 17):
                 return SimpleNamespace(
+                    raw_count=2,
+                    rejected_count=1,
                     source_record_count=2,
                     claim_count=4,
                     evidence_count=4,
                     public_relationship_count=4,
                 )
             return SimpleNamespace(
+                raw_count=0,
+                rejected_count=0,
                 source_record_count=0,
                 claim_count=0,
                 evidence_count=0,
@@ -50,6 +58,7 @@ def test_load_sample_purchase_orders_iterates_until_limit(monkeypatch) -> None:
         limit=5,
         anchor_date=date(2026, 6, 18),
         lookback_days=3,
+        progress_callback=progress_events.append,
     )
 
     assert result.source_records == 5
@@ -57,7 +66,27 @@ def test_load_sample_purchase_orders_iterates_until_limit(monkeypatch) -> None:
     assert result.evidences == 10
     assert result.relationship_public == 10
     assert result.days_scanned == 2
+    assert result.raw_found == 5
+    assert result.rejected == 1
     assert calls == [(date(2026, 6, 18), 5), (date(2026, 6, 17), 2)]
+    assert progress_events == [
+        DailyPurchaseOrderLoadProgress(
+            scanned_date=date(2026, 6, 18),
+            raw_found=3,
+            loaded=3,
+            rejected=0,
+            claims=6,
+            relationships=6,
+        ),
+        DailyPurchaseOrderLoadProgress(
+            scanned_date=date(2026, 6, 17),
+            raw_found=2,
+            loaded=2,
+            rejected=1,
+            claims=4,
+            relationships=4,
+        ),
+    ]
 
 
 def test_render_purchase_order_dataset_counts_is_human_readable() -> None:

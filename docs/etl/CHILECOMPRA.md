@@ -85,7 +85,9 @@ Alternativa por fecha con limite:
 python scripts/run_chilecompra_etl.py --date 2026-01-01 --resource purchase-orders --limit 1
 ```
 
-Si la API retorna mas de un registro, `--limit 1` recorta el lote antes del mapeo y persiste solo el primer registro procesable.
+Si la API retorna mas de un registro, `--limit 1` recorta el listado antes de pedir detalles y persiste solo el primer registro procesable.
+
+Para ordenes de compra, la consulta por fecha se usa como descubrimiento de codigos. Cada codigo del listado se hidrata con `get_purchase_order(codigo)` antes de normalizar y mapear, de modo que el batch usa el mismo payload detallado que el flujo single `--purchase-order`.
 
 Modo seguro de inspeccion del payload:
 
@@ -245,6 +247,7 @@ Reglas de mapeo:
 - Si hay comprador y proveedor, se generan dos claims y dos relaciones publicas.
 - Si solo hay uno de los dos, se genera el que exista y se conserva la trazabilidad.
 - Si no se puede derivar ningun claim, el `source_record` queda `rejected` con `error_log` explicito en vez de quedar silenciosamente vacio.
+- En carga batch, si el detalle por codigo falla o no trae registros, se conserva el registro resumen como `source_record` rechazado con `error_log`.
 
 ## Validacion esperada
 
@@ -429,9 +432,25 @@ python scripts/load_sample_purchase_orders.py --limit 100
 
 El comando recorre una ventana reciente de dias hacia atras y persiste los registros hasta alcanzar el limite o agotar la ventana.
 
+Por cada fecha escaneada imprime progreso:
+
+```text
+sample_purchase_orders_progress: date=YYYY-MM-DD raw_found=N loaded=N rejected=N claims=N relationships=N
+```
+
+Donde:
+
+- `raw_found`: registros encontrados en el listado por fecha despues de aplicar el limite pendiente.
+- `loaded`: `source_record` persistidos o actualizados para esa fecha.
+- `rejected`: registros marcados `rejected` por no poder generar claims.
+- `claims`: claims generados desde los detalles de ordenes de compra.
+- `relationships`: `relationship_public` derivadas de esos claims.
+
 Al finalizar imprime:
 
+- `raw_found`
 - `source_records count`
+- `rejected`
 - `claims count`
 - `evidences count`
 - `relationship_public count`

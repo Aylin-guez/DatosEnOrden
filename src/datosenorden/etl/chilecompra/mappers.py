@@ -25,6 +25,8 @@ from datosenorden.etl.core.hash import stable_json_hash
 from datosenorden.etl.core.text import clean_text, normalized_key
 from datosenorden.etl.core.time import parse_chilecompra_date
 
+DETAIL_ERROR_KEY = "_datosenorden_error_log"
+
 
 class ChileCompraGraphMapper:
     source_name = "ChileCompra API Mercado Publico"
@@ -467,7 +469,7 @@ class ChileCompraGraphMapper:
 
     @staticmethod
     def _metadata(record: dict[str, Any], code: str) -> dict[str, Any]:
-        return {"chilecompra_code": code, "raw": record}
+        return {"chilecompra_code": code, "raw": ChileCompraGraphMapper._public_record_payload(record)}
 
     @staticmethod
     def _source_record(
@@ -481,8 +483,13 @@ class ChileCompraGraphMapper:
         return SourceRecordPayload(
             external_id=code,
             record_type=record_type,
-            payload_hash=stable_json_hash(record),
-            raw_payload=record,
+            payload_hash=stable_json_hash(ChileCompraGraphMapper._public_record_payload(record)),
+            raw_payload=ChileCompraGraphMapper._public_record_payload(record),
             retrieved_at=payload_retrieved_at or datetime.now(timezone.utc),
             status=WorkflowStatus.NORMALIZED,
+            error_log=clean_text(record.get(DETAIL_ERROR_KEY)),
         )
+
+    @staticmethod
+    def _public_record_payload(record: dict[str, Any]) -> dict[str, Any]:
+        return {key: value for key, value in record.items() if key != DETAIL_ERROR_KEY}

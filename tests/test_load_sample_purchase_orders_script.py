@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import date
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -26,12 +27,28 @@ def test_main_prints_load_and_dataset_counts(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         script,
         "load_sample_purchase_orders",
-        lambda client, session, limit: PurchaseOrderLoadCounts(
+        lambda client, session, limit, progress_callback=None: (
+            progress_callback(
+                SimpleNamespace(
+                    scanned_date=date(2026, 6, 18),
+                    raw_found=7,
+                    loaded=7,
+                    rejected=1,
+                    claims=14,
+                    relationships=14,
+                )
+            )
+            if progress_callback
+            else None
+        )
+        or PurchaseOrderLoadCounts(
             source_records=7,
             claims=14,
             evidences=14,
             relationship_public=14,
             days_scanned=3,
+            raw_found=7,
+            rejected=1,
         ),
     )
     monkeypatch.setattr(
@@ -52,6 +69,10 @@ def test_main_prints_load_and_dataset_counts(monkeypatch, capsys) -> None:
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "sample_purchase_orders_loaded:" in captured.out
+    assert "sample_purchase_orders_progress:" in captured.out
+    assert "date=2026-06-18" in captured.out
+    assert "raw_found=7" in captured.out
+    assert "rejected=1" in captured.out
     assert "source_records=7" in captured.out
     assert "claims=14" in captured.out
     assert "evidences=14" in captured.out
