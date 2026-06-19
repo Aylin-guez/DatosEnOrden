@@ -6,6 +6,7 @@
 
 ### Agregado
 
+- Fase 5.1 Entity Matching Engine con normalizacion reutilizable, ranking por exact match, contains y token overlap, CLI `scripts/match_entity.py` y pruebas dedicadas para coincidencia y no coincidencia.
 - Fase 5.0 DIPRES Prototype con sample local en `data/sample/dipres_budget_sample.json`, importador `scripts/load_dipres_sample.py`, resumen presupuestario `scripts/budget_summary.py` y enlace cruzado Budget -> Organization -> Purchase Orders -> Suppliers.
 - Mantenimiento del grafo para admitir el nodo `BUDGET`, claims de presupuesto y coincidencias normalizadas con entidades de ChileCompra ya persistidas.
 - Pruebas para el sample DIPRES, el importador, el resumen presupuestario y la navegacion del grafo desde un nodo presupuestario.

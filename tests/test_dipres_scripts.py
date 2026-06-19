@@ -64,7 +64,7 @@ def test_budget_summary_script_prints_rows(monkeypatch, capsys) -> None:
                 executed_budget=950000000,
                 purchase_orders=4,
                 suppliers=2,
-                match_method="normalized_contains",
+                match_method="contains_normalized_match",
                 match_confidence=0.95,
                 currency="CLP",
             ),

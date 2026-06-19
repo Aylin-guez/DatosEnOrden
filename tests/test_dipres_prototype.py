@@ -30,6 +30,12 @@ class _FakeSession:
     def __init__(self, entities):
         self._entities = entities
 
+    def get(self, model, identity):  # noqa: ANN001
+        for entity in self._entities:
+            if entity.id == identity:
+                return entity
+        return None
+
     def scalars(self, statement):  # noqa: ANN001
         return _ScalarResult(self._entities)
 
@@ -74,7 +80,7 @@ def test_build_dipres_sample_batch_links_budget_to_existing_organization() -> No
     match_claim = next(claim for claim in batch.claims if claim.predicate == DIPRES_MATCH_PREDICATE)
     assert match_claim.object_entity is not None
     assert match_claim.object_entity.external_id == candidate.external_id
-    assert match_claim.object_value["matching_method"] == "normalized_contains"
+    assert match_claim.object_value["matching_method"] == "contains_normalized_match"
     assert match_claim.object_value["confidence"] >= 0.9
     assert len(batch.public_relationships) == 1
     assert batch.public_relationships[0].relationship_type == RelationshipType.BUDGET_ALLOCATED_TO
@@ -91,7 +97,7 @@ def test_read_budget_summary_aggregates_counts(monkeypatch) -> None:
     match_claim = SimpleNamespace(
         subject_entity=budget_entity,
         object_entity=organization,
-        object_value={"matching_method": "normalized_contains", "confidence": 0.95},
+        object_value={"matching_method": "contains_normalized_match", "confidence": 0.95},
         confidence=0.95,
         source_record=source_record,
     )
@@ -127,7 +133,7 @@ def test_read_budget_summary_aggregates_counts(monkeypatch) -> None:
             executed_budget=950000000,
             purchase_orders=4,
             suppliers=2,
-            match_method="normalized_contains",
+            match_method="contains_normalized_match",
             match_confidence=0.95,
             currency="CLP",
         ),
@@ -147,7 +153,7 @@ def test_render_budget_summary_text_formats_rows() -> None:
                 executed_budget=950000000,
                 purchase_orders=4,
                 suppliers=2,
-                match_method="normalized_contains",
+                match_method="contains_normalized_match",
                 match_confidence=0.95,
                 currency="CLP",
             ),
@@ -160,7 +166,7 @@ def test_render_budget_summary_text_formats_rows() -> None:
     assert "executed_budget=950000000" in report
     assert "purchase_orders=4" in report
     assert "suppliers=2" in report
-    assert "match_method=normalized_contains" in report
+    assert "match_method=contains_normalized_match" in report
 
 
 def test_render_dipres_import_result_text_formats_counts() -> None:

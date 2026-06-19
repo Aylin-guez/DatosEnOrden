@@ -421,6 +421,22 @@ BUDGET
 
 El objetivo de esta fase es demostrar que DatosEnOrden ya puede conectar informacion de dos datasets distintos usando entidades compartidas persistidas en PostgreSQL.
 
+## Phase 5.1 Entity Matching Engine
+
+Antes de importar un dataset nuevo, puedes preguntar que entidad existente es la candidata mas probable usando el matcher reutilizable:
+
+```powershell
+python scripts/match_entity.py --type PUBLIC_ORGANIZATION --name "SERVICIO DE SALUD ARAUCO"
+```
+
+El matcher:
+
+- normaliza mayusculas, acentos, puntuacion, espacios y stopwords comunes
+- ordena candidatos por exactitud normalizada, containment y overlap de tokens
+- devuelve `candidate_entity_id`, `candidate_name`, `entity_type`, `score`, `match_method` y `explanation`
+
+Este paso no cambia la arquitectura ni agrega fuentes publicas nuevas. Solo reusa entidades ya persistidas en PostgreSQL para responder si un nombre nuevo probablemente ya existe en el grafo.
+
 ## sync DB from home to work
 
 Flujo local para copiar la base de datos entre PCs usando un dump privado en `private/database/backups/` o un folder local/USB.

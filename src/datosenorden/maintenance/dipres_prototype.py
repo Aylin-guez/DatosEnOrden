@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 import json
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session, joinedload
@@ -26,6 +27,8 @@ from datosenorden.etl.core.contracts import (
 from datosenorden.etl.core.hash import stable_json_hash
 from datosenorden.etl.core.text import normalized_key
 from datosenorden.etl.loaders.graph_loader import GraphLoader
+from datosenorden.maintenance.entity_matching import EntityMatchCandidate
+from datosenorden.maintenance.entity_matching import match_entity_candidates
 from datosenorden.models import Claim, Entity, Evidence, RelationshipPublic, SourceRecord
 
 LOCAL_TEST_DATA = "LOCAL_TEST_DATA"
@@ -388,43 +391,23 @@ def _validate_sample_payload(payload: dict[str, Any]) -> None:
 
 
 def _match_existing_organization(session: Session, service_name: str) -> DipresMatchResult:
-    target_key = normalized_key(service_name)
-    if target_key is None:
-        raise LookupError(f"Could not normalize service name: {service_name}")
-
-    candidates = session.scalars(
-        select(Entity).where(Entity.entity_type == EntityType.PUBLIC_ORGANIZATION.value)
-    ).all()
-    best_match: DipresMatchResult | None = None
-    for candidate in candidates:
-        candidate_key = candidate.normalized_key or normalized_key(candidate.name)
-        if candidate_key is None:
-            continue
-        score, method = _score_normalized_match(target_key, candidate_key)
-        if score is None:
-            continue
-        if best_match is None or score > best_match.confidence:
-            best_match = DipresMatchResult(entity=candidate, match_method=method, confidence=score)
-    if best_match is None:
+    candidates = match_entity_candidates(
+        session,
+        entity_type=EntityType.PUBLIC_ORGANIZATION.value,
+        name=service_name,
+        limit=1,
+    )
+    if not candidates:
         raise LookupError(f"No PUBLIC_ORGANIZATION match found for {service_name}")
-    return best_match
 
+    candidate = candidates[0]
+    entity = session.get(Entity, candidate_entity_uuid(candidate)) if hasattr(session, "get") else None
+    if entity is None:
+        entity = _candidate_to_entity(candidate)
+    if entity is None:
+        raise LookupError(f"Matched entity not found after lookup: {candidate.candidate_entity_id}")
 
-def _score_normalized_match(target_key: str, candidate_key: str) -> tuple[float | None, str]:
-    if target_key == candidate_key:
-        return 1.0, "normalized_exact"
-    if target_key in candidate_key or candidate_key in target_key:
-        return 0.95, "normalized_contains"
-    target_parts = set(target_key.split("-"))
-    candidate_parts = set(candidate_key.split("-"))
-    if not target_parts or not candidate_parts:
-        return None, "no_match"
-    overlap = len(target_parts & candidate_parts)
-    union = len(target_parts | candidate_parts)
-    score = overlap / union if union else 0.0
-    if score < 0.5:
-        return None, "no_match"
-    return score, "token_overlap"
+    return DipresMatchResult(entity=entity, match_method=candidate.match_method, confidence=candidate.score)
 
 
 def _build_budget_entity(record: dict[str, Any], classification: str, official_status: str) -> EntityRecord:
@@ -586,3 +569,17 @@ def _count_suppliers_for_entity(session: Session, entity_id) -> int:  # type: ig
 
 def _count_rows(session: Session, model) -> int:  # type: ignore[no-untyped-def]
     return int(session.scalar(select(func.count()).select_from(model)) or 0)
+
+
+def candidate_entity_uuid(candidate: EntityMatchCandidate) -> UUID:
+    return UUID(candidate.candidate_entity_id)
+
+
+def _candidate_to_entity(candidate: EntityMatchCandidate) -> Entity:
+    return Entity(
+        id=candidate_entity_uuid(candidate),
+        entity_type=candidate.entity_type,
+        name=candidate.candidate_name,
+        external_id=candidate.candidate_entity_id,
+        status="active",
+    )
