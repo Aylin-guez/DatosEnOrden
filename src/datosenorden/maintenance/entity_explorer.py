@@ -9,7 +9,11 @@ from uuid import UUID
 from sqlalchemy import and_, distinct, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
+from datosenorden.maintenance.human_readable import explain_graph
+from datosenorden.maintenance.human_readable import render_graph_explanation_html
+from datosenorden.maintenance.human_readable import render_human_labels_legend_html
 from datosenorden.models import Claim, Entity, Evidence, RelationshipPublic
+from datosenorden.maintenance.entity_matching import match_entity_candidates
 
 SUPPLIER_ENTITY_TYPE = "COMPANY"
 BUYER_ENTITY_TYPE = "PUBLIC_ORGANIZATION"
@@ -584,6 +588,7 @@ def render_entity_profile_html(profile: EntityProfile) -> str:
         <h2>Direct neighbors</h2>
         {_render_neighbors_cards(profile.direct_neighbors)}
       </section>
+      {render_human_labels_legend_html()}
       <section class="wide">
         <h2>Relationship counts</h2>
         {_render_relationship_counts(profile.relationship_counts)}
@@ -832,6 +837,7 @@ def render_entity_graph_html(root: EntityGraphNodeSummary, depth: int) -> str:
         <span><strong>type:</strong> {escape(root.entity.entity_type)}</span>
       </div>
     </header>
+    {render_graph_explanation_html(explain_graph(root))}
     <section class="graph">
       {_render_graph_html_node(root, is_root=True)}
     </section>
@@ -970,13 +976,19 @@ def _search_entities(
     if limit < 1:
         raise ValueError("limit must be greater than zero")
 
-    entities = session.scalars(
-        select(Entity)
-        .where(Entity.entity_type == entity_type, Entity.name.ilike(f"%{cleaned_query}%"))
-        .order_by(Entity.name.asc(), Entity.id.asc())
-        .limit(limit)
-    ).all()
-    return tuple(_build_search_result(session, entity, predicate) for entity in entities)
+    candidate_matches = match_entity_candidates(
+        session,
+        entity_type=entity_type,
+        name=cleaned_query,
+        limit=limit,
+    )
+    results: list[EntitySearchResult] = []
+    for candidate in candidate_matches:
+        entity = session.get(Entity, UUID(candidate.candidate_entity_id))
+        if entity is None:
+            continue
+        results.append(_build_search_result(session, entity, predicate))
+    return tuple(results)
 
 
 def _build_search_result(session: Session, entity: Entity, predicate: str) -> EntitySearchResult:
@@ -1225,7 +1237,7 @@ def _append_graph_text(
     if is_root:
         lines.append(node.entity.entity_type)
     else:
-        connector = "└── " if is_last else "├── "
+        connector = "`-- " if is_last else "|-- "
         label = node.entity.entity_type
         if node.via_relationship_type:
             label = f"{label} [{node.via_relationship_type} {node.via_direction}]"
@@ -1233,7 +1245,7 @@ def _append_graph_text(
 
     child_count = len(node.children)
     for index, child in enumerate(node.children):
-        next_prefix = prefix + ("" if is_root else ("    " if is_last else "│   "),)
+        next_prefix = prefix + ("" if is_root else ("    " if is_last else "|   "),)
         _append_graph_text(
             lines,
             child,

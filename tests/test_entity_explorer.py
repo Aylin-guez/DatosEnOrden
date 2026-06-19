@@ -11,6 +11,8 @@ from datosenorden.maintenance.entity_explorer import EntityRelationshipSummary
 from datosenorden.maintenance.entity_explorer import EntityRelationshipCount
 from datosenorden.maintenance.entity_explorer import EntitySearchResult
 from datosenorden.maintenance.entity_explorer import EntitySummary
+from datosenorden.maintenance.entity_explorer import search_buyers
+from datosenorden.maintenance.entity_explorer import search_suppliers
 from datosenorden.maintenance.entity_explorer import render_buyer_search
 from datosenorden.maintenance.entity_explorer import render_entity_details
 from datosenorden.maintenance.entity_explorer import render_entity_profile_html
@@ -159,8 +161,46 @@ def test_render_entity_profile_html_contains_navigable_profile() -> None:
     assert "Direct neighbors" in html
     assert "Relationship counts" in html
     assert "Related entities" in html
+    assert "¿Qué significa esto?" in html
     assert "Pasajes aereos" in html
     assert "Source: DatosEnOrden local dataset" in html
     assert "Generated at 2026-06-18T12:30:00+00:00" in html
     assert "ticket" not in html.lower()
     assert "DATABASE_URL" not in html
+
+
+def test_search_buyers_and_suppliers_use_shared_matching_engine(monkeypatch) -> None:
+    candidate = EntitySearchResult(
+        id="11111111-1111-1111-1111-111111111111",
+        entity_type="PUBLIC_ORGANIZATION",
+        name="SERVICIO DE SALUD ARAUCO",
+        external_id="buyer-1",
+        purchase_orders=4,
+        claims=8,
+        relationships=8,
+    )
+    calls = []
+
+    def _match_entity_candidates(session, *, entity_type, name, limit):  # noqa: ANN001
+        calls.append((entity_type, name, limit))
+        return (
+            type("Candidate", (), {"candidate_entity_id": "11111111-1111-1111-1111-111111111111"})(),
+        )
+
+    class _Session:
+        def get(self, model, identity):  # noqa: ANN001
+            return object()
+
+    monkeypatch.setattr("datosenorden.maintenance.entity_explorer.match_entity_candidates", _match_entity_candidates)
+    monkeypatch.setattr(
+        "datosenorden.maintenance.entity_explorer._build_search_result",
+        lambda session, entity, predicate: candidate,  # noqa: ARG005
+    )
+
+    supplier_results = search_suppliers(_Session(), "SERVICIO DE SALUD ARAUCO")
+    buyer_results = search_buyers(_Session(), "SERVICIO DE SALUD ARAUCO")
+
+    assert supplier_results == (candidate,)
+    assert buyer_results == (candidate,)
+    assert calls[0] == ("COMPANY", "SERVICIO DE SALUD ARAUCO", 20)
+    assert calls[1] == ("PUBLIC_ORGANIZATION", "SERVICIO DE SALUD ARAUCO", 20)

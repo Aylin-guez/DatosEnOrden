@@ -6,6 +6,19 @@
 
 ### Agregado
 
+- Fase 7.0 Lobby Prototype con sample local en `data/sample/lobby_meeting_sample.json`, importador `scripts/load_lobby_sample.py` y resumen `scripts/lobby_summary.py`.
+- Enlace neutral `PUBLIC_ORGANIZATION -> LOBBY_MEETING <- COMPANY` usando el matcher de entidades existente para conectar reuniones de lobby de muestra con organismos y contrapartes ya persistidas.
+- Registry de datasets actualizado para mostrar Lobby como activo cuando el sample local queda cargado.
+- Explicaciones humanas para lobby con lenguaje neutral: reunion registrada, contraparte, organismo publico y evidencia, sin implicar irregularidad.
+- Pruebas para carga del sample Lobby, matching, claims, `relationship_public`, resumen, traversal de grafo y explicacion humana.
+- Fase 7.0 Local Python Explorer con Streamlit en `streamlit_app.py`, reutilizando PostgreSQL persistido para home, datasets, busqueda de entidades, perfiles, grafo y explicaciones humanas.
+- Documentacion para iniciar el explorador local con `streamlit run streamlit_app.py`.
+- Fase 6.5 Human-Friendly Layer con comandos `scripts/explain_entity.py`, `scripts/explain_dataset.py` y `scripts/explain_graph.py` para interpretar entidades, datasets y grafos en lenguaje simple.
+- Perfiles HTML de entidad, dataset y grafo enriquecidos con secciones `What does this mean?`.
+- Mapeo de etiquetas tecnicas a lenguaje humano para `source_record`, `claim`, `relationship_public` y `entity`.
+- Fase 6.0 Dataset Registry con `src/datosenorden/maintenance/dataset_registry.py`, CLI `scripts/list_datasets.py`, `scripts/dataset_details.py` y `scripts/export_dataset_profile.py` para explorar datasets como entidades de primera clase.
+- Perfil HTML de dataset `reports/dataset_<slug>.html` con conteos, salud, tipos de entidades, tipos de claims y tipos de relaciones.
+- Pruebas para el registry de datasets y sus comandos de exploracion/exportacion.
 - Fase 5.1 Entity Matching Engine con normalizacion reutilizable, ranking por exact match, contains y token overlap, CLI `scripts/match_entity.py` y pruebas dedicadas para coincidencia y no coincidencia.
 - Fase 5.0 DIPRES Prototype con sample local en `data/sample/dipres_budget_sample.json`, importador `scripts/load_dipres_sample.py`, resumen presupuestario `scripts/budget_summary.py` y enlace cruzado Budget -> Organization -> Purchase Orders -> Suppliers.
 - Mantenimiento del grafo para admitir el nodo `BUDGET`, claims de presupuesto y coincidencias normalizadas con entidades de ChileCompra ya persistidas.
@@ -16,6 +29,7 @@
 - Perfiles HTML de entidad enriquecidos con vecinos directos, conteos de relaciones y enlaces a perfiles/grafos relacionados.
 - Pruebas para lookup de vecinos, traversal de grafo, export HTML y resumen de relaciones.
 - Helpers locales privados de sincronizacion de base con `pg_dump`/`pg_restore` en `scripts/db/`, dumpes timestamped en `private/database/backups/` y verificacion de conteos para mover la base entre home y work sin exponer secretos.
+- Flujo seguro de fusion local con `scripts/db/merge_local_db.py`, restaurando primero a una base temporal y luego insertando solo registros faltantes en la base principal sin duplicar entidades.
 
 ## 2026-06-18
 

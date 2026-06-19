@@ -624,3 +624,35 @@ Reglas:
 - no cambian el esquema ni la arquitectura
 
 El perfil HTML de una entidad ahora enlaza vecinos directos y rutas de navegacion para que el grafo deje de sentirse aislado.
+
+## Prototipo local de Lobby en el grafo
+
+La Fase 7.0 agrega un sample local de Lobby para probar enlaces con entidades ya persistidas desde ChileCompra. No llama la API real de Lobby, no scrapea y no debe leerse como dato oficial.
+
+El sample queda marcado como `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA` y genera:
+
+```text
+PUBLIC_ORGANIZATION ORGANIZATION_HELD_LOBBY_MEETING LOBBY_MEETING
+COMPANY COUNTERPARTY_PARTICIPATED_IN_LOBBY LOBBY_MEETING
+LOBBY_MEETING LOBBY_MEETING_ABOUT_SUBJECT value
+```
+
+Ejemplo de recorrido minimo:
+
+```text
+PUBLIC_ORGANIZATION
+-> LOBBY_MEETING
+-> COMPANY
+```
+
+Ejemplo de recorrido extendido cuando tambien existen contratos y presupuesto:
+
+```text
+BUDGET
+-> PUBLIC_ORGANIZATION
+-> CONTRACT
+-> COMPANY
+-> LOBBY_MEETING
+```
+
+La relacion es descriptiva: una reunion registrada o de muestra conecta un organismo publico con una contraparte. No implica corrupcion, irregularidad ni wrongdoing.

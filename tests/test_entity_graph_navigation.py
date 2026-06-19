@@ -208,6 +208,55 @@ def test_build_entity_graph_from_budget_root_shows_cross_dataset_chain(monkeypat
     assert supplier_node.via_relationship_type == "RECEIVES_CONTRACT"
 
 
+def test_build_entity_graph_traverses_lobby_node_from_organization(monkeypatch) -> None:
+    buyer, _, supplier = _sample_entities()
+    lobby_meeting = SimpleNamespace(
+        id=UUID("88888888-8888-8888-8888-888888888888"),
+        entity_type="LOBBY_MEETING",
+        name="Lobby meeting 2026-03-15 - Direccion de Compras / SKY AIRLINE S.A.",
+        external_id="lobby-meeting-1",
+    )
+    relationships = [
+        SimpleNamespace(
+            id=UUID("99999999-9999-9999-9999-999999999999"),
+            relationship_type="ORGANIZATION_HELD_LOBBY_MEETING",
+            source_entity_id=buyer.id,
+            target_entity_id=lobby_meeting.id,
+            source_entity=buyer,
+            target_entity=lobby_meeting,
+        ),
+        SimpleNamespace(
+            id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            relationship_type="COUNTERPARTY_PARTICIPATED_IN_LOBBY",
+            source_entity_id=supplier.id,
+            target_entity_id=lobby_meeting.id,
+            source_entity=supplier,
+            target_entity=lobby_meeting,
+        ),
+    ]
+    session = _FakeSession(buyer, relationships)
+
+    monkeypatch.setattr(
+        entity_explorer,
+        "_load_entity_relationships",
+        lambda session, entity_id: [  # noqa: ARG005
+            relationship
+            for relationship in relationships
+            if relationship.source_entity_id == entity_id or relationship.target_entity_id == entity_id
+        ],
+    )
+    graph = build_entity_graph(session, str(buyer.id), depth=2)
+
+    assert graph is not None
+    assert graph.entity.entity_type == "PUBLIC_ORGANIZATION"
+    lobby_node = graph.children[0]
+    assert lobby_node.entity.entity_type == "LOBBY_MEETING"
+    assert lobby_node.via_relationship_type == "ORGANIZATION_HELD_LOBBY_MEETING"
+    counterparty_node = lobby_node.children[0]
+    assert counterparty_node.entity.entity_type == "COMPANY"
+    assert counterparty_node.via_relationship_type == "COUNTERPARTY_PARTICIPATED_IN_LOBBY"
+
+
 def test_render_entity_neighbors_text_lists_links() -> None:
     buyer, contract, _ = _sample_entities()
     neighbor = EntityNeighborSummary(
@@ -317,6 +366,7 @@ def test_render_entity_graph_html_contains_nodes_and_relationships() -> None:
     assert "<!doctype html>" in html
     assert "PUBLIC_ORGANIZATION" in html
     assert "ISSUES_PURCHASE_ORDER" in html
+    assert "¿Qué significa esto?" in html
     assert 'class="node root"' in html
     assert 'class="edge"' in html
 

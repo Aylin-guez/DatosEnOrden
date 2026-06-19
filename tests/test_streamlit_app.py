@@ -1,0 +1,405 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from types import SimpleNamespace
+import sys
+
+from datosenorden.maintenance.dataset_registry import DatasetCountRow
+from datosenorden.maintenance.dataset_registry import DatasetDetails
+from datosenorden.maintenance.dataset_registry import DatasetSummary
+from datosenorden.maintenance.entity_explorer import EntitySearchResult
+from datosenorden.maintenance.human_readable import DatasetExplanation
+from datosenorden.maintenance.human_readable import EntityExplanation
+from datosenorden.maintenance.human_readable import GraphExplanation
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import streamlit_app
+
+
+@dataclass
+class _FakeColumn:
+    metrics: list[tuple[str, object]]
+    captions: list[str]
+
+    def metric(self, label, value):  # noqa: ANN001
+        self.metrics.append((label, value))
+
+    def caption(self, text):  # noqa: ANN001
+        self.captions.append(text)
+
+
+class _FakeTab:
+    def __enter__(self):  # noqa: ANN001
+        return self
+
+    def __exit__(self, exc_type, exc, tb):  # noqa: ANN001
+        _ = (exc_type, exc, tb)
+        return False
+
+
+class _FakeSidebar:
+    def __init__(self):
+        self.radio_value = streamlit_app.PAGE_HOME
+
+    def title(self, text):  # noqa: ANN001
+        self.title_text = text
+
+    def radio(self, label, options, index=0, key=None):  # noqa: ANN001
+        _ = (label, options, index, key)
+        return self.radio_value
+
+
+class _FakeStreamlit:
+    def __init__(self):
+        self.sidebar = _FakeSidebar()
+        self.session_state = {}
+        self.tables: list[object] = []
+        self.codes: list[tuple[str, str | None]] = []
+        self.titles: list[str] = []
+        self.writes: list[object] = []
+        self.subheaders: list[str] = []
+        self.infos: list[str] = []
+        self.warnings: list[str] = []
+        self.errors: list[str] = []
+        self.markdowns: list[tuple[str, bool]] = []
+        self.columns_created: list[list[_FakeColumn]] = []
+        self.page_config = None
+        self.captions: list[str] = []
+        self.text_input_values: dict[str, str] = {}
+        self.selectbox_values: dict[str, object | None] = {}
+        self.button_values: dict[str, bool] = {}
+        self.tab_labels: list[str] = []
+
+    def set_page_config(self, **kwargs):  # noqa: ANN001
+        self.page_config = kwargs
+
+    def title(self, text):  # noqa: ANN001
+        self.titles.append(text)
+
+    def write(self, text):  # noqa: ANN001
+        self.writes.append(text)
+
+    def subheader(self, text):  # noqa: ANN001
+        self.subheaders.append(text)
+
+    def caption(self, text):  # noqa: ANN001
+        self.captions.append(text)
+
+    def table(self, data):  # noqa: ANN001
+        self.tables.append(data)
+
+    def code(self, text, language=None):  # noqa: ANN001
+        self.codes.append((text, language))
+
+    def info(self, text):  # noqa: ANN001
+        self.infos.append(text)
+
+    def warning(self, text):  # noqa: ANN001
+        self.warnings.append(text)
+
+    def error(self, text):  # noqa: ANN001
+        self.errors.append(text)
+
+    def markdown(self, text, unsafe_allow_html=False):  # noqa: ANN001
+        self.markdowns.append((text, unsafe_allow_html))
+
+    def columns(self, count):  # noqa: ANN001
+        columns = [_FakeColumn(metrics=[], captions=[]) for _ in range(count)]
+        self.columns_created.append(columns)
+        return columns
+
+    def tabs(self, labels):  # noqa: ANN001
+        self.tab_labels = list(labels)
+        return [_FakeTab() for _ in labels]
+
+    def selectbox(self, label, options, index=0, key=None, format_func=None, placeholder=None):  # noqa: ANN001
+        _ = (label, placeholder, format_func)
+        if key in self.selectbox_values:
+            return self.selectbox_values[key]
+        if index is None:
+            return None
+        return options[index]
+
+    def text_input(self, label, value="", key=None, placeholder=None):  # noqa: ANN001
+        _ = (label, placeholder)
+        if key in self.text_input_values:
+            return self.text_input_values[key]
+        return value
+
+    def slider(self, label, min_value, max_value, value, step, key=None):  # noqa: ANN001
+        _ = (label, min_value, max_value, step, key)
+        return value
+
+    def button(self, label, key=None):  # noqa: ANN001
+        _ = label
+        return self.button_values.get(key, False)
+
+
+def _profile(entity_id: str = "11111111-1111-1111-1111-111111111111"):
+    entity = SimpleNamespace(entity_type="PUBLIC_ORGANIZATION", name="SERVICIO DE SALUD ARAUCO", id=entity_id, external_id="buyer-1")
+    return SimpleNamespace(
+        entity=entity,
+        claims=(),
+        relationships=(),
+        evidences=(),
+        related_entities=(),
+        direct_neighbors=(),
+    )
+
+
+def test_build_home_summary_aggregates_dataset_counts() -> None:
+    rows = (
+        DatasetSummary("chilecompra", "ChileCompra", 10, 20, 30, 40, 50, "active", False),
+        DatasetSummary("dipres-prototype", "DIPRES Prototype", 1, 2, 3, 4, 5, "active", False),
+    )
+
+    summary = streamlit_app.build_home_summary(rows)
+
+    assert summary.datasets == 2
+    assert summary.active_datasets == 2
+    assert summary.source_records == 11
+    assert summary.entities == 22
+    assert summary.claims == 33
+    assert summary.evidence == 44
+    assert summary.relationships == 55
+
+
+def test_build_entity_card_html_is_public_facing() -> None:
+    html = streamlit_app.build_entity_card_html(
+        streamlit_app.SearchCard(
+            id="11111111-1111-1111-1111-111111111111",
+            name="SERVICIO DE SALUD ARAUCO",
+            entity_type="PUBLIC_ORGANIZATION",
+            external_id="buyer-1",
+            purchase_orders=4,
+            claims=8,
+            relationships=8,
+        )
+    )
+
+    assert "SERVICIO DE SALUD ARAUCO" in html
+    assert "Organismo" in html
+    assert "Contratos: 4" in html
+    assert "Relaciones: 8" in html
+    assert "Ver perfil" in html
+
+
+def test_dataset_options_returns_label_slug_pairs() -> None:
+    options = streamlit_app.dataset_options(
+        (
+            DatasetSummary("chilecompra", "ChileCompra", 1, 2, 3, 4, 5, "active", False),
+            DatasetSummary("dipres-prototype", "DIPRES Prototype", 0, 0, 0, 0, 0, "empty", False),
+        )
+    )
+
+    assert options == [
+        ("ChileCompra (active)", "chilecompra"),
+        ("DIPRES Prototype (empty)", "dipres-prototype"),
+    ]
+
+
+def test_search_cards_normalizes_results() -> None:
+    cards = streamlit_app.search_cards(
+        [
+            EntitySearchResult(
+                id="11111111-1111-1111-1111-111111111111",
+                entity_type="PUBLIC_ORGANIZATION",
+                name="SERVICIO DE SALUD ARAUCO",
+                external_id="buyer-1",
+                purchase_orders=4,
+                claims=8,
+                relationships=8,
+            )
+        ]
+    )
+
+    assert cards == [
+        streamlit_app.SearchCard(
+            id="11111111-1111-1111-1111-111111111111",
+            name="SERVICIO DE SALUD ARAUCO",
+            entity_type="PUBLIC_ORGANIZATION",
+            external_id="buyer-1",
+            purchase_orders=4,
+            claims=8,
+            relationships=8,
+        )
+    ]
+
+
+def test_render_home_page_shows_cards_and_questions(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    datasets = (
+        DatasetSummary("chilecompra", "ChileCompra", 10, 20, 30, 40, 50, "active", False),
+        DatasetSummary("dipres-prototype", "DIPRES Prototype", 1, 2, 3, 4, 5, "empty", False),
+    )
+    monkeypatch.setattr(streamlit_app, "list_datasets", lambda session: datasets)
+    monkeypatch.setattr(streamlit_app, "suggested_entity_cards", lambda session: [])
+    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [])
+
+    streamlit_app.render_home_page(fake_st, object())
+
+    assert fake_st.titles == ["DatosEnOrden"]
+    assert any("Explora cómo se conectan presupuestos" in markdown for markdown, _ in fake_st.markdowns)
+    assert fake_st.subheaders == [
+        "Busca un organismo, proveedor, contrato o presupuesto",
+        "Preguntas de ejemplo",
+        "Estado actual del prototipo",
+        "Conjuntos de datos",
+        "Conjuntos secundarios",
+        "Hoja de ruta",
+    ]
+    assert any("ChileCompra" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("DIPRES Prototype" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("¿Qué proveedores recibieron contratos?" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("roadmap-grid" in markdown for markdown, _ in fake_st.markdowns)
+    assert fake_st.infos[0] == "Busca una entidad para comenzar."
+
+
+def test_render_entity_search_page_shows_cards(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.text_input_values["entity_search_query"] = "arauco"
+    expected = streamlit_app.SearchCard(
+        id="11111111-1111-1111-1111-111111111111",
+        name="SERVICIO DE SALUD ARAUCO",
+        entity_type="PUBLIC_ORGANIZATION",
+        external_id="buyer-1",
+        purchase_orders=4,
+        claims=8,
+        relationships=8,
+    )
+    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [expected])
+
+    streamlit_app.render_entity_search_page(fake_st, object())
+
+    assert fake_st.titles == ["Buscar"]
+    assert any("SERVICIO DE SALUD ARAUCO" in markdown for markdown, _ in fake_st.markdowns)
+    assert fake_st.errors == []
+
+
+def test_render_entity_profile_page_uses_tabs(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.text_input_values["entity_profile_query"] = "arauco"
+    selected = streamlit_app.SearchCard(
+        id="11111111-1111-1111-1111-111111111111",
+        name="SERVICIO DE SALUD ARAUCO",
+        entity_type="PUBLIC_ORGANIZATION",
+        external_id="buyer-1",
+        purchase_orders=4,
+        claims=8,
+        relationships=8,
+    )
+    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [selected])
+    fake_st.button_values[f"entity_profile_profile_{selected.id}"] = True
+    monkeypatch.setattr(streamlit_app, "get_entity_profile", lambda session, entity_id: _profile(entity_id))
+    monkeypatch.setattr(
+        streamlit_app,
+        "explain_entity",
+        lambda session, entity_id: EntityExplanation(
+            entity_id=entity_id,
+            entity_name="SERVICIO DE SALUD ARAUCO",
+            entity_type="PUBLIC_ORGANIZATION",
+            public_contracts=4,
+            suppliers=3,
+            source_names=("ChileCompra",),
+        ),
+    )
+    monkeypatch.setattr(streamlit_app, "suggested_entity_cards", lambda session: [selected])
+
+    streamlit_app.render_entity_profile_page(fake_st, object())
+
+    assert fake_st.tab_labels == ["Resumen", "Relaciones", "Evidencia", "Explicación"]
+    assert any("Resumen de la entidad" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("¿Qué significa esto?" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_graph_view_page_shows_explanation_first(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.text_input_values["graph_view_query"] = "arauco"
+    selected = streamlit_app.SearchCard(
+        id="11111111-1111-1111-1111-111111111111",
+        name="SERVICIO DE SALUD ARAUCO",
+        entity_type="PUBLIC_ORGANIZATION",
+        external_id="buyer-1",
+        purchase_orders=4,
+        claims=8,
+        relationships=8,
+    )
+    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [selected])
+    fake_st.button_values[f"graph_view_profile_{selected.id}"] = True
+    monkeypatch.setattr(
+        streamlit_app,
+        "build_entity_graph",
+        lambda session, entity_id, depth=1: SimpleNamespace(
+            entity=SimpleNamespace(entity_type="PUBLIC_ORGANIZATION", name="SERVICIO DE SALUD ARAUCO", id=entity_id),
+            children=(),
+        ),
+    )
+
+    streamlit_app.render_graph_view_page(fake_st, object())
+
+    assert fake_st.infos[0] == "Este gráfico muestra cómo se conectan las fuentes públicas."
+    assert any("Árbol del grafo" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_human_readable_text_uses_conversational_spanish() -> None:
+    dataset_text = streamlit_app.render_dataset_explanation_text(
+        DatasetExplanation("ChileCompra", "ChileCompra contiene información de compras públicas.", 2, 3, 4)
+    )
+    dipres_text = streamlit_app.render_dataset_explanation_text(
+        DatasetExplanation(
+            "DIPRES Prototype",
+            "DIPRES Prototype contiene información de presupuesto de muestra. Actualmente incluye ejemplos de ministerios, servicios, presupuestos aprobados, presupuestos ejecutados y año fiscal.",
+            2,
+            3,
+            4,
+        )
+    )
+    entity_text = streamlit_app.render_entity_explanation_text(
+        EntityExplanation("1", "SERVICIO DE SALUD ARAUCO", "PUBLIC_ORGANIZATION", 4, 3, ("ChileCompra",))
+    )
+    graph_text = streamlit_app.render_graph_explanation_text(
+        GraphExplanation(("Organismo", "Contrato", "Proveedor"), "La organización emite compras públicas.")
+    )
+
+    assert "Fuente" in dataset_text
+    assert "Afirmación verificable" in dataset_text
+    assert "Relación pública" in dataset_text
+    assert "Entidad" in dataset_text
+    assert "presupuesto de muestra" in dipres_text
+    assert "organismos" in dipres_text
+    assert "contratos públicos" in entity_text
+    assert "La información proviene de ChileCompra." in entity_text
+    assert "Esto significa:" in graph_text
+    assert "Este gráfico muestra cómo se conectan las fuentes públicas." in graph_text
+
+
+def test_build_dataset_rows_preserves_registry_counts() -> None:
+    details = DatasetDetails(
+        slug="chilecompra",
+        name="ChileCompra",
+        health="active",
+        source_records=10,
+        entities=20,
+        claims=30,
+        evidence=40,
+        relationships=50,
+        source_names=("ChileCompra API Mercado Publico",),
+        dataset_names=("chilecompra-licitaciones", "chilecompra-ordenes-compra"),
+        entities_by_type=(DatasetCountRow("PUBLIC_ORGANIZATION", 5),),
+        claims_by_type=(DatasetCountRow("ISSUES_PURCHASE_ORDER", 30),),
+        relationship_types=(DatasetCountRow("RECEIVES_CONTRACT", 20),),
+        ingestion_stats=(DatasetCountRow("source_records", 10),),
+        planned=False,
+    )
+
+    assert streamlit_app.build_dataset_table_rows(details) == [
+        {"label": "PUBLIC_ORGANIZATION", "count": 5},
+    ]
+    assert streamlit_app.build_claim_rows(details) == [
+        {"label": "ISSUES_PURCHASE_ORDER", "count": 30},
+    ]
+    assert streamlit_app.build_relationship_rows(details) == [
+        {"label": "RECEIVES_CONTRACT", "count": 20},
+    ]

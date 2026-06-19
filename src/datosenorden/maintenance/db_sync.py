@@ -106,16 +106,17 @@ def build_pg_dump_command(database_url: str, dump_path: Path, pg_dump_path: Path
     return command
 
 
-def build_pg_restore_command(database_url: str, dump_path: Path, pg_restore_path: Path) -> list[str]:
+def build_pg_restore_command(
+    database_url: str,
+    dump_path: Path,
+    pg_restore_path: Path,
+    *,
+    clean: bool = True,
+) -> list[str]:
     info = get_connection_info(database_url)
-    command = [
-        str(pg_restore_path),
-        "--clean",
-        "--if-exists",
-        "--no-owner",
-        "--no-privileges",
-        "--single-transaction",
-    ]
+    command = [str(pg_restore_path), "--no-owner", "--no-privileges", "--single-transaction"]
+    if clean:
+        command[1:1] = ["--clean", "--if-exists"]
     if info.host:
         command.extend(["--host", info.host])
     if info.port is not None:
@@ -124,6 +125,37 @@ def build_pg_restore_command(database_url: str, dump_path: Path, pg_restore_path
         command.extend(["--username", info.username])
     command.extend(["--dbname", info.database, str(dump_path)])
     return command
+
+
+def build_createdb_command(database_url: str, db_name: str, createdb_path: Path) -> list[str]:
+    info = get_connection_info(database_url)
+    command = [str(createdb_path)]
+    if info.host:
+        command.extend(["--host", info.host])
+    if info.port is not None:
+        command.extend(["--port", str(info.port)])
+    if info.username:
+        command.extend(["--username", info.username])
+    command.append(db_name)
+    return command
+
+
+def build_dropdb_command(database_url: str, db_name: str, dropdb_path: Path) -> list[str]:
+    info = get_connection_info(database_url)
+    command = [str(dropdb_path)]
+    if info.host:
+        command.extend(["--host", info.host])
+    if info.port is not None:
+        command.extend(["--port", str(info.port)])
+    if info.username:
+        command.extend(["--username", info.username])
+    command.append(db_name)
+    return command
+
+
+def build_database_url_with_name(database_url: str, database_name: str) -> str:
+    url = make_url(database_url)
+    return str(url.set(database=database_name))
 
 
 def build_subprocess_env(password: str | None) -> dict[str, str]:

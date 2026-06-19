@@ -1,0 +1,42 @@
+[project]
+name = "datosenorden"
+version = "0.1.0"
+description = "Infraestructura abierta para transformar datos publicos de Chile en conocimiento verificable y reutilizable."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "DatosEnOrden contributors" }
+]
+dependencies = [
+  "alembic>=1.13,<2.0",
+  "fastapi>=0.115,<1.0",
+  "httpx>=0.27,<1.0",
+  "psycopg[binary]>=3.2,<4.0",
+  "sqlalchemy>=2.0,<3.0",
+  "uvicorn[standard]>=0.30,<1.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9.0",
+  "ruff>=0.6,<1.0"
+]
+
+[build-system]
+requires = ["setuptools>=70.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

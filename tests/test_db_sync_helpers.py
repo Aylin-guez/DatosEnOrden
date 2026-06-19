@@ -4,7 +4,10 @@ from pathlib import Path
 
 import datosenorden.maintenance.db_sync as db_sync
 from datosenorden.maintenance.db_sync import DatabaseCounts
+from datosenorden.maintenance.db_sync import build_createdb_command
 from datosenorden.maintenance.db_sync import build_dump_path
+from datosenorden.maintenance.db_sync import build_dropdb_command
+from datosenorden.maintenance.db_sync import build_database_url_with_name
 from datosenorden.maintenance.db_sync import build_pg_dump_command
 from datosenorden.maintenance.db_sync import build_pg_restore_command
 from datosenorden.maintenance.db_sync import find_pg_tool
@@ -42,6 +45,46 @@ def test_build_pg_restore_command_uses_connection_details() -> None:
     assert "--dbname" in command
     assert command[-1].endswith(".dump")
     assert "sync_pass" not in command
+
+
+def test_build_pg_restore_command_without_clean_skips_overwrite_flags() -> None:
+    command = build_pg_restore_command(
+        "postgresql+psycopg://sync_user:sync_pass@localhost:5432/datosenorden",
+        Path("private/database/backups/datosenorden_local_20260619_120000.dump"),
+        Path("C:/Program Files/PostgreSQL/16/bin/pg_restore.exe"),
+        clean=False,
+    )
+
+    assert "--clean" not in command
+    assert "--if-exists" not in command
+
+
+def test_build_createdb_and_dropdb_commands_hide_password() -> None:
+    createdb_command = build_createdb_command(
+        "postgresql+psycopg://sync_user:sync_pass@localhost:5432/datosenorden",
+        "datosenorden_merge_temp",
+        Path("C:/Program Files/PostgreSQL/16/bin/createdb.exe"),
+    )
+    dropdb_command = build_dropdb_command(
+        "postgresql+psycopg://sync_user:sync_pass@localhost:5432/datosenorden",
+        "datosenorden_merge_temp",
+        Path("C:/Program Files/PostgreSQL/16/bin/dropdb.exe"),
+    )
+
+    assert createdb_command[0].endswith("createdb.exe")
+    assert dropdb_command[0].endswith("dropdb.exe")
+    assert "sync_pass" not in createdb_command
+    assert "sync_pass" not in dropdb_command
+
+
+def test_build_database_url_with_name_replaces_database_name() -> None:
+    url = build_database_url_with_name(
+        "postgresql+psycopg://sync_user:sync_pass@localhost:5432/datosenorden",
+        "datosenorden_merge_temp",
+    )
+
+    assert url.endswith("/datosenorden_merge_temp")
+    assert "sync_pass" not in url
 
 
 def test_build_dump_path_uses_private_backup_folder() -> None:

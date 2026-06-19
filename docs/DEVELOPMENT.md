@@ -201,6 +201,31 @@ SELECT count(*) FROM evidence;
 SELECT count(*) FROM relationship_public;
 ```
 
+## Fusion segura de dos bases locales
+
+Si trabajas en casa y en la oficina con dos bases PostgreSQL distintas, usa el merge seguro para unir una copia exportada en la base actual sin sobrescribirla:
+
+```powershell
+python scripts/db/merge_local_db.py --file private/database/backups/home.dump --dry-run
+python scripts/db/merge_local_db.py --file private/database/backups/home.dump --confirm
+```
+
+Este flujo:
+
+- restaura el dump en una base temporal
+- compara por claves estables
+- inserta solo registros faltantes
+- preserva los IDs existentes en la base principal siempre que sea posible
+- evita duplicar `source_record`, `entity`, `claim`, `evidence` y `relationship_public`
+
+Usa el mismo comando con el dump de trabajo cuando quieras fusionar en sentido contrario.
+
+Si quieres comprobar el resultado despues de la fusión:
+
+```powershell
+python scripts/db/verify_db_counts.py
+```
+
 ## Inspeccion de trazabilidad persistida
 
 Para revisar una compra ya persistida sin llamar a ChileCompra:
@@ -386,6 +411,70 @@ python scripts/list_contracts.py
 
 Estas utilidades son de solo lectura, usan solo PostgreSQL persistido y reutilizan `entity_explorer`.
 
+## Registry de datasets
+
+Para ver que datasets reconoce la plataforma y su estado de carga:
+
+```powershell
+python scripts/list_datasets.py
+```
+
+Para inspeccionar un dataset registrado en detalle:
+
+```powershell
+python scripts/dataset_details.py --dataset chilecompra
+```
+
+Para exportar un perfil HTML del dataset:
+
+```powershell
+python scripts/export_dataset_profile.py --dataset chilecompra
+```
+
+Estos helpers:
+
+- usan solo PostgreSQL persistido
+- no hacen llamadas a APIs externas
+- describen conteos por tipo, relaciones y estadisticas de ingestion
+- preparan la navegacion entre datasets futuros
+
+## Capa amigable para humanos
+
+Para explicar una entidad en lenguaje simple:
+
+```powershell
+python scripts/explain_entity.py --entity-id <entity_id>
+```
+
+Para explicar un dataset sin jerga tecnica:
+
+```powershell
+python scripts/explain_dataset.py --dataset chilecompra
+```
+
+Para explicar el grafo de una entidad:
+
+```powershell
+python scripts/explain_graph.py --entity-id <entity_id>
+```
+
+Estas salidas reutilizan PostgreSQL persistido y traducen terminos como `source_record`, `claim`, `relationship_public` y `entity` a lenguaje entendible.
+
+## Explorer local con Streamlit
+
+Para abrir el explorador local con interfaz visual:
+
+```powershell
+streamlit run streamlit_app.py
+```
+
+La interfaz:
+
+- lee solo `DATABASE_URL` desde `.env`
+- usa solo datos ya persistidos en PostgreSQL
+- no llama a APIs externas desde la UI
+- reutiliza los helpers de dataset, entidades, grafo y explicacion humana
+
 ## Phase 5.0 DIPRES prototype
 
 Para probar el primer enlace entre dos datasets locales, carga el sample DIPRES marcado como `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA`:
@@ -436,6 +525,77 @@ El matcher:
 - devuelve `candidate_entity_id`, `candidate_name`, `entity_type`, `score`, `match_method` y `explanation`
 
 Este paso no cambia la arquitectura ni agrega fuentes publicas nuevas. Solo reusa entidades ya persistidas en PostgreSQL para responder si un nombre nuevo probablemente ya existe en el grafo.
+
+## Phase 7.0 Lobby prototype
+
+La Fase 7.0 agrega un prototipo local de reuniones de lobby. No llama APIs reales, no scrapea y no integra una fuente publica nueva.
+
+El sample vive en:
+
+```text
+data/sample/lobby_meeting_sample.json
+```
+
+El archivo esta marcado como:
+
+```text
+LOCAL_TEST_DATA
+NOT_OFFICIAL_DATA
+```
+
+Para cargarlo:
+
+```powershell
+python scripts/load_lobby_sample.py
+```
+
+Ese comando:
+
+- usa el sample local en `data/sample/lobby_meeting_sample.json`
+- busca coincidencias normalizadas contra entidades existentes
+- guarda `source_record`, `claim`, `evidence`, entidades y `relationship_public`
+- crea un nodo `LOBBY_MEETING`
+- conecta el organismo publico y la contraparte con la reunion de muestra
+
+Para resumir lo cargado:
+
+```powershell
+python scripts/lobby_summary.py
+```
+
+La salida incluye:
+
+- reuniones de lobby
+- organismos involucrados
+- contrapartes involucradas
+- claims
+- relaciones publicas
+- entidades coincidentes con `match_method` y `confidence`
+
+La navegacion minima esperada queda como:
+
+```text
+PUBLIC_ORGANIZATION
+-> LOBBY_MEETING
+-> COMPANY
+```
+
+Si tambien estan cargados ChileCompra y DIPRES, el grafo puede extenderse desde presupuesto y contratos hacia la contraparte:
+
+```text
+BUDGET
+-> PUBLIC_ORGANIZATION
+-> CONTRACT
+-> COMPANY
+-> LOBBY_MEETING
+```
+
+Lenguaje legal y etico:
+
+- una reunion de lobby no implica irregularidad
+- una contraparte no implica falta ni delito
+- el sample no es dato oficial
+- las relaciones solo muestran una reunion registrada o de muestra con evidencia
 
 ## sync DB from home to work
 
