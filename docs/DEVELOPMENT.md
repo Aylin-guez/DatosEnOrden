@@ -597,6 +597,57 @@ Lenguaje legal y etico:
 - el sample no es dato oficial
 - las relaciones solo muestran una reunion registrada o de muestra con evidencia
 
+## Phase 8.0 Lobby <-> ChileCompra cross-dataset exploration
+
+La Fase 8.0 agrega la primera exploracion entre fuentes ya persistidas: ChileCompra y Lobby.
+
+No scrapea, no llama APIs reales de Lobby, no cambia el schema y no modifica datasets existentes. Solo lee entidades, claims, evidencias y `relationship_public` ya guardados.
+
+Comando:
+
+```powershell
+python scripts/cross_dataset_summary.py
+```
+
+La salida muestra organismos presentes en mas de un dataset publico:
+
+- datasets disponibles
+- contratos ChileCompra
+- reuniones Lobby
+- evidencias
+- relaciones publicas
+- conexiones Lobby y ChileCompra disponibles
+
+El conteo de evidencias deduplica IDs y considera evidencia enlazada por `claim_id`, `source_record_id` y el `evidence_id` guardado en los claims involucrados.
+
+La lectura es informativa. El sistema presenta conexiones y registros publicos disponibles, sin inferir causalidad ni conclusiones.
+
+## Phase 8.1 Cross-dataset demo alignment
+
+Si `python scripts/cross_dataset_summary.py` muestra `organizations_in_multiple_datasets: 0`, usa el diagnostico:
+
+```powershell
+python scripts/debug_cross_dataset_matches.py
+```
+
+El diagnostico muestra:
+
+- organismos ChileCompra encontrados
+- organismos Lobby encontrados
+- nombres normalizados
+- candidatos cercanos usando el motor existente de entity matching
+- la razon por la que no se detecta un organismo compartido
+
+Para preparar una demo local segura:
+
+```powershell
+python scripts/align_lobby_sample_to_existing_org.py
+python scripts/load_lobby_sample.py
+python scripts/cross_dataset_summary.py
+```
+
+El helper solo edita el archivo local `data/sample/lobby_meeting_sample.json`, marcado como `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA`, para usar un organismo ChileCompra ya persistido. No toca datos reales, no agrega APIs y es idempotente.
+
 ## sync DB from home to work
 
 Flujo local para copiar la base de datos entre PCs usando un dump privado en `private/database/backups/` o un folder local/USB.

@@ -6,6 +6,13 @@
 
 ### Agregado
 
+- Fase 8.1 Cross-Dataset Demo Alignment con `scripts/debug_cross_dataset_matches.py` para diagnosticar por que no aparecen organismos compartidos.
+- Helper idempotente `scripts/align_lobby_sample_to_existing_org.py` para alinear el sample local de Lobby a un organismo ChileCompra existente sin tocar datos reales.
+- Pruebas para diagnostico sin match, candidatos cercanos, alineacion local, idempotencia y resumen cruzado con un organismo compartido.
+- Fase 8.0 Lobby <-> ChileCompra Cross-Dataset Exploration con `src/datosenorden/maintenance/cross_dataset_explorer.py` y `scripts/cross_dataset_summary.py`.
+- Seccion Streamlit "Conexiones entre fuentes" para organismos presentes en ChileCompra y Lobby, con conteos de contratos, reuniones Lobby, evidencia y relaciones publicas.
+- Bloque de perfil "Presente en multiples fuentes" y badges de dataset en grafo sin cambiar la logica de traversal.
+- Pruebas unitarias, de script y de integracion Streamlit para la exploracion cruzada y su lenguaje neutral.
 - Fase 7.0 Lobby Prototype con sample local en `data/sample/lobby_meeting_sample.json`, importador `scripts/load_lobby_sample.py` y resumen `scripts/lobby_summary.py`.
 - Enlace neutral `PUBLIC_ORGANIZATION -> LOBBY_MEETING <- COMPANY` usando el matcher de entidades existente para conectar reuniones de lobby de muestra con organismos y contrapartes ya persistidas.
 - Registry de datasets actualizado para mostrar Lobby como activo cuando el sample local queda cargado.

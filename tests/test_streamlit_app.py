@@ -8,6 +8,8 @@ import sys
 from datosenorden.maintenance.dataset_registry import DatasetCountRow
 from datosenorden.maintenance.dataset_registry import DatasetDetails
 from datosenorden.maintenance.dataset_registry import DatasetSummary
+from datosenorden.maintenance.cross_dataset_explorer import CrossDatasetConnection
+from datosenorden.maintenance.cross_dataset_explorer import CrossDatasetOrganizationSummary
 from datosenorden.maintenance.entity_explorer import EntitySearchResult
 from datosenorden.maintenance.human_readable import DatasetExplanation
 from datosenorden.maintenance.human_readable import EntityExplanation
@@ -22,12 +24,17 @@ import streamlit_app
 class _FakeColumn:
     metrics: list[tuple[str, object]]
     captions: list[str]
+    button_values: dict[str, bool] | None = None
 
     def metric(self, label, value):  # noqa: ANN001
         self.metrics.append((label, value))
 
     def caption(self, text):  # noqa: ANN001
         self.captions.append(text)
+
+    def button(self, label, key=None):  # noqa: ANN001
+        _ = label
+        return bool((self.button_values or {}).get(key, False))
 
 
 class _FakeTab:
@@ -42,13 +49,18 @@ class _FakeTab:
 class _FakeSidebar:
     def __init__(self):
         self.radio_value = streamlit_app.PAGE_HOME
+        self.markdowns: list[tuple[str, bool]] = []
+        self.radio_calls: list[tuple[str, tuple[str, ...], int, str | None]] = []
 
     def title(self, text):  # noqa: ANN001
         self.title_text = text
 
     def radio(self, label, options, index=0, key=None):  # noqa: ANN001
-        _ = (label, options, index, key)
+        self.radio_calls.append((label, tuple(options), index, key))
         return self.radio_value
+
+    def markdown(self, text, unsafe_allow_html=False):  # noqa: ANN001
+        self.markdowns.append((text, unsafe_allow_html))
 
 
 class _FakeStreamlit:
@@ -71,6 +83,8 @@ class _FakeStreamlit:
         self.selectbox_values: dict[str, object | None] = {}
         self.button_values: dict[str, bool] = {}
         self.tab_labels: list[str] = []
+        self.spinners: list[str] = []
+        self.expander_labels: list[str] = []
 
     def set_page_config(self, **kwargs):  # noqa: ANN001
         self.page_config = kwargs
@@ -106,7 +120,7 @@ class _FakeStreamlit:
         self.markdowns.append((text, unsafe_allow_html))
 
     def columns(self, count):  # noqa: ANN001
-        columns = [_FakeColumn(metrics=[], captions=[]) for _ in range(count)]
+        columns = [_FakeColumn(metrics=[], captions=[], button_values=self.button_values) for _ in range(count)]
         self.columns_created.append(columns)
         return columns
 
@@ -136,6 +150,14 @@ class _FakeStreamlit:
         _ = label
         return self.button_values.get(key, False)
 
+    def spinner(self, text):  # noqa: ANN001
+        self.spinners.append(text)
+        return _FakeTab()
+
+    def expander(self, label):  # noqa: ANN001
+        self.expander_labels.append(label)
+        return _FakeTab()
+
 
 def _profile(entity_id: str = "11111111-1111-1111-1111-111111111111"):
     entity = SimpleNamespace(entity_type="PUBLIC_ORGANIZATION", name="SERVICIO DE SALUD ARAUCO", id=entity_id, external_id="buyer-1")
@@ -146,6 +168,35 @@ def _profile(entity_id: str = "11111111-1111-1111-1111-111111111111"):
         evidences=(),
         related_entities=(),
         direct_neighbors=(),
+    )
+
+
+def _cross_dataset_summary() -> CrossDatasetOrganizationSummary:
+    return CrossDatasetOrganizationSummary(
+        organization_id="11111111-1111-1111-1111-111111111111",
+        organization_name="SERVICIO DE SALUD ARAUCO",
+        datasets=("chilecompra", "lobby"),
+        contracts=4,
+        lobby_meetings=1,
+        evidence=5,
+        relationships=6,
+        lobby_connections=(
+            CrossDatasetConnection(
+                entity_id="22222222-2222-2222-2222-222222222222",
+                entity_type="COMPANY",
+                name="MARLENE FLORES PATINO",
+                relationship_type="COUNTERPARTY_PARTICIPATED_IN_LOBBY",
+            ),
+        ),
+        procurement_connections=(
+            CrossDatasetConnection(
+                entity_id="33333333-3333-3333-3333-333333333333",
+                entity_type="COMPANY",
+                name="SKY AIRLINE S.A.",
+                relationship_type="RECEIVES_CONTRACT",
+            ),
+        ),
+        explanation="This organization appears in more than one public dataset.",
     )
 
 
@@ -183,7 +234,7 @@ def test_build_entity_card_html_is_public_facing() -> None:
     assert "Organismo" in html
     assert "Contratos: 4" in html
     assert "Relaciones: 8" in html
-    assert "Ver perfil" in html
+    assert "Ver perfil" not in html
 
 
 def test_dataset_options_returns_label_slug_pairs() -> None:
@@ -228,6 +279,35 @@ def test_search_cards_normalizes_results() -> None:
     ]
 
 
+def test_render_app_uses_sidebar_only_navigation(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.sidebar.radio_value = streamlit_app.PAGE_SEARCH
+    calls: list[str] = []
+
+    class _SessionContext:
+        def __enter__(self):  # noqa: ANN001
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ANN001
+            _ = (exc_type, exc, tb)
+            return False
+
+    monkeypatch.setattr(streamlit_app, "SessionLocal", lambda: _SessionContext())
+    monkeypatch.setattr(streamlit_app, "render_home_page", lambda st, session: calls.append(streamlit_app.PAGE_HOME))
+    monkeypatch.setattr(streamlit_app, "render_dataset_explorer_page", lambda st, session: calls.append(streamlit_app.PAGE_DATASETS))
+    monkeypatch.setattr(streamlit_app, "render_entity_search_page", lambda st, session: calls.append(streamlit_app.PAGE_SEARCH))
+    monkeypatch.setattr(streamlit_app, "render_entity_profile_page", lambda st, session: calls.append(streamlit_app.PAGE_PROFILE))
+    monkeypatch.setattr(streamlit_app, "render_graph_view_page", lambda st, session: calls.append(streamlit_app.PAGE_GRAPH))
+    monkeypatch.setattr(streamlit_app, "render_human_explanation_page", lambda st, session: calls.append(streamlit_app.PAGE_EXPLANATION))
+
+    streamlit_app.render_app(fake_st)
+
+    assert calls == [streamlit_app.PAGE_SEARCH]
+    assert fake_st.sidebar.radio_calls == [("Secciones", streamlit_app.PAGE_ORDER, 0, "page")]
+    assert not any("top-nav" in markdown for markdown, _ in fake_st.markdowns)
+    assert fake_st.columns_created == []
+
+
 def test_render_home_page_shows_cards_and_questions(monkeypatch) -> None:
     fake_st = _FakeStreamlit()
     datasets = (
@@ -243,18 +323,62 @@ def test_render_home_page_shows_cards_and_questions(monkeypatch) -> None:
     assert fake_st.titles == ["DatosEnOrden"]
     assert any("Explora cómo se conectan presupuestos" in markdown for markdown, _ in fake_st.markdowns)
     assert fake_st.subheaders == [
-        "Busca un organismo, proveedor, contrato o presupuesto",
         "Preguntas de ejemplo",
         "Estado actual del prototipo",
+        "Busca un organismo, proveedor, contrato o presupuesto",
         "Conjuntos de datos",
         "Conjuntos secundarios",
         "Hoja de ruta",
     ]
     assert any("ChileCompra" in markdown for markdown, _ in fake_st.markdowns)
     assert any("DIPRES Prototype" in markdown for markdown, _ in fake_st.markdowns)
-    assert any("¿Qué proveedores recibieron contratos?" in markdown for markdown, _ in fake_st.markdowns)
     assert any("roadmap-grid" in markdown for markdown, _ in fake_st.markdowns)
     assert fake_st.infos[0] == "Busca una entidad para comenzar."
+
+
+def test_render_home_page_clickable_question_shows_supplier_answer(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.button_values[f"home_question_{streamlit_app.QUESTION_SUPPLIERS}"] = True
+    datasets = (DatasetSummary("chilecompra", "ChileCompra", 10, 20, 30, 40, 50, "active", False),)
+    supplier = SimpleNamespace(name="EMPRESA EJEMPLO SPA", purchase_orders=3)
+    monkeypatch.setattr(streamlit_app, "list_datasets", lambda session: datasets)
+    monkeypatch.setattr(streamlit_app, "list_suppliers", lambda session, limit=5: (supplier,))
+    monkeypatch.setattr(streamlit_app, "suggested_entity_cards", lambda session: [])
+    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [])
+
+    streamlit_app.render_home_page(fake_st, object())
+
+    assert fake_st.session_state[streamlit_app.HOME_QUESTION_KEY] == streamlit_app.QUESTION_SUPPLIERS
+    assert any("Proveedores con contratos" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("EMPRESA EJEMPLO SPA: 3 contrato(s)" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_cross_dataset_home_section_shows_only_available_connections(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    row = _cross_dataset_summary()
+    monkeypatch.setattr(streamlit_app, "list_cross_dataset_organizations", lambda session: (row,))
+
+    streamlit_app.render_cross_dataset_home_section(fake_st, object())
+
+    assert "Conexiones entre fuentes" in fake_st.subheaders
+    assert any("SERVICIO DE SALUD ARAUCO" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("ChileCompra" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Lobby" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Contratos: 4" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Reuniones Lobby: 1" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_cross_dataset_profile_block_lists_sources_and_connections(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    row = _cross_dataset_summary()
+    monkeypatch.setattr(streamlit_app, "get_cross_dataset_organization_summary", lambda session, entity_id: row)
+
+    streamlit_app.render_cross_dataset_profile_block(fake_st, object(), _profile())
+
+    assert any("Presente en multiples fuentes" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Conexiones disponibles" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("MARLENE FLORES PATINO" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("SKY AIRLINE S.A." in markdown for markdown, _ in fake_st.markdowns)
 
 
 def test_render_entity_search_page_shows_cards(monkeypatch) -> None:
@@ -276,6 +400,29 @@ def test_render_entity_search_page_shows_cards(monkeypatch) -> None:
     assert fake_st.titles == ["Buscar"]
     assert any("SERVICIO DE SALUD ARAUCO" in markdown for markdown, _ in fake_st.markdowns)
     assert fake_st.errors == []
+
+
+def test_render_entity_search_page_profile_button_shows_profile(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.text_input_values["entity_search_query"] = "arauco"
+    selected = streamlit_app.SearchCard(
+        id="11111111-1111-1111-1111-111111111111",
+        name="SERVICIO DE SALUD ARAUCO",
+        entity_type="PUBLIC_ORGANIZATION",
+        external_id="buyer-1",
+        purchase_orders=4,
+        claims=8,
+        relationships=8,
+    )
+    fake_st.button_values[f"entity_search_profile_{selected.id}"] = True
+    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [selected])
+    monkeypatch.setattr(streamlit_app, "get_entity_profile", lambda session, entity_id: _profile(entity_id))
+
+    streamlit_app.render_entity_search_page(fake_st, object())
+
+    assert fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] == selected.id
+    assert "Perfil seleccionado" in fake_st.subheaders
+    assert any("Resumen de la entidad" in markdown for markdown, _ in fake_st.markdowns)
 
 
 def test_render_entity_profile_page_uses_tabs(monkeypatch) -> None:
@@ -333,12 +480,34 @@ def test_render_graph_view_page_shows_explanation_first(monkeypatch) -> None:
         "build_entity_graph",
         lambda session, entity_id, depth=1: SimpleNamespace(
             entity=SimpleNamespace(entity_type="PUBLIC_ORGANIZATION", name="SERVICIO DE SALUD ARAUCO", id=entity_id),
-            children=(),
+            children=(
+                SimpleNamespace(
+                    via_relationship_type="RECEIVES_CONTRACT",
+                    via_direction="outgoing",
+                    entity=SimpleNamespace(
+                        entity_type="COMPANY",
+                        name="EMPRESA EJEMPLO SPA",
+                        id="22222222-2222-2222-2222-222222222222",
+                    ),
+                    children=(),
+                ),
+            ),
         ),
     )
+    monkeypatch.setattr(streamlit_app, "get_cross_dataset_organization_summary", lambda session, entity_id: _cross_dataset_summary())
 
     streamlit_app.render_graph_view_page(fake_st, object())
 
+    assert "Construyendo grafo..." in fake_st.spinners
+    assert "Preparando explicación del grafo..." in fake_st.spinners
+    assert any("visual-graph" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Entidad inicial" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Relaciones" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Entidad conectada" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Recibe contrato" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("ChileCompra" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Lobby" in markdown for markdown, _ in fake_st.markdowns)
+    assert fake_st.expander_labels == ["Ver detalles t\u00e9cnicos"]
     assert fake_st.infos[0] == "Este gráfico muestra cómo se conectan las fuentes públicas."
     assert any("Árbol del grafo" in markdown for markdown, _ in fake_st.markdowns)
 

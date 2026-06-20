@@ -48,10 +48,10 @@ def _existing_entities():
         SimpleNamespace(
             id=UUID("11111111-1111-1111-1111-111111111111"),
             entity_type="PUBLIC_ORGANIZATION",
-            name="SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
-            external_id="chilecompra:buyer:arauco",
-            description="existing org",
-            normalized_key="servicio-de-salud-arauco-hospital-de-arauco",
+            name="DIVISION LOGISTICA DEL EJERCITO",
+            external_id="chilecompra:buyer:division-logistica-ejercito",
+            description="existing org aligned for local demo",
+            normalized_key="division-logistica-ejercito",
             status="active",
             entity_metadata={"source": "chilecompra"},
         ),
@@ -73,9 +73,10 @@ def test_load_lobby_sample_payload_contains_required_markers() -> None:
 
     assert payload["classification"] == "LOCAL_TEST_DATA"
     assert payload["official_status"] == "NOT_OFFICIAL_DATA"
-    assert payload["records"][0]["organization_name"] == "SERVICIO DE SALUD ARAUCO"
+    assert payload["records"][0]["organization_name"]
     assert payload["records"][0]["counterparty_name"] == "MARLENE BEATRIZ FLORES PATINO"
     assert payload["records"][0]["source_dataset_name"] == "lobby-meeting-sample"
+    assert "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA" in payload["records"][0]["notes"]
 
 
 def test_build_lobby_sample_batch_matches_existing_entities_and_creates_claims() -> None:
@@ -87,7 +88,7 @@ def test_build_lobby_sample_batch_matches_existing_entities_and_creates_claims()
     assert batch.raw_count == 1
     assert len(batch.entities) == 3
     assert batch.entities[0].entity_type == EntityType.LOBBY_MEETING
-    assert batch.entities[1].external_id == "chilecompra:buyer:arauco"
+    assert batch.entities[1].external_id == "chilecompra:buyer:division-logistica-ejercito"
     assert batch.entities[2].external_id == "chilecompra:supplier:marlene-flores"
     assert len(batch.evidence) == 3
     assert len(batch.claims) == 3
@@ -108,7 +109,7 @@ def test_build_lobby_sample_batch_matches_existing_entities_and_creates_claims()
         for relationship in batch.public_relationships
         if relationship.relationship_type == RelationshipType.ORGANIZATION_HELD_LOBBY_MEETING
     )
-    assert org_relationship.metadata["match_method"] == "contains_normalized_match"
+    assert org_relationship.metadata["match_method"] == "exact_normalized_match"
     assert org_relationship.metadata["match_confidence"] >= 0.9
 
 

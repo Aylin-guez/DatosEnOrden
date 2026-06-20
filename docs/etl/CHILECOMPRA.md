@@ -656,3 +656,23 @@ BUDGET
 ```
 
 La relacion es descriptiva: una reunion registrada o de muestra conecta un organismo publico con una contraparte. No implica corrupcion, irregularidad ni wrongdoing.
+
+## Exploracion cruzada con Lobby Fase 8.0
+
+La Fase 8.0 permite detectar organismos que aparecen tanto en ChileCompra como en Lobby usando solo registros ya persistidos.
+
+Comando:
+
+```powershell
+python scripts/cross_dataset_summary.py
+```
+
+El resumen incluye:
+
+- organismos presentes en `chilecompra` y `lobby`
+- contratos ChileCompra vinculados al organismo
+- reuniones Lobby vinculadas al organismo
+- conexiones disponibles hacia contrapartes y proveedores
+- conteos de evidencia y relaciones publicas
+
+La exploracion es neutral y descriptiva. Presenta conexiones, registros publicos e informacion disponible; no sugiere causalidad ni conclusiones.

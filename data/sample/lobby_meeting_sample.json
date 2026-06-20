@@ -6,7 +6,7 @@
   "records": [
     {
       "external_id": "lobby-sample-2026-servicio-salud-arauco-marlene-flores",
-      "organization_name": "SERVICIO DE SALUD ARAUCO",
+      "organization_name": "DIVISION LOGISTICA DEL EJERCITO",
       "counterparty_name": "MARLENE BEATRIZ FLORES PATINO",
       "counterparty_type": "COMPANY",
       "meeting_subject": "Presentacion de servicios de apoyo administrativo para procesos locales",
@@ -14,7 +14,7 @@
       "meeting_location": "Arauco, Chile",
       "source_url": "local://sample/lobby-meeting/lobby-sample-2026-servicio-salud-arauco-marlene-flores",
       "source_dataset_name": "lobby-meeting-sample",
-      "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample. This is not official Lobby data and does not imply wrongdoing."
+      "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample aligned to an existing ChileCompra organization for local cross-dataset demonstration. This is not official Lobby data and does not imply wrongdoing."
     }
   ]
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass
 from html import escape
 from pathlib import Path
@@ -13,6 +14,9 @@ from datosenorden.maintenance.dataset_registry import DatasetDetails
 from datosenorden.maintenance.dataset_registry import DatasetSummary
 from datosenorden.maintenance.dataset_registry import get_dataset_details
 from datosenorden.maintenance.dataset_registry import list_datasets
+from datosenorden.maintenance.cross_dataset_explorer import CrossDatasetOrganizationSummary
+from datosenorden.maintenance.cross_dataset_explorer import get_cross_dataset_organization_summary
+from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
 from datosenorden.maintenance.entity_explorer import EntityProfile
 from datosenorden.maintenance.entity_explorer import list_buyers
 from datosenorden.maintenance.entity_explorer import list_entities
@@ -50,6 +54,30 @@ PAGE_ORDER = (
 
 GLOBAL_SELECTED_ENTITY_KEY = "selected_entity_id"
 ENTITY_SELECTOR_EMPTY_MESSAGE = "Busca una entidad para comenzar."
+HOME_QUESTION_KEY = "home_example_question"
+
+QUESTION_SUPPLIERS = "suppliers_with_contracts"
+QUESTION_BUYERS = "organizations_with_orders"
+QUESTION_BUDGETS = "budgets_connected_to_contracts"
+QUESTION_EVIDENCE = "relationship_evidence"
+
+EXAMPLE_QUESTIONS = (
+    (QUESTION_SUPPLIERS, "Â¿QuÃ© proveedores recibieron contratos?"),
+    (QUESTION_BUYERS, "Â¿QuÃ© organismos emitieron Ã³rdenes de compra?"),
+    (QUESTION_BUDGETS, "Â¿QuÃ© presupuestos estÃ¡n conectados con contratos?"),
+    (QUESTION_EVIDENCE, "Â¿QuÃ© evidencia respalda una relaciÃ³n?"),
+)
+
+RELATIONSHIP_LABELS = {
+    "BUDGET_ALLOCATED_TO": "Presupuesto asignado a",
+    "ISSUES_PURCHASE_ORDER": "Emite orden de compra",
+    "RECEIVES_CONTRACT": "Recibe contrato",
+    "PUBLISHED_TENDER": "Publica licitaciÃ³n",
+    "AWARDS_CONTRACT": "Adjudica contrato",
+    "ORGANIZATION_HELD_LOBBY_MEETING": "ReuniÃ³n de lobby registrada",
+    "COUNTERPARTY_PARTICIPATED_IN_LOBBY": "Contraparte participÃ³",
+    "LOBBY_MEETING_ABOUT_SUBJECT": "Materia tratada en reuniÃ³n",
+}
 
 
 @dataclass(frozen=True)
@@ -183,7 +211,6 @@ def build_entity_card_html(card: SearchCard, *, highlighted: bool = False) -> st
     <span>Relaciones: {card.relationships}</span>
     <span>Evidencia: {card.claims}</span>
   </div>
-  <div class="entity-card__hint">Ver perfil</div>
 </article>
 """
 
@@ -337,6 +364,63 @@ def render_entity_profile_cards(st, profile: EntityProfile) -> None:  # noqa: AN
     )
 
 
+def render_cross_dataset_home_section(st, session) -> None:  # noqa: ANN001
+    try:
+        rows = list_cross_dataset_organizations(session)
+    except Exception:  # noqa: BLE001
+        return
+    if not rows:
+        return
+    st.subheader("Conexiones entre fuentes")
+    cards = "".join(_cross_dataset_card_html(row) for row in rows)
+    st.markdown(f'<div class="cross-dataset-grid">{cards}</div>', unsafe_allow_html=True)
+    for row in rows:
+        if st.button("Ver conexiones", key=f"cross_dataset_{row.organization_id}"):
+            st.session_state[GLOBAL_SELECTED_ENTITY_KEY] = row.organization_id
+            render_cross_dataset_detail(st, row)
+
+
+def render_cross_dataset_detail(st, row: CrossDatasetOrganizationSummary) -> None:  # noqa: ANN001
+    _render_detail_card(
+        st,
+        "Conexiones disponibles",
+        [
+            f"Organizacion: {row.organization_name}",
+            f"Fuentes: {', '.join(_dataset_display_name(dataset) for dataset in row.datasets)}",
+            f"Contratos: {row.contracts}",
+            f"Reuniones Lobby: {row.lobby_meetings}",
+            f"Relaciones publicas: {row.relationships}",
+            f"Evidencia: {row.evidence}",
+        ],
+    )
+    _render_detail_card(
+        st,
+        "Conexiones Lobby",
+        [connection.name for connection in row.lobby_connections] or ["Sin conexiones Lobby disponibles"],
+    )
+    _render_detail_card(
+        st,
+        "Conexiones ChileCompra",
+        [connection.name for connection in row.procurement_connections] or ["Sin conexiones ChileCompra disponibles"],
+    )
+    _render_summary_text_block(st, row.explanation, title="Explicacion ciudadana")
+
+
+def render_cross_dataset_profile_block(st, session, profile: EntityProfile) -> None:  # noqa: ANN001
+    try:
+        summary = get_cross_dataset_organization_summary(session, profile.entity.id)
+    except Exception:  # noqa: BLE001
+        return
+    if summary is None:
+        return
+    _render_detail_card(
+        st,
+        "Presente en multiples fuentes",
+        [_dataset_display_name(dataset) for dataset in summary.datasets],
+    )
+    render_cross_dataset_detail(st, summary)
+
+
 def render_claim_cards(st, profile: EntityProfile) -> None:  # noqa: ANN001
     if not profile.claims:
         st.info("No hay evidencias registradas todavía.")
@@ -390,6 +474,42 @@ def render_neighbor_cards(st, profile: EntityProfile) -> None:  # noqa: ANN001
                 f"ID: {neighbor.neighbor.id}",
             ],
         )
+
+
+def _cross_dataset_card_html(row: CrossDatasetOrganizationSummary) -> str:
+    dataset_items = "".join(
+        f'<span class="dataset-badge">&#10003; {escape(_dataset_display_name(dataset))}</span>'
+        for dataset in row.datasets
+    )
+    return f"""
+<article class="cross-dataset-card">
+  <div class="cross-dataset-card__title">{escape(row.organization_name)}</div>
+  <div class="dataset-badge-row">{dataset_items}</div>
+  <div class="cross-dataset-card__metrics">
+    <span>Contratos: {row.contracts}</span>
+    <span>Reuniones Lobby: {row.lobby_meetings}</span>
+  </div>
+  <div class="cross-dataset-card__note">Informacion publica disponible, sin inferencias.</div>
+</article>
+"""
+
+
+def _dataset_badges_html(datasets: Sequence[str]) -> str:
+    if not datasets:
+        return ""
+    badges = "".join(
+        f'<span class="dataset-badge">{escape(_dataset_display_name(dataset))}</span>'
+        for dataset in datasets
+    )
+    return f'<div class="dataset-badge-row">{badges}</div>'
+
+
+def _dataset_display_name(dataset: str) -> str:
+    labels = {
+        "chilecompra": "ChileCompra",
+        "lobby": "Lobby",
+    }
+    return labels.get(dataset, dataset)
 
 
 def _dataset_card_html(row: DatasetSummary) -> str:
@@ -534,18 +654,20 @@ def _render_entity_card_grid(
     return _search_card_from_profile(profile)
 
 
-def _set_page(st, page_name: str) -> None:  # noqa: ANN001
-    st.session_state["page"] = page_name
-    rerun = getattr(st, "rerun", None)
-    if callable(rerun):
-        rerun()
-
-
 def render_app(st) -> None:  # noqa: ANN001
     st.set_page_config(page_title="DatosEnOrden", layout="wide")
     _inject_css(st)
+    st.markdown('<div id="top"></div>', unsafe_allow_html=True)
     st.sidebar.title("DatosEnOrden")
-    page = st.sidebar.radio("Secciones", PAGE_ORDER, index=0, key="page")
+    selected_page = st.session_state.get("page", PAGE_HOME)
+    selected_index = PAGE_ORDER.index(selected_page) if selected_page in PAGE_ORDER else 0
+    page = st.sidebar.radio("Secciones", PAGE_ORDER, index=selected_index, key="page")
+    sidebar_markdown = getattr(st.sidebar, "markdown", None)
+    if callable(sidebar_markdown):
+        sidebar_markdown(
+            '<div class="sidebar-note">Explorador local</div><a class="sidebar-top-link" href="#top">Volver arriba</a>',
+            unsafe_allow_html=True,
+        )
 
     with SessionLocal() as session:
         if page == PAGE_HOME:
@@ -573,8 +695,8 @@ def render_home_page(st, session) -> None:  # noqa: ANN001
     st.markdown(
         """
 <section class="hero">
-  <div class="hero__eyebrow">Explorador local de datos públicos</div>
-  <div class="hero__subtitle">Explora cómo se conectan presupuestos, organismos públicos, contratos, proveedores y evidencias.</div>
+  <div class="hero__eyebrow">Explorador local de datos p\u00fablicos</div>
+  <div class="hero__subtitle">Explora c\u00f3mo se conectan presupuestos, organismos p\u00fablicos, contratos, proveedores y evidencias.</div>
 </section>
 """,
         unsafe_allow_html=True,
@@ -582,39 +704,35 @@ def render_home_page(st, session) -> None:  # noqa: ANN001
     _render_value_cards(
         st,
         [
-            ("Sigue el dinero público", "Presupuestos, contratos y compras en una sola vista."),
-            ("Verifica relaciones con evidencia", "Cada conexión apunta a fuentes y afirmaciones guardadas."),
-            ("Conecta fuentes públicas", "Cruza conjuntos de datos sin salir del explorador."),
+            ("Sigue el dinero p\u00fablico", "Presupuestos, contratos y compras en una sola vista."),
+            ("Verifica relaciones con evidencia", "Cada conexi\u00f3n apunta a fuentes y afirmaciones guardadas."),
+            ("Conecta fuentes p\u00fablicas", "Cruza conjuntos de datos sin salir del explorador."),
         ],
     )
-
-    st.subheader("Busca un organismo, proveedor, contrato o presupuesto")
-    render_entity_selector(st, session, key_prefix="home_search", label="Busca un organismo, proveedor, contrato o presupuesto")
 
     st.subheader("Preguntas de ejemplo")
-    _render_question_chips(
-        st,
-        [
-            "¿Qué proveedores recibieron contratos?",
-            "¿Qué organismos emitieron órdenes de compra?",
-            "¿Qué presupuestos están conectados con contratos?",
-            "¿Qué evidencia respalda una relación?",
-        ],
-    )
+    render_example_questions(st, session)
 
     st.subheader("Estado actual del prototipo")
     render_metric_cards(
         st,
         [
-            ("🗂️ Conjuntos", summary.datasets, "Registrados"),
-            ("🟢 Activos", summary.active_datasets, "Listos para explorar"),
-            ("📄 Fuentes", summary.source_records, "Registros"),
-            ("🏛️ Entidades", summary.entities, "Guardadas"),
-            ("✅ Afirmaciones", summary.claims, "Verificables"),
-            ("📎 Evidencia", summary.evidence, "Soporte"),
-            ("🔗 Relaciones", summary.relationships, "Conexiones"),
+            ("Conjuntos", summary.datasets, "Registrados"),
+            ("Activos", summary.active_datasets, "Listos para explorar"),
+            ("Fuentes", summary.source_records, "Registros"),
+            ("Entidades", summary.entities, "Guardadas"),
+            ("Afirmaciones", summary.claims, "Verificables"),
+            ("Evidencia", summary.evidence, "Soporte"),
+            ("Relaciones", summary.relationships, "Conexiones"),
         ],
     )
+
+    render_cross_dataset_home_section(st, session)
+
+    st.subheader("Busca un organismo, proveedor, contrato o presupuesto")
+    selected = render_entity_selector(st, session, key_prefix="home_search", label="Busca un organismo, proveedor, contrato o presupuesto")
+    if selected is not None:
+        render_selected_entity_profile(st, session, selected.id)
 
     if active_rows:
         st.subheader("Conjuntos de datos")
@@ -623,12 +741,11 @@ def render_home_page(st, session) -> None:  # noqa: ANN001
         st.subheader("Conjuntos secundarios")
         render_dataset_cards(st, secondary_rows)
     if planned_rows:
-        st.subheader("Próximas fuentes")
+        st.subheader("Pr\u00f3ximas fuentes")
         render_dataset_cards(st, planned_rows)
 
     st.subheader("Hoja de ruta")
     _render_roadmap(st)
-
 
 def render_dataset_explorer_page(st, session) -> None:  # noqa: ANN001
     rows = list_datasets(session)
@@ -641,12 +758,14 @@ def render_dataset_explorer_page(st, session) -> None:  # noqa: ANN001
     if selected is None:
         return
 
-    details = get_dataset_details(session, selected.slug)
+    with _spinner(st, "Cargando detalles del conjunto de datos..."):
+        details = get_dataset_details(session, selected.slug)
     if details is None:
         st.warning("Conjunto de datos no encontrado.")
         return
 
-    explanation = explain_dataset(details)
+    with _spinner(st, "Preparando explicación del conjunto..."):
+        explanation = explain_dataset(details)
     render_dataset_summary_cards(st, details, explanation)
     render_count_cards(st, "Afirmaciones por tipo", details.claims_by_type, empty_message="Todavía no hay evidencias.")
     render_count_cards(st, "Relaciones por tipo", details.relationship_types, empty_message="Todavía no hay relaciones.")
@@ -654,7 +773,9 @@ def render_dataset_explorer_page(st, session) -> None:  # noqa: ANN001
 
 def render_entity_search_page(st, session) -> None:  # noqa: ANN001
     st.title("Buscar")
-    render_entity_selector(st, session, key_prefix="entity_search", label="Busca por nombre")
+    selected = render_entity_selector(st, session, key_prefix="entity_search", label="Busca por nombre")
+    if selected is not None:
+        render_selected_entity_profile(st, session, selected.id)
 
 
 def render_entity_profile_page(st, session) -> None:  # noqa: ANN001
@@ -665,7 +786,8 @@ def render_entity_profile_page(st, session) -> None:  # noqa: ANN001
         return
 
     try:
-        profile = get_entity_profile(session, selected.id)
+        with _spinner(st, "Cargando perfil de entidad..."):
+            profile = get_entity_profile(session, selected.id)
     except (TypeError, ValueError):
         st.error("Elige una entidad válida desde los resultados de búsqueda.")
         return
@@ -677,6 +799,7 @@ def render_entity_profile_page(st, session) -> None:  # noqa: ANN001
 
     with tabs[0]:
         render_entity_profile_cards(st, profile)
+        render_cross_dataset_profile_block(st, session, profile)
 
     with tabs[1]:
         st.subheader("Conexiones directas")
@@ -689,7 +812,8 @@ def render_entity_profile_page(st, session) -> None:  # noqa: ANN001
         _render_evidence_links(st, profile)
 
     with tabs[3]:
-        explanation = explain_entity(session, profile.entity.id)
+        with _spinner(st, "Preparando explicación de la entidad..."):
+            explanation = explain_entity(session, profile.entity.id)
         if explanation is None:
             st.warning("La explicación de la entidad no está disponible.")
             return
@@ -707,7 +831,8 @@ def render_graph_view_page(st, session) -> None:  # noqa: ANN001
         return
 
     try:
-        graph = build_entity_graph(session, selected.id, depth=depth)
+        with _spinner(st, "Construyendo grafo..."):
+            graph = build_entity_graph(session, selected.id, depth=depth)
     except (TypeError, ValueError):
         st.error("Elige una entidad válida desde los resultados de búsqueda.")
         return
@@ -715,9 +840,65 @@ def render_graph_view_page(st, session) -> None:  # noqa: ANN001
         st.warning("Entidad no encontrada.")
         return
 
-    explanation = explain_graph(graph)
+    with _spinner(st, "Preparando explicación del grafo..."):
+        explanation = explain_graph(graph)
+    try:
+        cross_dataset_summary = get_cross_dataset_organization_summary(session, selected.id)
+    except Exception:  # noqa: BLE001
+        cross_dataset_summary = None
+    dataset_badges = cross_dataset_summary.datasets if cross_dataset_summary is not None else ()
     _render_summary_text_block(st, render_graph_explanation_text(explanation), title="Explicación del grafo")
-    _render_summary_text_block(st, render_entity_graph_text(graph, depth), title="Árbol del grafo")
+    render_visual_graph(st, graph, dataset_badges=dataset_badges)
+    with _expander(st, "Ver detalles t\u00e9cnicos"):
+        _render_summary_text_block(st, render_entity_graph_text(graph, depth), title="\u00c1rbol del grafo")
+
+
+def render_visual_graph(st, graph, *, dataset_badges: Sequence[str] = ()) -> None:  # noqa: ANN001
+    edges = _collect_graph_edges(graph)
+    badge_html = _dataset_badges_html(dataset_badges)
+    flow_rows = "".join(
+        f"""
+<article class="graph-flow-row">
+  <div class="graph-flow-node">
+    <span>Entidad inicial</span>
+    <strong>{escape(edge['source_type'])}</strong>
+    <small>{escape(edge['source_name'])}</small>
+  </div>
+  <div class="graph-flow-arrow">&rarr;</div>
+  <div class="graph-flow-relation">
+    <span>RelaciÃ³n</span>
+    <strong>{escape(edge['relationship_label'])}</strong>
+    <small>{escape(edge['relationship'])}</small>
+  </div>
+  <div class="graph-flow-arrow">&rarr;</div>
+  <div class="graph-flow-node">
+    <span>Entidad conectada</span>
+    <strong>{escape(edge['target_type'])}</strong>
+    <small>{escape(edge['target_name'])}</small>
+  </div>
+</article>
+"""
+        for edge in edges
+    )
+    if not flow_rows:
+        flow_rows = '<div class="graph-empty">No hay relaciones visibles para esta profundidad.</div>'
+
+    st.markdown(
+        f"""
+<section class="visual-graph">
+  <div class="visual-graph__title">Grafo visual: Relaciones</div>
+  <article class="graph-root-card">
+    <div class="graph-root-card__type">{escape(entity_type_display_label(graph.entity.entity_type))}</div>
+    <div class="graph-root-card__name">{escape(graph.entity.name)}</div>
+    {badge_html}
+  </article>
+  <div class="graph-flow-grid">
+    {flow_rows}
+  </div>
+</section>
+""",
+        unsafe_allow_html=True,
+    )
 
 
 def render_human_explanation_page(st, session) -> None:  # noqa: ANN001
@@ -729,11 +910,14 @@ def render_human_explanation_page(st, session) -> None:  # noqa: ANN001
         selected = render_dataset_selector(st, session, rows, key_prefix="human_dataset", label="Elige un conjunto de datos")
         if selected is None:
             return
-        details = get_dataset_details(session, selected.slug)
+        with _spinner(st, "Cargando detalles del conjunto de datos..."):
+            details = get_dataset_details(session, selected.slug)
         if details is None:
             st.warning("Conjunto de datos no encontrado.")
             return
-        _render_summary_text_block(st, render_dataset_explanation_text(explain_dataset(details)), title="Explicación")
+        with _spinner(st, "Preparando explicación del conjunto..."):
+            explanation = explain_dataset(details)
+        _render_summary_text_block(st, render_dataset_explanation_text(explanation), title="Explicación")
         return
 
     if mode == "Entidad":
@@ -742,7 +926,8 @@ def render_human_explanation_page(st, session) -> None:  # noqa: ANN001
             st.caption("Busca una entidad para comenzar.")
             return
         try:
-            explanation = explain_entity(session, selected.id)
+            with _spinner(st, "Preparando explicación de la entidad..."):
+                explanation = explain_entity(session, selected.id)
         except (TypeError, ValueError):
             st.error("Elige una entidad válida desde los resultados de búsqueda.")
             return
@@ -758,18 +943,77 @@ def render_human_explanation_page(st, session) -> None:  # noqa: ANN001
         st.caption("Busca una entidad para comenzar.")
         return
     try:
-        graph = build_entity_graph(session, selected.id, depth=depth)
+        with _spinner(st, "Construyendo grafo..."):
+            graph = build_entity_graph(session, selected.id, depth=depth)
     except (TypeError, ValueError):
         st.error("Elige una entidad válida desde los resultados de búsqueda.")
         return
     if graph is None:
         st.warning("Entidad no encontrada.")
         return
-    _render_summary_text_block(st, render_graph_explanation_text(explain_graph(graph)), title="Explicación")
+    with _spinner(st, "Preparando explicación del grafo..."):
+        explanation = explain_graph(graph)
+    _render_summary_text_block(st, render_graph_explanation_text(explanation), title="Explicación")
 
 
 def render_entity_details_text(profile: EntityProfile) -> str:
     return render_entity_details(profile)
+
+
+def _spinner(st, text: str):  # noqa: ANN001
+    spinner = getattr(st, "spinner", None)
+    if callable(spinner):
+        return spinner(text)
+    return nullcontext()
+
+
+def _expander(st, label: str):  # noqa: ANN001
+    expander = getattr(st, "expander", None)
+    if callable(expander):
+        return expander(label)
+    return nullcontext()
+
+
+def _collect_graph_edges(graph) -> list[dict[str, str]]:  # noqa: ANN001
+    edges: list[dict[str, str]] = []
+
+    def _walk(node) -> None:  # noqa: ANN001
+        for child in getattr(node, "children", ()):
+            edges.append(
+                {
+                    "relationship": str(child.via_relationship_type or "RELATIONSHIP"),
+                    "relationship_label": _relationship_display_label(str(child.via_relationship_type or "RELATIONSHIP")),
+                    "source_raw_type": str(node.entity.entity_type),
+                    "source_type": entity_type_display_label(str(node.entity.entity_type)),
+                    "source_name": str(node.entity.name),
+                    "target_raw_type": str(child.entity.entity_type),
+                    "target_type": entity_type_display_label(str(child.entity.entity_type)),
+                    "target_name": str(child.entity.name),
+                }
+            )
+            _walk(child)
+
+    _walk(graph)
+    return edges
+
+
+def _relationship_display_label(relationship_type: str) -> str:
+    return RELATIONSHIP_LABELS.get(relationship_type, relationship_type.replace("_", " ").title())
+
+
+def _collect_connected_entities(graph) -> list[dict[str, str]]:  # noqa: ANN001
+    entities: dict[str, dict[str, str]] = {}
+
+    def _walk(node) -> None:  # noqa: ANN001
+        for child in getattr(node, "children", ()):
+            entities[str(child.entity.id)] = {
+                "type": str(child.entity.entity_type),
+                "name": str(child.entity.name),
+            }
+            _walk(child)
+
+    _walk(graph)
+    return list(entities.values())
 
 
 def _render_evidence_links(st, profile: EntityProfile) -> None:  # noqa: ANN001
@@ -789,6 +1033,137 @@ def _render_entity_search_cards(
 ) -> None:
     _ = (key_prefix, button_label)
     render_entity_selector(st, session, key_prefix=key_prefix, label="Busca por nombre")
+
+
+def render_example_questions(st, session) -> None:  # noqa: ANN001
+    st.markdown('<div class="question-action-grid">', unsafe_allow_html=True)
+    columns = st.columns(len(EXAMPLE_QUESTIONS))
+    for column, (question_key, label) in zip(columns, EXAMPLE_QUESTIONS, strict=False):
+        if column.button(label, key=f"home_question_{question_key}"):
+            st.session_state[HOME_QUESTION_KEY] = question_key
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    selected_question = st.session_state.get(HOME_QUESTION_KEY)
+    if selected_question is None:
+        st.caption("Elige una pregunta para ver una respuesta basada en los datos cargados.")
+        return
+    render_example_answer(st, session, str(selected_question))
+
+
+def render_example_answer(st, session, question_key: str) -> None:  # noqa: ANN001
+    if question_key == QUESTION_SUPPLIERS:
+        suppliers = list_suppliers(session, limit=5)
+        if not suppliers:
+            _render_answer_panel(st, "Proveedores con contratos", ["No hay proveedores con contratos cargados todavÃ­a."])
+            return
+        _render_answer_panel(
+            st,
+            "Proveedores con contratos",
+            [f"{supplier.name}: {supplier.purchase_orders} contrato(s) registrado(s)" for supplier in suppliers],
+        )
+        return
+
+    if question_key == QUESTION_BUYERS:
+        buyers = list_buyers(session, limit=5)
+        if not buyers:
+            _render_answer_panel(st, "Organismos con Ã³rdenes de compra", ["No hay organismos con Ã³rdenes cargadas todavÃ­a."])
+            return
+        _render_answer_panel(
+            st,
+            "Organismos con Ã³rdenes de compra",
+            [f"{buyer.name}: {buyer.purchase_orders} orden(es) o contrato(s) relacionado(s)" for buyer in buyers],
+        )
+        return
+
+    if question_key == QUESTION_BUDGETS:
+        lines = _budget_connection_lines(session)
+        _render_answer_panel(
+            st,
+            "Presupuestos conectados con contratos",
+            lines or ["No hay rutas presupuesto -> organismo -> contrato disponibles con los datos actuales."],
+        )
+        return
+
+    if question_key == QUESTION_EVIDENCE:
+        lines = _evidence_answer_lines(session)
+        _render_answer_panel(
+            st,
+            "Evidencia que respalda relaciones",
+            lines or ["No hay evidencia enlazada disponible con los datos actuales."],
+        )
+        return
+
+    st.info("Elige una pregunta de ejemplo para comenzar.")
+
+
+def _render_answer_panel(st, title: str, lines: Sequence[str]) -> None:  # noqa: ANN001
+    body = "".join(f"<li>{escape(line)}</li>" for line in lines)
+    st.markdown(
+        f"""
+<section class="answer-panel">
+  <div class="answer-panel__title">{escape(title)}</div>
+  <ul>{body}</ul>
+  <div class="answer-panel__note">Respuesta neutral basada en los datos persistidos y su evidencia disponible.</div>
+</section>
+""",
+        unsafe_allow_html=True,
+    )
+
+
+def _budget_connection_lines(session) -> list[str]:  # noqa: ANN001
+    lines: list[str] = []
+    for row in list_entities(session, limit=80):
+        if row.entity_type != "BUDGET":
+            continue
+        graph = build_entity_graph(session, row.id, depth=3)
+        if graph is None:
+            continue
+        for edge in _collect_graph_edges(graph):
+            if edge["target_raw_type"] in {"CONTRACT", "PURCHASE_ORDER"}:
+                lines.append(f"{row.name} -> {edge['source_name']} -> {edge['target_name']}")
+            elif edge["target_raw_type"] == "PUBLIC_ORGANIZATION":
+                lines.append(f"{row.name} -> {edge['target_name']}")
+            if len(lines) >= 5:
+                return lines
+    return lines
+
+
+def _evidence_answer_lines(session) -> list[str]:  # noqa: ANN001
+    lines: list[str] = []
+    for card in suggested_entity_cards(session, limit=8):
+        profile = get_entity_profile(session, card.id)
+        if profile is None:
+            continue
+        if profile.evidences:
+            first = profile.evidences[0]
+            lines.append(f"{profile.entity.name}: {len(profile.evidences)} evidencia(s). Ejemplo: {first.title} ({first.url})")
+        elif profile.claims or profile.relationships:
+            lines.append(
+                f"{profile.entity.name}: {len(profile.claims)} afirmaciÃ³n(es) y {len(profile.relationships)} relaciÃ³n(es) registradas."
+            )
+        if len(lines) >= 5:
+            return lines
+    if lines:
+        return lines
+    return [
+        f"{row.name}: {row.evidence} evidencia(s), {row.claims} afirmaciÃ³n(es), {row.relationships} relaciÃ³n(es)"
+        for row in list_datasets(session)
+        if row.evidence or row.claims or row.relationships
+    ][:5]
+
+
+def render_selected_entity_profile(st, session, entity_id: str) -> None:  # noqa: ANN001
+    try:
+        with _spinner(st, "Cargando perfil de entidad..."):
+            profile = get_entity_profile(session, entity_id)
+    except (TypeError, ValueError):
+        st.error("Elige una entidad vÃ¡lida desde los resultados de bÃºsqueda.")
+        return
+    if profile is None:
+        st.warning("Entidad no encontrada.")
+        return
+    st.subheader("Perfil seleccionado")
+    render_entity_profile_cards(st, profile)
 
 
 def _render_question_chips(st, questions: Sequence[str]) -> None:  # noqa: ANN001
@@ -866,12 +1241,66 @@ section.main > div {
 }
 
 div[data-testid="stSidebar"] {
-  background: #0a1118;
+  background:
+    radial-gradient(circle at top left, rgba(47, 182, 165, 0.12), transparent 34%),
+    linear-gradient(180deg, #071018 0%, #0d1720 100%);
   border-right: 1px solid rgba(123, 224, 208, 0.14);
 }
 
 div[data-testid="stSidebar"] * {
   color: var(--ink);
+}
+
+div[data-testid="stSidebar"] h1,
+div[data-testid="stSidebar"] h2,
+div[data-testid="stSidebar"] .st-emotion-cache-10trblm {
+  color: var(--accent-2);
+}
+
+div[data-testid="stSidebar"] [data-testid="stRadio"] {
+  margin-top: 1rem;
+}
+
+div[data-testid="stSidebar"] [data-testid="stRadio"] > label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+div[data-testid="stSidebar"] [role="radiogroup"] {
+  display: grid;
+  gap: 8px;
+}
+
+div[data-testid="stSidebar"] [role="radio"] {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+div[data-testid="stSidebar"] [role="radio"][aria-checked="true"] {
+  background: rgba(242, 247, 251, 0.14);
+  border-color: rgba(123, 224, 208, 0.46);
+  box-shadow: inset 3px 0 0 var(--accent-2);
+}
+
+.sidebar-top-link {
+  display: inline-flex;
+  margin-top: 14px;
+  color: var(--accent-2) !important;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sidebar-note {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
 }
 
 h1, h2, h3, p, li, label, .stMarkdown, .stCaption {
@@ -972,13 +1401,13 @@ div[data-testid="stMetric"] * {
   color: var(--ink);
 }
 
-.dataset-grid, .entity-grid, .question-chip-grid, .roadmap-grid {
+.dataset-grid, .entity-grid, .question-chip-grid, .roadmap-grid, .cross-dataset-grid {
   display: grid;
   gap: 12px;
   margin: 0.25rem 0 0.9rem;
 }
 
-.dataset-grid {
+.dataset-grid, .cross-dataset-grid {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
@@ -990,12 +1419,47 @@ div[data-testid="stMetric"] * {
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 }
 
+.question-action-grid {
+  margin-bottom: 0.35rem;
+}
+
+.answer-panel {
+  margin: 0.35rem 0 0.85rem;
+  padding: 14px 16px;
+  border: 1px solid rgba(123, 224, 208, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(47, 182, 165, 0.12), rgba(255, 255, 255, 0.035));
+}
+
+.answer-panel__title {
+  color: var(--accent-2);
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.answer-panel ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.answer-panel li {
+  margin: 4px 0;
+  color: var(--ink);
+}
+
+.answer-panel__note {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .roadmap-grid {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .dataset-card,
 .entity-card,
+.cross-dataset-card,
 .detail-card,
 .summary-block,
 .roadmap-card,
@@ -1008,6 +1472,7 @@ div[data-testid="stMetric"] * {
 
 .dataset-card,
 .entity-card,
+.cross-dataset-card,
 .detail-card,
 .summary-block {
   padding: 12px 14px;
@@ -1041,6 +1506,7 @@ div[data-testid="stMetric"] * {
 }
 
 .dataset-card__title,
+.cross-dataset-card__title,
 .detail-card__title,
 .summary-block__title {
   font-size: 0.78rem;
@@ -1072,14 +1538,18 @@ div[data-testid="stMetric"] * {
 }
 
 .dataset-card__metrics,
-.entity-card__metrics {
+.entity-card__metrics,
+.cross-dataset-card__metrics,
+.dataset-badge-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
 .dataset-card__metrics span,
-.entity-card__metrics span {
+.entity-card__metrics span,
+.cross-dataset-card__metrics span,
+.dataset-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1089,6 +1559,22 @@ div[data-testid="stMetric"] * {
   font-size: 0.84rem;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.03);
+}
+
+.cross-dataset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-color: rgba(47, 182, 165, 0.34);
+}
+
+.cross-dataset-card__note {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.dataset-badge-row {
+  margin-top: 8px;
 }
 
 .entity-card__type {
@@ -1122,14 +1608,6 @@ div[data-testid="stMetric"] * {
 .entity-card.is-active {
   border-color: rgba(47, 182, 165, 0.36);
   box-shadow: 0 14px 34px rgba(47, 182, 165, 0.10);
-}
-
-.entity-card__hint {
-  color: var(--accent-2);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .detail-card__body,
@@ -1224,6 +1702,158 @@ div[data-testid="stMetric"] * {
   border-color: rgba(123, 224, 208, 0.42);
 }
 
+.visual-graph {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(260px, 1.2fr) minmax(260px, 1.2fr);
+  gap: 14px;
+  margin: 0.4rem 0 1rem;
+  align-items: stretch;
+}
+
+.visual-graph__column {
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+
+.visual-graph__title {
+  color: var(--accent-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.graph-root-card,
+.graph-edge-card,
+.graph-entity-card {
+  border: 1px solid rgba(123, 224, 208, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.graph-root-card {
+  border-color: rgba(47, 182, 165, 0.40);
+  background: rgba(47, 182, 165, 0.12);
+}
+
+.graph-edge-grid,
+.graph-entity-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.graph-root-card__type,
+.graph-edge-card__label,
+.graph-entity-card__type {
+  color: var(--accent-2);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.graph-root-card__name,
+.graph-entity-card__name {
+  margin-top: 5px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.graph-edge-card__path {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.graph-edge-card__path strong {
+  color: var(--accent-2);
+}
+
+.graph-edge-card__names,
+.graph-empty {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.visual-graph {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 0.4rem 0 1rem;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+
+.graph-flow-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.graph-flow-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 34px minmax(180px, 1fr) 34px minmax(180px, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.graph-flow-node,
+.graph-flow-relation {
+  border: 1px solid rgba(123, 224, 208, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.graph-flow-node span,
+.graph-flow-relation span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.graph-flow-node strong,
+.graph-flow-relation strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--accent-2);
+  font-size: 0.9rem;
+}
+
+.graph-flow-node small,
+.graph-flow-relation small {
+  display: block;
+  margin-top: 5px;
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.graph-flow-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-2);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
 div[data-testid="stMetric"] label,
 div[data-testid="stMetric"] div {
   color: var(--ink);
@@ -1233,6 +1863,18 @@ div[data-testid="stMetric"] div {
   section.main > div {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
+  }
+
+  .visual-graph {
+    grid-template-columns: 1fr;
+  }
+
+  .graph-flow-row {
+    grid-template-columns: 1fr;
+  }
+
+  .graph-flow-arrow {
+    transform: rotate(90deg);
   }
 }
 </style>
