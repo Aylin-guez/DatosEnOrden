@@ -1,0 +1,18 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA. Sample data for local development only. It is not official Transparencia Activa data.",
+  "records": [
+    {
+      "external_id": "transparencia-activa-local-role-2026-demo",
+      "organization_name": "DIVISION LOGISTICA DEL EJERCITO",
+      "person_name": "PERSONA DE MUESTRA TRANSPARENCIA",
+      "role_title": "Cargo de muestra Transparencia Activa",
+      "unit_name": "Unidad de muestra Transparencia Activa",
+      "period": "2026-01",
+      "source_url": "local://sample/transparencia-activa/transparencia-activa-local-role-2026-demo",
+      "source_dataset_name": "transparencia-activa-sample",
+      "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA. Fictional person and role used only for local prototype validation."
+    }
+  ]
+}

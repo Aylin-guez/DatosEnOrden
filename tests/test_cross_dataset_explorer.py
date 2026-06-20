@@ -105,6 +105,32 @@ def test_render_cross_dataset_summary_text_matches_cli_contract() -> None:
     assert "evidence:\n5" in report
 
 
+def test_cross_dataset_summary_can_include_transparencia(monkeypatch) -> None:
+    session = _FakeSession()
+    monkeypatch.setattr(
+        cross_dataset_explorer,
+        "_datasets_for_entity",
+        lambda session, entity_id: {"chilecompra", "lobby", "transparencia"},
+    )
+    monkeypatch.setattr(cross_dataset_explorer, "_claim_ids_for_entity", lambda session, entity_id: ())
+    monkeypatch.setattr(
+        cross_dataset_explorer,
+        "_count_distinct_claim_objects",
+        lambda session, entity_id, predicate, dataset_group: 4 if dataset_group == "chilecompra" else 1,
+    )
+    monkeypatch.setattr(cross_dataset_explorer, "_count_evidence", lambda session, entity_id, claim_ids: 8)
+    monkeypatch.setattr(cross_dataset_explorer, "_count_relationships", lambda session, entity_id, claim_ids: 9)
+    monkeypatch.setattr(cross_dataset_explorer, "_lobby_connections", lambda session, entity_id: ())
+    monkeypatch.setattr(cross_dataset_explorer, "_procurement_connections", lambda session, entity_id: ())
+
+    row = get_cross_dataset_organization_summary(session, str(ORGANIZATION_ID))
+
+    assert row is not None
+    assert row.datasets == ("chilecompra", "lobby", "transparencia")
+    report = render_cross_dataset_summary_text((row,))
+    assert "* transparencia" in report
+
+
 def test_render_cross_dataset_connections_text_is_neutral() -> None:
     report = render_cross_dataset_connections_text(_summary())
 

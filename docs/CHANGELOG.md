@@ -2,6 +2,20 @@
 
 > El codigo construye el sistema. La documentacion conserva la memoria.
 
+## 2026-06-20
+
+### Agregado
+
+- Fase 9.0 Transparencia Activa Prototype con sample local en `data/sample/transparencia_activa_sample.json`, marcado `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA`.
+- Importador `scripts/load_transparencia_sample.py` y resumen `scripts/transparencia_summary.py` para cargar y revisar roles administrativos de muestra sin APIs reales ni scraping.
+- Entidades `PERSON` y `ROLE` en el contrato local del grafo, usando el almacenamiento existente basado en texto y sin cambiar la arquitectura persistente.
+- Claims y relaciones neutrales `ORGANIZATION_HAS_PUBLIC_ROLE`, `PERSON_HOLDS_PUBLIC_ROLE` y `ROLE_BELONGS_TO_ORGANIZATION`.
+- Registry de datasets actualizado para mostrar Transparencia Activa como activa cuando el sample local queda cargado.
+- Grafo local capaz de mostrar `PUBLIC_ORGANIZATION -> ROLE -> PERSON` para el prototipo.
+- `cross_dataset_summary` reconoce `transparencia` como dataset adicional cuando el mismo organismo tambien aparece en ChileCompra o Lobby.
+- Explicaciones humanas neutrales para Transparencia Activa, indicando que el prototipo usa datos de muestra y no datos oficiales.
+- Pruebas para carga del sample, idempotencia, matching, claims, relaciones, registry, grafo, resumen cruzado, scripts y explicacion humana.
+
 ## 2026-06-19
 
 ### Agregado

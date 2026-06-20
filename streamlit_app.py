@@ -313,7 +313,7 @@ def render_dataset_selector(
         format_func=_dataset_option_label,
         placeholder="Elige un conjunto de datos",
     )
-    if selected is None:
+    if selected_entity_id is None:
         st.info("Elige un conjunto de datos para ver los detalles.")
         return None
     return selected
@@ -635,6 +635,8 @@ def _render_entity_card_grid(
         st.markdown(build_entity_card_html(card, highlighted=card.id == highlighted_id), unsafe_allow_html=True)
         if st.button(button_label, key=f"{key_prefix}_profile_{card.id}"):
             st.session_state[GLOBAL_SELECTED_ENTITY_KEY] = card.id
+            if key_prefix == "entity_search":
+                _navigate_to_page(st, PAGE_PROFILE)
             clicked_card = card
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -654,6 +656,27 @@ def _render_entity_card_grid(
     return _search_card_from_profile(profile)
 
 
+def _navigate_to_page(st, page_name: str) -> None:  # noqa: ANN001
+    st.session_state["page"] = page_name
+    rerun = getattr(st, "rerun", None)
+    if callable(rerun):
+        rerun()
+
+
+def _selected_entity_id(st) -> str | None:  # noqa: ANN001
+    selected_id = st.session_state.get(GLOBAL_SELECTED_ENTITY_KEY)
+    if selected_id is None:
+        return None
+    cleaned = str(selected_id).strip()
+    return cleaned or None
+
+
+def _render_go_to_search_empty_state(st, message: str) -> None:  # noqa: ANN001
+    st.info(message)
+    if st.button("Ir a Buscar", key="go_to_search"):
+        _navigate_to_page(st, PAGE_SEARCH)
+
+
 def render_app(st) -> None:  # noqa: ANN001
     st.set_page_config(page_title="DatosEnOrden", layout="wide")
     _inject_css(st)
@@ -662,6 +685,7 @@ def render_app(st) -> None:  # noqa: ANN001
     selected_page = st.session_state.get("page", PAGE_HOME)
     selected_index = PAGE_ORDER.index(selected_page) if selected_page in PAGE_ORDER else 0
     page = st.sidebar.radio("Secciones", PAGE_ORDER, index=selected_index, key="page")
+    st.session_state["page"] = page
     sidebar_markdown = getattr(st.sidebar, "markdown", None)
     if callable(sidebar_markdown):
         sidebar_markdown(
@@ -729,10 +753,10 @@ def render_home_page(st, session) -> None:  # noqa: ANN001
 
     render_cross_dataset_home_section(st, session)
 
-    st.subheader("Busca un organismo, proveedor, contrato o presupuesto")
-    selected = render_entity_selector(st, session, key_prefix="home_search", label="Busca un organismo, proveedor, contrato o presupuesto")
-    if selected is not None:
-        render_selected_entity_profile(st, session, selected.id)
+    st.subheader("Explorar entidades")
+    st.info("Usa la pestaña Buscar para seleccionar un organismo, proveedor, contrato o presupuesto.")
+    if st.button("Ir a Buscar", key="home_go_to_search"):
+        _navigate_to_page(st, PAGE_SEARCH)
 
     if active_rows:
         st.subheader("Conjuntos de datos")
@@ -755,7 +779,7 @@ def render_dataset_explorer_page(st, session) -> None:  # noqa: ANN001
         return
 
     selected = render_dataset_selector(st, session, rows, key_prefix="dataset_explorer", label="Elige un conjunto de datos")
-    if selected is None:
+    if selected_entity_id is None:
         return
 
     with _spinner(st, "Cargando detalles del conjunto de datos..."):
@@ -773,21 +797,19 @@ def render_dataset_explorer_page(st, session) -> None:  # noqa: ANN001
 
 def render_entity_search_page(st, session) -> None:  # noqa: ANN001
     st.title("Buscar")
-    selected = render_entity_selector(st, session, key_prefix="entity_search", label="Busca por nombre")
-    if selected is not None:
-        render_selected_entity_profile(st, session, selected.id)
+    render_entity_selector(st, session, key_prefix="entity_search", label="Busca por nombre")
 
 
 def render_entity_profile_page(st, session) -> None:  # noqa: ANN001
     st.title("Entidad")
-    selected = render_entity_selector(st, session, key_prefix="entity_profile", label="Busca por nombre")
-    if selected is None:
-        st.caption("Busca una entidad para comenzar.")
+    selected_entity_id = _selected_entity_id(st)
+    if selected_entity_id is None:
+        _render_go_to_search_empty_state(st, "Selecciona una entidad desde la pestaña Buscar.")
         return
 
     try:
         with _spinner(st, "Cargando perfil de entidad..."):
-            profile = get_entity_profile(session, selected.id)
+            profile = get_entity_profile(session, selected_entity_id)
     except (TypeError, ValueError):
         st.error("Elige una entidad válida desde los resultados de búsqueda.")
         return
@@ -823,16 +845,16 @@ def render_entity_profile_page(st, session) -> None:  # noqa: ANN001
 def render_graph_view_page(st, session) -> None:  # noqa: ANN001
     st.title("Grafo")
     st.info("Este gráfico muestra cómo se conectan las fuentes públicas.")
-    selected = render_entity_selector(st, session, key_prefix="graph_view", label="Busca por nombre")
     depth = st.slider("Profundidad", min_value=1, max_value=4, value=1, step=1)
+    selected_entity_id = _selected_entity_id(st)
 
-    if selected is None:
-        st.caption("Busca una entidad para ver cómo se relaciona con contratos, organizaciones y proveedores.")
+    if selected_entity_id is None:
+        _render_go_to_search_empty_state(st, "Selecciona una entidad desde Buscar para ver su grafo.")
         return
 
     try:
         with _spinner(st, "Construyendo grafo..."):
-            graph = build_entity_graph(session, selected.id, depth=depth)
+            graph = build_entity_graph(session, selected_entity_id, depth=depth)
     except (TypeError, ValueError):
         st.error("Elige una entidad válida desde los resultados de búsqueda.")
         return
@@ -843,7 +865,7 @@ def render_graph_view_page(st, session) -> None:  # noqa: ANN001
     with _spinner(st, "Preparando explicación del grafo..."):
         explanation = explain_graph(graph)
     try:
-        cross_dataset_summary = get_cross_dataset_organization_summary(session, selected.id)
+        cross_dataset_summary = get_cross_dataset_organization_summary(session, selected_entity_id)
     except Exception:  # noqa: BLE001
         cross_dataset_summary = None
     dataset_badges = cross_dataset_summary.datasets if cross_dataset_summary is not None else ()
@@ -903,7 +925,7 @@ def render_visual_graph(st, graph, *, dataset_badges: Sequence[str] = ()) -> Non
 
 def render_human_explanation_page(st, session) -> None:  # noqa: ANN001
     st.title("Explicación")
-    mode = st.selectbox("Qué quieres explicar", ["Conjunto de datos", "Entidad", "Grafo"])
+    mode = st.selectbox("Qué quieres explicar", ["Conjunto de datos", "Entidad"])
 
     if mode == "Conjunto de datos":
         rows = list_datasets(session)
@@ -921,13 +943,15 @@ def render_human_explanation_page(st, session) -> None:  # noqa: ANN001
         return
 
     if mode == "Entidad":
-        selected = render_entity_selector(st, session, key_prefix="human_entity", label="Busca por nombre")
-        if selected is None:
-            st.caption("Busca una entidad para comenzar.")
+        selected_entity_id = _selected_entity_id(st)
+        if selected_entity_id is None:
+            st.info("Selecciona una entidad desde Buscar para ver su explicación.")
+            if st.button("Ir a Buscar", key="explanation_go_to_search"):
+                _navigate_to_page(st, PAGE_SEARCH)
             return
         try:
             with _spinner(st, "Preparando explicación de la entidad..."):
-                explanation = explain_entity(session, selected.id)
+                explanation = explain_entity(session, selected_entity_id)
         except (TypeError, ValueError):
             st.error("Elige una entidad válida desde los resultados de búsqueda.")
             return
@@ -936,24 +960,6 @@ def render_human_explanation_page(st, session) -> None:  # noqa: ANN001
             return
         _render_summary_text_block(st, render_entity_explanation_text(explanation), title="Explicación")
         return
-
-    selected = render_entity_selector(st, session, key_prefix="human_graph", label="Busca por nombre")
-    depth = st.slider("Profundidad", min_value=1, max_value=4, value=1, step=1, key="human_graph_depth")
-    if selected is None:
-        st.caption("Busca una entidad para comenzar.")
-        return
-    try:
-        with _spinner(st, "Construyendo grafo..."):
-            graph = build_entity_graph(session, selected.id, depth=depth)
-    except (TypeError, ValueError):
-        st.error("Elige una entidad válida desde los resultados de búsqueda.")
-        return
-    if graph is None:
-        st.warning("Entidad no encontrada.")
-        return
-    with _spinner(st, "Preparando explicación del grafo..."):
-        explanation = explain_graph(graph)
-    _render_summary_text_block(st, render_graph_explanation_text(explanation), title="Explicación")
 
 
 def render_entity_details_text(profile: EntityProfile) -> str:
@@ -1022,17 +1028,6 @@ def _render_evidence_links(st, profile: EntityProfile) -> None:  # noqa: ANN001
         return
     for evidence in profile.evidences:
         st.markdown(f"- [{evidence.title}]({evidence.url})")
-
-
-def _render_entity_search_cards(
-    st,
-    session,  # noqa: ANN001
-    *,
-    key_prefix: str,
-    button_label: str,
-) -> None:
-    _ = (key_prefix, button_label)
-    render_entity_selector(st, session, key_prefix=key_prefix, label="Busca por nombre")
 
 
 def render_example_questions(st, session) -> None:  # noqa: ANN001
@@ -1152,7 +1147,7 @@ def _evidence_answer_lines(session) -> list[str]:  # noqa: ANN001
     ][:5]
 
 
-def render_selected_entity_profile(st, session, entity_id: str) -> None:  # noqa: ANN001
+def _legacy_render_selected_entity_profile(st, session, entity_id: str) -> None:  # noqa: ANN001
     try:
         with _spinner(st, "Cargando perfil de entidad..."):
             profile = get_entity_profile(session, entity_id)

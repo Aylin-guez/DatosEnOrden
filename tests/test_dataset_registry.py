@@ -18,6 +18,7 @@ def test_resolve_dataset_matches_slug_alias_and_name() -> None:
     assert resolve_dataset("mercado-publico") is not None
     assert resolve_dataset("dipres") is not None
     assert resolve_dataset("lobby-sample") is not None
+    assert resolve_dataset("transparencia-activa") is not None
     assert resolve_dataset("unknown") is None
 
 
@@ -90,6 +91,42 @@ def test_get_dataset_details_uses_wiring(monkeypatch) -> None:
     assert details.claims_by_type == (DatasetCountRow("ISSUES_PURCHASE_ORDER", 12),)
     assert details.relationship_types == (DatasetCountRow("RECEIVES_CONTRACT", 6),)
     assert details.ingestion_stats[0] == DatasetCountRow("source_records", 11)
+
+
+def test_transparencia_registry_entry_is_active_when_sample_loaded(monkeypatch) -> None:
+    entry = resolve_dataset("transparencia")
+    assert entry is not None
+    assert entry.dataset_names == ("transparencia-activa-sample",)
+    assert entry.planned is False
+
+    monkeypatch.setattr(
+        "datosenorden.maintenance.dataset_registry._count_source_records",
+        lambda session, resolved_entry: 1,  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        "datosenorden.maintenance.dataset_registry._count_entities",
+        lambda session, resolved_entry: 3,  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        "datosenorden.maintenance.dataset_registry._count_claims",
+        lambda session, resolved_entry: 3,  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        "datosenorden.maintenance.dataset_registry._count_evidence",
+        lambda session, resolved_entry: 3,  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        "datosenorden.maintenance.dataset_registry._count_relationships",
+        lambda session, resolved_entry: 3,  # noqa: ARG005
+    )
+
+    rows = list_datasets(object())
+    row = next(item for item in rows if item.slug == "transparencia")
+
+    assert row.name == "Transparencia Activa"
+    assert row.health == "active"
+    assert row.source_records == 1
+    assert row.entities == 3
 
 
 def test_render_dataset_list_text_formats_rows() -> None:

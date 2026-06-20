@@ -257,6 +257,61 @@ def test_build_entity_graph_traverses_lobby_node_from_organization(monkeypatch) 
     assert counterparty_node.via_relationship_type == "COUNTERPARTY_PARTICIPATED_IN_LOBBY"
 
 
+def test_build_entity_graph_traverses_transparencia_role_and_person(monkeypatch) -> None:
+    buyer, _, _ = _sample_entities()
+    role = SimpleNamespace(
+        id=UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+        entity_type="ROLE",
+        name="Cargo de muestra Transparencia Activa",
+        external_id="transparencia-role-1",
+    )
+    person = SimpleNamespace(
+        id=UUID("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+        entity_type="PERSON",
+        name="PERSONA DE MUESTRA TRANSPARENCIA",
+        external_id="transparencia-person-1",
+    )
+    relationships = [
+        SimpleNamespace(
+            id=UUID("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+            relationship_type="ORGANIZATION_HAS_PUBLIC_ROLE",
+            source_entity_id=buyer.id,
+            target_entity_id=role.id,
+            source_entity=buyer,
+            target_entity=role,
+        ),
+        SimpleNamespace(
+            id=UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+            relationship_type="PERSON_HOLDS_PUBLIC_ROLE",
+            source_entity_id=role.id,
+            target_entity_id=person.id,
+            source_entity=role,
+            target_entity=person,
+        ),
+    ]
+    session = _FakeSession(buyer, relationships)
+
+    monkeypatch.setattr(
+        entity_explorer,
+        "_load_entity_relationships",
+        lambda session, entity_id: [  # noqa: ARG005
+            relationship
+            for relationship in relationships
+            if relationship.source_entity_id == entity_id or relationship.target_entity_id == entity_id
+        ],
+    )
+    graph = build_entity_graph(session, str(buyer.id), depth=2)
+
+    assert graph is not None
+    assert graph.entity.entity_type == "PUBLIC_ORGANIZATION"
+    role_node = graph.children[0]
+    assert role_node.entity.entity_type == "ROLE"
+    assert role_node.via_relationship_type == "ORGANIZATION_HAS_PUBLIC_ROLE"
+    person_node = role_node.children[0]
+    assert person_node.entity.entity_type == "PERSON"
+    assert person_node.via_relationship_type == "PERSON_HOLDS_PUBLIC_ROLE"
+
+
 def test_render_entity_neighbors_text_lists_links() -> None:
     buyer, contract, _ = _sample_entities()
     neighbor = EntityNeighborSummary(

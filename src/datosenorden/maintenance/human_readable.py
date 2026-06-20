@@ -27,6 +27,8 @@ ENTITY_TYPE_LABELS = {
     "COMPANY": "proveedor",
     "CONTRACT": "contrato",
     "BUDGET": "presupuesto",
+    "PERSON": "persona",
+    "ROLE": "cargo publico",
     "LOBBY_MEETING": "reunión de lobby",
 }
 
@@ -35,6 +37,8 @@ ENTITY_TYPE_DISPLAY_LABELS = {
     "COMPANY": "Proveedor",
     "CONTRACT": "Contrato",
     "BUDGET": "Presupuesto",
+    "PERSON": "Persona",
+    "ROLE": "Cargo publico",
     "LOBBY_MEETING": "Reunión de lobby",
 }
 
@@ -43,6 +47,7 @@ DATASET_NAME_LABELS = {
     "chilecompra-ordenes-compra": "ChileCompra",
     "dipres-budget-sample": "DIPRES Prototype",
     "lobby-meeting-sample": "Lobby",
+    "transparencia-activa-sample": "Transparencia Activa",
 }
 
 
@@ -239,6 +244,8 @@ def render_graph_explanation_html(explanation: GraphExplanation) -> str:
 
 
 def _dataset_summary_text(dataset_name: str) -> str:
+    if dataset_name == "Transparencia Activa":
+        return "Transparencia Activa muestra informacion administrativa publicada por organismos. Este prototipo usa datos de muestra, no datos oficiales. No implica irregularidad; solo representa informacion publica o de muestra."
     if dataset_name == "ChileCompra":
         return "ChileCompra contiene información de compras públicas."
     if dataset_name == "DIPRES Prototype":
@@ -264,6 +271,10 @@ def _entity_intro_sentence(explanation: EntityExplanation) -> str:
         prefix = "Este contrato"
     elif explanation.entity_type == "BUDGET":
         prefix = "Este presupuesto"
+    elif explanation.entity_type == "ROLE":
+        return "Este cargo publico aparece como informacion administrativa de muestra."
+    elif explanation.entity_type == "PERSON":
+        return "Esta persona aparece en un registro administrativo de muestra."
     elif explanation.entity_type == "LOBBY_MEETING":
         return (
             "Esta reunión de lobby conecta un organismo público con una contraparte registrada. "
@@ -362,6 +373,8 @@ def _graph_chain(root: Any) -> tuple[str, ...]:
 
 
 def _graph_meaning_for_chain(chain: tuple[str, ...]) -> str:
+    if chain[:3] == ("PUBLIC_ORGANIZATION", "ROLE", "PERSON"):
+        return "Transparencia Activa muestra informacion administrativa publicada por organismos. Este prototipo usa datos de muestra, no datos oficiales. No implica irregularidad; solo representa informacion publica o de muestra."
     if chain[:5] == ("BUDGET", "PUBLIC_ORGANIZATION", "CONTRACT", "COMPANY", "LOBBY_MEETING"):
         return "El organismo se conecta con presupuesto, contratos, una contraparte y una reunión de lobby registrada o de muestra. La relación no implica irregularidad."
     if chain[:4] == ("BUDGET", "PUBLIC_ORGANIZATION", "CONTRACT", "COMPANY"):

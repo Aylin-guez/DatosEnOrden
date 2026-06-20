@@ -10,6 +10,7 @@ from datosenorden.models import Claim, Dataset, Entity, Evidence, RelationshipPu
 
 CHILECOMPRA_DATASET = "chilecompra"
 LOBBY_DATASET = "lobby"
+TRANSPARENCIA_DATASET = "transparencia"
 CHILECOMPRA_PREDICATES = frozenset(
     {
         "ISSUES_PURCHASE_ORDER",
@@ -102,6 +103,7 @@ def citizen_friendly_explanation() -> str:
             "The available records show:",
             "* procurement activity in ChileCompra",
             "* registered lobby meetings",
+            "* administrative role records in Transparencia Activa when sample data is loaded",
             "* public relationships and supporting evidence",
             "",
             "The platform only presents stored records and does not imply any relationship beyond the available public information.",
@@ -458,4 +460,6 @@ def _dataset_group(dataset_name: str) -> str | None:
         return CHILECOMPRA_DATASET
     if "lobby" in normalized:
         return LOBBY_DATASET
+    if "transparencia" in normalized:
+        return TRANSPARENCIA_DATASET
     return None

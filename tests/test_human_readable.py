@@ -22,6 +22,7 @@ def test_entity_type_label_uses_plain_language() -> None:
     assert entity_type_label("PUBLIC_ORGANIZATION") == "organismo público"
     assert entity_type_label("COMPANY") == "proveedor"
     assert entity_type_label("CONTRACT") == "contrato"
+    assert entity_type_label("ROLE") == "cargo publico"
     assert entity_type_label("LOBBY_MEETING") == "reunión de lobby"
 
 
@@ -94,3 +95,23 @@ def test_render_graph_explanation_text_handles_lobby_neutrally() -> None:
     assert "Reunión de lobby" in report
     assert "contraparte registrada" in report
     assert "no implica irregularidad" in report
+
+
+def test_render_dataset_explanation_text_handles_transparencia_neutrally() -> None:
+    report = render_dataset_explanation_text(
+        DatasetExplanation(
+            name="Transparencia Activa",
+            summary=(
+                "Transparencia Activa muestra informacion administrativa publicada por organismos. "
+                "Este prototipo usa datos de muestra, no datos oficiales. "
+                "No implica irregularidad; solo representa informacion publica o de muestra."
+            ),
+            contracts=0,
+            organizations=1,
+            suppliers=0,
+        )
+    )
+
+    assert "Transparencia Activa muestra informacion administrativa" in report
+    assert "datos de muestra, no datos oficiales" in report
+    assert "No implica irregularidad" in report

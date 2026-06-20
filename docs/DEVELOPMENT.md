@@ -648,6 +648,56 @@ python scripts/cross_dataset_summary.py
 
 El helper solo edita el archivo local `data/sample/lobby_meeting_sample.json`, marcado como `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA`, para usar un organismo ChileCompra ya persistido. No toca datos reales, no agrega APIs y es idempotente.
 
+## Phase 9.0 Transparencia Activa Prototype
+
+La Fase 9.0 agrega un prototipo local de Transparencia Activa. No scrapea, no llama APIs reales y no integra una fuente oficial nueva.
+
+Archivo local:
+
+```powershell
+data/sample/transparencia_activa_sample.json
+```
+
+El sample esta marcado como `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA`. Usa una persona ficticia llamada `PERSONA DE MUESTRA TRANSPARENCIA` y un cargo de muestra para validar conexiones administrativas con un organismo publico ya persistido.
+
+Comandos:
+
+```powershell
+python scripts/load_transparencia_sample.py
+python scripts/transparencia_summary.py
+python scripts/cross_dataset_summary.py
+```
+
+El importador reutiliza la arquitectura existente:
+
+- `source`
+- `dataset`
+- `source_record`
+- `entity`
+- `claim`
+- `evidence`
+- `relationship_public`
+
+Claims creados:
+
+- `ORGANIZATION_HAS_PUBLIC_ROLE`
+- `PERSON_HOLDS_PUBLIC_ROLE`
+- `ROLE_BELONGS_TO_ORGANIZATION`
+
+Relaciones publicas creadas:
+
+- `PUBLIC_ORGANIZATION -> ROLE`
+- `ROLE -> PERSON`
+- `ROLE -> PUBLIC_ORGANIZATION`
+
+La explicacion humana usa lenguaje neutral:
+
+- Transparencia Activa muestra informacion administrativa publicada por organismos.
+- Este prototipo usa datos de muestra, no datos oficiales.
+- No implica irregularidad; solo representa informacion publica o de muestra.
+
+Si el organismo tambien existe en ChileCompra o Lobby, `cross_dataset_summary` puede mostrar `transparencia` como otro dataset disponible para ese organismo. La lectura es solo informativa y no infiere causalidad ni conclusiones.
+
 ## sync DB from home to work
 
 Flujo local para copiar la base de datos entre PCs usando un dump privado en `private/database/backups/` o un folder local/USB.

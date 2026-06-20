@@ -80,11 +80,13 @@ class _FakeStreamlit:
         self.page_config = None
         self.captions: list[str] = []
         self.text_input_values: dict[str, str] = {}
+        self.text_input_calls: list[str | None] = []
         self.selectbox_values: dict[str, object | None] = {}
         self.button_values: dict[str, bool] = {}
         self.tab_labels: list[str] = []
         self.spinners: list[str] = []
         self.expander_labels: list[str] = []
+        self.rerun_count = 0
 
     def set_page_config(self, **kwargs):  # noqa: ANN001
         self.page_config = kwargs
@@ -138,6 +140,7 @@ class _FakeStreamlit:
 
     def text_input(self, label, value="", key=None, placeholder=None):  # noqa: ANN001
         _ = (label, placeholder)
+        self.text_input_calls.append(key)
         if key in self.text_input_values:
             return self.text_input_values[key]
         return value
@@ -157,6 +160,9 @@ class _FakeStreamlit:
     def expander(self, label):  # noqa: ANN001
         self.expander_labels.append(label)
         return _FakeTab()
+
+    def rerun(self):  # noqa: ANN001
+        self.rerun_count += 1
 
 
 def _profile(entity_id: str = "11111111-1111-1111-1111-111111111111"):
@@ -304,8 +310,38 @@ def test_render_app_uses_sidebar_only_navigation(monkeypatch) -> None:
 
     assert calls == [streamlit_app.PAGE_SEARCH]
     assert fake_st.sidebar.radio_calls == [("Secciones", streamlit_app.PAGE_ORDER, 0, "page")]
+    assert fake_st.session_state["page"] == streamlit_app.PAGE_SEARCH
     assert not any("top-nav" in markdown for markdown, _ in fake_st.markdowns)
     assert fake_st.columns_created == []
+
+
+def test_render_app_uses_session_state_page_for_sidebar_index(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.session_state["page"] = streamlit_app.PAGE_GRAPH
+    fake_st.sidebar.radio_value = streamlit_app.PAGE_GRAPH
+    calls: list[str] = []
+
+    class _SessionContext:
+        def __enter__(self):  # noqa: ANN001
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ANN001
+            _ = (exc_type, exc, tb)
+            return False
+
+    monkeypatch.setattr(streamlit_app, "SessionLocal", lambda: _SessionContext())
+    monkeypatch.setattr(streamlit_app, "render_home_page", lambda st, session: calls.append(streamlit_app.PAGE_HOME))
+    monkeypatch.setattr(streamlit_app, "render_dataset_explorer_page", lambda st, session: calls.append(streamlit_app.PAGE_DATASETS))
+    monkeypatch.setattr(streamlit_app, "render_entity_search_page", lambda st, session: calls.append(streamlit_app.PAGE_SEARCH))
+    monkeypatch.setattr(streamlit_app, "render_entity_profile_page", lambda st, session: calls.append(streamlit_app.PAGE_PROFILE))
+    monkeypatch.setattr(streamlit_app, "render_graph_view_page", lambda st, session: calls.append(streamlit_app.PAGE_GRAPH))
+    monkeypatch.setattr(streamlit_app, "render_human_explanation_page", lambda st, session: calls.append(streamlit_app.PAGE_EXPLANATION))
+
+    streamlit_app.render_app(fake_st)
+
+    assert calls == [streamlit_app.PAGE_GRAPH]
+    assert fake_st.sidebar.radio_calls == [("Secciones", streamlit_app.PAGE_ORDER, 4, "page")]
+    assert fake_st.session_state["page"] == streamlit_app.PAGE_GRAPH
 
 
 def test_render_home_page_shows_cards_and_questions(monkeypatch) -> None:
@@ -325,7 +361,7 @@ def test_render_home_page_shows_cards_and_questions(monkeypatch) -> None:
     assert fake_st.subheaders == [
         "Preguntas de ejemplo",
         "Estado actual del prototipo",
-        "Busca un organismo, proveedor, contrato o presupuesto",
+        "Explorar entidades",
         "Conjuntos de datos",
         "Conjuntos secundarios",
         "Hoja de ruta",
@@ -333,7 +369,7 @@ def test_render_home_page_shows_cards_and_questions(monkeypatch) -> None:
     assert any("ChileCompra" in markdown for markdown, _ in fake_st.markdowns)
     assert any("DIPRES Prototype" in markdown for markdown, _ in fake_st.markdowns)
     assert any("roadmap-grid" in markdown for markdown, _ in fake_st.markdowns)
-    assert fake_st.infos[0] == "Busca una entidad para comenzar."
+    assert "Usa la pestaña Buscar" in fake_st.infos[0]
 
 
 def test_render_home_page_clickable_question_shows_supplier_answer(monkeypatch) -> None:
@@ -421,13 +457,14 @@ def test_render_entity_search_page_profile_button_shows_profile(monkeypatch) -> 
     streamlit_app.render_entity_search_page(fake_st, object())
 
     assert fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] == selected.id
-    assert "Perfil seleccionado" in fake_st.subheaders
-    assert any("Resumen de la entidad" in markdown for markdown, _ in fake_st.markdowns)
+    assert fake_st.session_state["page"] == streamlit_app.PAGE_PROFILE
+    assert fake_st.rerun_count == 1
+    assert "Perfil seleccionado" not in fake_st.subheaders
+    assert not any("Resumen de la entidad" in markdown for markdown, _ in fake_st.markdowns)
 
 
 def test_render_entity_profile_page_uses_tabs(monkeypatch) -> None:
     fake_st = _FakeStreamlit()
-    fake_st.text_input_values["entity_profile_query"] = "arauco"
     selected = streamlit_app.SearchCard(
         id="11111111-1111-1111-1111-111111111111",
         name="SERVICIO DE SALUD ARAUCO",
@@ -437,8 +474,7 @@ def test_render_entity_profile_page_uses_tabs(monkeypatch) -> None:
         claims=8,
         relationships=8,
     )
-    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [selected])
-    fake_st.button_values[f"entity_profile_profile_{selected.id}"] = True
+    fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] = selected.id
     monkeypatch.setattr(streamlit_app, "get_entity_profile", lambda session, entity_id: _profile(entity_id))
     monkeypatch.setattr(
         streamlit_app,
@@ -452,18 +488,29 @@ def test_render_entity_profile_page_uses_tabs(monkeypatch) -> None:
             source_names=("ChileCompra",),
         ),
     )
-    monkeypatch.setattr(streamlit_app, "suggested_entity_cards", lambda session: [selected])
-
     streamlit_app.render_entity_profile_page(fake_st, object())
 
     assert fake_st.tab_labels == ["Resumen", "Relaciones", "Evidencia", "Explicación"]
     assert any("Resumen de la entidad" in markdown for markdown, _ in fake_st.markdowns)
     assert any("¿Qué significa esto?" in markdown for markdown, _ in fake_st.markdowns)
+    assert "entity_profile_query" not in fake_st.text_input_calls
+    assert not any("entity-grid" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_entity_profile_page_empty_state_goes_to_search() -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.button_values["go_to_search"] = True
+
+    streamlit_app.render_entity_profile_page(fake_st, object())
+
+    assert fake_st.infos == ["Selecciona una entidad desde la pestaña Buscar."]
+    assert fake_st.session_state["page"] == streamlit_app.PAGE_SEARCH
+    assert fake_st.rerun_count == 1
+    assert fake_st.text_input_calls == []
 
 
 def test_render_graph_view_page_shows_explanation_first(monkeypatch) -> None:
     fake_st = _FakeStreamlit()
-    fake_st.text_input_values["graph_view_query"] = "arauco"
     selected = streamlit_app.SearchCard(
         id="11111111-1111-1111-1111-111111111111",
         name="SERVICIO DE SALUD ARAUCO",
@@ -473,8 +520,7 @@ def test_render_graph_view_page_shows_explanation_first(monkeypatch) -> None:
         claims=8,
         relationships=8,
     )
-    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [selected])
-    fake_st.button_values[f"graph_view_profile_{selected.id}"] = True
+    fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] = selected.id
     monkeypatch.setattr(
         streamlit_app,
         "build_entity_graph",
@@ -510,6 +556,60 @@ def test_render_graph_view_page_shows_explanation_first(monkeypatch) -> None:
     assert fake_st.expander_labels == ["Ver detalles t\u00e9cnicos"]
     assert fake_st.infos[0] == "Este gráfico muestra cómo se conectan las fuentes públicas."
     assert any("Árbol del grafo" in markdown for markdown, _ in fake_st.markdowns)
+    assert "graph_view_query" not in fake_st.text_input_calls
+    assert not any("entity-grid" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_graph_view_page_empty_state_goes_to_search() -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.button_values["go_to_search"] = True
+
+    streamlit_app.render_graph_view_page(fake_st, object())
+
+    assert fake_st.infos == [
+        "Este gráfico muestra cómo se conectan las fuentes públicas.",
+        "Selecciona una entidad desde Buscar para ver su grafo.",
+    ]
+    assert fake_st.session_state["page"] == streamlit_app.PAGE_SEARCH
+    assert fake_st.rerun_count == 1
+    assert fake_st.text_input_calls == []
+
+
+def test_render_human_explanation_page_uses_selected_entity_without_search(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.selectbox_values[None] = "Entidad"
+    fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] = "11111111-1111-1111-1111-111111111111"
+    monkeypatch.setattr(
+        streamlit_app,
+        "explain_entity",
+        lambda session, entity_id: EntityExplanation(
+            entity_id=entity_id,
+            entity_name="SERVICIO DE SALUD ARAUCO",
+            entity_type="PUBLIC_ORGANIZATION",
+            public_contracts=4,
+            suppliers=3,
+            source_names=("ChileCompra",),
+        ),
+    )
+
+    streamlit_app.render_human_explanation_page(fake_st, object())
+
+    assert any("La información proviene de ChileCompra." in markdown for markdown, _ in fake_st.markdowns)
+    assert "human_entity_query" not in fake_st.text_input_calls
+    assert not any("entity-grid" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_human_explanation_page_entity_empty_state_goes_to_search() -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.selectbox_values[None] = "Entidad"
+    fake_st.button_values["explanation_go_to_search"] = True
+
+    streamlit_app.render_human_explanation_page(fake_st, object())
+
+    assert fake_st.infos == ["Selecciona una entidad desde Buscar para ver su explicación."]
+    assert fake_st.session_state["page"] == streamlit_app.PAGE_SEARCH
+    assert fake_st.rerun_count == 1
+    assert fake_st.text_input_calls == []
 
 
 def test_human_readable_text_uses_conversational_spanish() -> None:
