@@ -6,6 +6,12 @@
 
 ### Agregado
 
+- Fase 11.0 Entity Investigation View con la pagina `Investigación` en Streamlit, que unifica cronologia, conexiones, contratos, Lobby, Transparencia, evidencia y explicacion en una sola vista publica.
+- Nuevo ensamblador `src/datosenorden/maintenance/investigation_view.py` para componer la investigacion usando solo datos persistidos.
+- Pruebas para la vista unificada de investigacion y su flujo de navegacion sin pestañas internas.
+- Fase 10.5 Demo Readiness Pack con `scripts/demo_seed.py`, `scripts/demo_status.py` y `docs/DEMO_WALKTHROUGH.md` para preparar y validar una demo local sin nuevas fuentes.
+- Modo demo opcional en Streamlit con banner, panel inicial guiado y resolucion por nombre de la entidad recomendada sin hardcodear IDs.
+- Pruebas para el pack de demo, el estado listo/faltante, el banner de Streamlit y la resolucion de la entidad de demo.
 - Fase 9.0 Transparencia Activa Prototype con sample local en `data/sample/transparencia_activa_sample.json`, marcado `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA`.
 - Importador `scripts/load_transparencia_sample.py` y resumen `scripts/transparencia_summary.py` para cargar y revisar roles administrativos de muestra sin APIs reales ni scraping.
 - Entidades `PERSON` y `ROLE` en el contrato local del grafo, usando el almacenamiento existente basado en texto y sin cambiar la arquitectura persistente.
@@ -37,6 +43,9 @@
 - Fase 6.5 Human-Friendly Layer con comandos `scripts/explain_entity.py`, `scripts/explain_dataset.py` y `scripts/explain_graph.py` para interpretar entidades, datasets y grafos en lenguaje simple.
 - Perfiles HTML de entidad, dataset y grafo enriquecidos con secciones `What does this mean?`.
 - Mapeo de etiquetas tecnicas a lenguaje humano para `source_record`, `claim`, `relationship_public` y `entity`.
+- Fase 10.0 Timeline Explorer con `src/datosenorden/maintenance/timeline_explorer.py`, CLI `scripts/entity_timeline.py` y exportador `scripts/export_entity_timeline.py`.
+- Export HTML `reports/entity_timeline_<entity_id>.html` con cronologia vertical, agrupacion por ano, badges de dataset y conteos de evidencia/relaciones.
+- Nueva seccion `Cronologia` en Streamlit para mostrar eventos fechados por entidad sin inferir causalidad.
 - Fase 6.0 Dataset Registry con `src/datosenorden/maintenance/dataset_registry.py`, CLI `scripts/list_datasets.py`, `scripts/dataset_details.py` y `scripts/export_dataset_profile.py` para explorar datasets como entidades de primera clase.
 - Perfil HTML de dataset `reports/dataset_<slug>.html` con conteos, salud, tipos de entidades, tipos de claims y tipos de relaciones.
 - Pruebas para el registry de datasets y sus comandos de exploracion/exportacion.

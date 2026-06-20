@@ -676,3 +676,20 @@ El resumen incluye:
 - conteos de evidencia y relaciones publicas
 
 La exploracion es neutral y descriptiva. Presenta conexiones, registros publicos e informacion disponible; no sugiere causalidad ni conclusiones.
+
+## Cronologia de entidad Fase 10.0
+
+La cronologia de entidad reutiliza claims y evidencia ya persistidos desde ChileCompra junto con otros datasets cargados en PostgreSQL.
+
+Comandos:
+
+```powershell
+python scripts/entity_timeline.py --entity-id <entity_id>
+python scripts/export_entity_timeline.py --entity-id <entity_id>
+```
+
+Para ChileCompra, el evento usa la mejor fecha disponible desde el claim, la evidencia o el payload de la orden de compra (`FechaEnvio`, `FechaCreacion`, `FechaContrato` o `FechaPublicacion` cuando existan). El resultado se mezcla con eventos de DIPRES, Lobby y Transparencia para la misma entidad.
+
+La cronologia no agrega fuentes nuevas, no llama la API de ChileCompra y no cambia persistencia. Solo ayuda a ver que informacion existe, cuando ocurrio y desde que fuente viene.
+
+La Fase 11.0 reutiliza esa misma base para una vista unificada de `Investigación` que muestra cronologia, conexiones, contratos, Lobby, Transparencia y evidencia en una sola pagina.

@@ -159,6 +159,18 @@ Mientras no exista `DATOSENORDEN_CHILECOMPRA_TICKET`, puedes validar persistenci
 python scripts/seed_traceability_flow.py
 ```
 
+## Demo local
+
+Para preparar la demo de la fase 10.5:
+
+```powershell
+python scripts/demo_seed.py
+python scripts/demo_status.py
+streamlit run streamlit_app.py
+```
+
+Si quieres activar el modo demo en Streamlit, define `DEMO_MODE=true` en `.env` o en el entorno antes de abrir la app.
+
 Ese comando inserta `LOCAL_TEST_DATA / NOT_OFFICIAL_DATA` en la base local para probar la cadena de persistencia sin llamar a ChileCompra.
 
 Verifica los conteos con:
@@ -697,6 +709,56 @@ La explicacion humana usa lenguaje neutral:
 - No implica irregularidad; solo representa informacion publica o de muestra.
 
 Si el organismo tambien existe en ChileCompra o Lobby, `cross_dataset_summary` puede mostrar `transparencia` como otro dataset disponible para ese organismo. La lectura es solo informativa y no infiere causalidad ni conclusiones.
+
+## Timeline Explorer Fase 10.0
+
+La Fase 10.0 agrega una cronologia unificada por entidad usando solo datos persistidos en PostgreSQL.
+
+Comandos:
+
+```powershell
+python scripts/entity_timeline.py --entity-id <entity_id>
+python scripts/export_entity_timeline.py --entity-id <entity_id>
+```
+
+El exportador escribe por defecto:
+
+```text
+reports/entity_timeline_<entity_id>.html
+```
+
+Reglas:
+
+- usa `entity`, `claim`, `evidence`, `source_record`, `dataset` y `relationship_public`
+- no llama APIs externas
+- no scrapea
+- no cambia el esquema ni la arquitectura de persistencia
+- ordena eventos por fecha ascendente
+- muestra fuente, conteo de evidencias y conteo de relaciones
+
+La explicacion ciudadana debe mantenerse neutral:
+
+- Esta cronologia reune los eventos publicos encontrados para esta entidad en distintas fuentes de informacion.
+- El orden temporal no implica relacion causal.
+
+## Investigacion de entidad Fase 11.0
+
+La Fase 11.0 unifica la exploracion de una entidad en una sola vista `Investigación` dentro de Streamlit.
+
+Esa vista junta:
+
+- identificacion y tipo de entidad en lenguaje publico
+- badges de dataset disponibles
+- metricas clave
+- cronologia
+- grafo resumido
+- contratos / procurement
+- Lobby
+- Transparencia
+- evidencia agrupada por dataset
+- explicacion ciudadana neutral
+
+La pagina usa solo datos persistidos y no agrega nuevas fuentes, APIs ni scraping.
 
 ## sync DB from home to work
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 import sys
@@ -14,6 +15,7 @@ from datosenorden.maintenance.entity_explorer import EntitySearchResult
 from datosenorden.maintenance.human_readable import DatasetExplanation
 from datosenorden.maintenance.human_readable import EntityExplanation
 from datosenorden.maintenance.human_readable import GraphExplanation
+from datosenorden.maintenance.timeline_explorer import TimelineEvent
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -25,6 +27,8 @@ class _FakeColumn:
     metrics: list[tuple[str, object]]
     captions: list[str]
     button_values: dict[str, bool] | None = None
+    markdowns: list[tuple[str, bool]] | None = None
+    button_labels: list[str] | None = None
 
     def metric(self, label, value):  # noqa: ANN001
         self.metrics.append((label, value))
@@ -32,7 +36,15 @@ class _FakeColumn:
     def caption(self, text):  # noqa: ANN001
         self.captions.append(text)
 
+    def markdown(self, text, unsafe_allow_html=False):  # noqa: ANN001
+        if self.markdowns is None:
+            self.markdowns = []
+        self.markdowns.append((text, unsafe_allow_html))
+
     def button(self, label, key=None):  # noqa: ANN001
+        if self.button_labels is None:
+            self.button_labels = []
+        self.button_labels.append(label)
         _ = label
         return bool((self.button_values or {}).get(key, False))
 
@@ -177,6 +189,33 @@ def _profile(entity_id: str = "11111111-1111-1111-1111-111111111111"):
     )
 
 
+def _timeline(entity_id: str = "11111111-1111-1111-1111-111111111111"):
+    return SimpleNamespace(
+        entity=SimpleNamespace(
+            id=entity_id,
+            entity_type="PUBLIC_ORGANIZATION",
+            name="SERVICIO DE SALUD ARAUCO",
+            external_id="buyer-1",
+        ),
+        events=(
+            TimelineEvent(
+                event_date=date(2026, 3, 15),
+                dataset="LOBBY",
+                dataset_name="lobby-meeting-sample",
+                title="Lobby meeting",
+                explanation="Registro de reunion de lobby asociado a la entidad.",
+                claim_id="22222222-2222-2222-2222-222222222222",
+                predicate="ORGANIZATION_HELD_LOBBY_MEETING",
+                source_record_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                evidence_count=1,
+                relationship_count=1,
+            ),
+        ),
+        explanation="Esta cronologia reune los eventos publicos encontrados para esta entidad en distintas fuentes de informacion.",
+        caution="El orden temporal no implica relacion causal.",
+    )
+
+
 def _cross_dataset_summary() -> CrossDatasetOrganizationSummary:
     return CrossDatasetOrganizationSummary(
         organization_id="11111111-1111-1111-1111-111111111111",
@@ -302,9 +341,7 @@ def test_render_app_uses_sidebar_only_navigation(monkeypatch) -> None:
     monkeypatch.setattr(streamlit_app, "render_home_page", lambda st, session: calls.append(streamlit_app.PAGE_HOME))
     monkeypatch.setattr(streamlit_app, "render_dataset_explorer_page", lambda st, session: calls.append(streamlit_app.PAGE_DATASETS))
     monkeypatch.setattr(streamlit_app, "render_entity_search_page", lambda st, session: calls.append(streamlit_app.PAGE_SEARCH))
-    monkeypatch.setattr(streamlit_app, "render_entity_profile_page", lambda st, session: calls.append(streamlit_app.PAGE_PROFILE))
-    monkeypatch.setattr(streamlit_app, "render_graph_view_page", lambda st, session: calls.append(streamlit_app.PAGE_GRAPH))
-    monkeypatch.setattr(streamlit_app, "render_human_explanation_page", lambda st, session: calls.append(streamlit_app.PAGE_EXPLANATION))
+    monkeypatch.setattr(streamlit_app, "render_investigation_page", lambda st, session: calls.append(streamlit_app.PAGE_INVESTIGATION))
 
     streamlit_app.render_app(fake_st)
 
@@ -317,8 +354,8 @@ def test_render_app_uses_sidebar_only_navigation(monkeypatch) -> None:
 
 def test_render_app_uses_session_state_page_for_sidebar_index(monkeypatch) -> None:
     fake_st = _FakeStreamlit()
-    fake_st.session_state["page"] = streamlit_app.PAGE_GRAPH
-    fake_st.sidebar.radio_value = streamlit_app.PAGE_GRAPH
+    fake_st.session_state["page"] = streamlit_app.PAGE_INVESTIGATION
+    fake_st.sidebar.radio_value = streamlit_app.PAGE_INVESTIGATION
     calls: list[str] = []
 
     class _SessionContext:
@@ -333,15 +370,13 @@ def test_render_app_uses_session_state_page_for_sidebar_index(monkeypatch) -> No
     monkeypatch.setattr(streamlit_app, "render_home_page", lambda st, session: calls.append(streamlit_app.PAGE_HOME))
     monkeypatch.setattr(streamlit_app, "render_dataset_explorer_page", lambda st, session: calls.append(streamlit_app.PAGE_DATASETS))
     monkeypatch.setattr(streamlit_app, "render_entity_search_page", lambda st, session: calls.append(streamlit_app.PAGE_SEARCH))
-    monkeypatch.setattr(streamlit_app, "render_entity_profile_page", lambda st, session: calls.append(streamlit_app.PAGE_PROFILE))
-    monkeypatch.setattr(streamlit_app, "render_graph_view_page", lambda st, session: calls.append(streamlit_app.PAGE_GRAPH))
-    monkeypatch.setattr(streamlit_app, "render_human_explanation_page", lambda st, session: calls.append(streamlit_app.PAGE_EXPLANATION))
+    monkeypatch.setattr(streamlit_app, "render_investigation_page", lambda st, session: calls.append(streamlit_app.PAGE_INVESTIGATION))
 
     streamlit_app.render_app(fake_st)
 
-    assert calls == [streamlit_app.PAGE_GRAPH]
-    assert fake_st.sidebar.radio_calls == [("Secciones", streamlit_app.PAGE_ORDER, 4, "page")]
-    assert fake_st.session_state["page"] == streamlit_app.PAGE_GRAPH
+    assert calls == [streamlit_app.PAGE_INVESTIGATION]
+    assert fake_st.sidebar.radio_calls == [("Secciones", streamlit_app.PAGE_ORDER, 3, "page")]
+    assert fake_st.session_state["page"] == streamlit_app.PAGE_INVESTIGATION
 
 
 def test_render_home_page_shows_cards_and_questions(monkeypatch) -> None:
@@ -387,6 +422,181 @@ def test_render_home_page_clickable_question_shows_supplier_answer(monkeypatch) 
     assert fake_st.session_state[streamlit_app.HOME_QUESTION_KEY] == streamlit_app.QUESTION_SUPPLIERS
     assert any("Proveedores con contratos" in markdown for markdown, _ in fake_st.markdowns)
     assert any("EMPRESA EJEMPLO SPA: 3 contrato(s)" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_app_shows_demo_banner_when_demo_mode_is_enabled(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+
+    class _SessionContext:
+        def __enter__(self):  # noqa: ANN001
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ANN001
+            _ = (exc_type, exc, tb)
+            return False
+
+    monkeypatch.setattr(streamlit_app, "demo_mode_enabled", lambda: True)
+    monkeypatch.setattr(streamlit_app, "SessionLocal", lambda: _SessionContext())
+    monkeypatch.setattr(streamlit_app, "render_home_page", lambda st, session: None)
+    monkeypatch.setattr(streamlit_app, "render_dataset_explorer_page", lambda st, session: None)
+    monkeypatch.setattr(streamlit_app, "render_entity_search_page", lambda st, session: None)
+    monkeypatch.setattr(streamlit_app, "render_entity_profile_page", lambda st, session: None)
+    monkeypatch.setattr(streamlit_app, "render_graph_view_page", lambda st, session: None)
+    monkeypatch.setattr(streamlit_app, "render_human_explanation_page", lambda st, session: None)
+
+    streamlit_app.render_app(fake_st)
+
+    assert any("Modo demo: contiene datos reales y datos de muestra claramente identificados." in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_home_page_shows_demo_panel_when_demo_mode_is_enabled(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    datasets = (DatasetSummary("chilecompra", "ChileCompra", 10, 20, 30, 40, 50, "active", False),)
+    demo_profile = SimpleNamespace(
+        entity=SimpleNamespace(
+            entity_type="PUBLIC_ORGANIZATION",
+            name="DIVISION LOGISTICA DEL EJERCITO",
+            id="11111111-1111-1111-1111-111111111111",
+        ),
+        claims=(1, 2),
+        relationships=(1,),
+        evidences=(1,),
+    )
+    monkeypatch.setattr(streamlit_app, "demo_mode_enabled", lambda: True)
+    monkeypatch.setattr(streamlit_app, "resolve_demo_entity_profile", lambda session: demo_profile)
+    monkeypatch.setattr(streamlit_app, "list_datasets", lambda session: datasets)
+    monkeypatch.setattr(streamlit_app, "suggested_entity_cards", lambda session: [])
+    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [])
+
+    streamlit_app.render_home_page(fake_st, object())
+
+    assert "Comenzar demo" in fake_st.subheaders
+    assert any("Entidad recomendada" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("DIVISION LOGISTICA DEL EJERCITO" in markdown for markdown, _ in fake_st.markdowns)
+    assert [label for column in fake_st.columns_created[0] for label in (column.button_labels or [])] == [
+        "Ver entidad",
+        "Ver conexiones entre fuentes",
+        "Ver cronología",
+        "Ver evidencia",
+    ]
+
+
+def test_render_investigation_page_renders_single_entity_view(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] = "11111111-1111-1111-1111-111111111111"
+    fake_st.session_state["page"] = streamlit_app.PAGE_INVESTIGATION
+    view = SimpleNamespace(
+        profile=_profile(),
+        entity_type_label="Organismo",
+        summary="Esta vista reúne la información pública guardada para la entidad.",
+        dataset_badges=("ChileCompra", "Lobby", "Transparencia", "DIPRES"),
+        metrics=SimpleNamespace(contracts=2, suppliers=1, lobby_meetings=1, public_roles=1, evidence=4, relationships=5),
+        timeline=_timeline(),
+        graph=SimpleNamespace(
+            entity=SimpleNamespace(entity_type="PUBLIC_ORGANIZATION", name="DIVISION LOGISTICA DEL EJERCITO"),
+            children=(
+                SimpleNamespace(
+                    via_relationship_type="ISSUES_PURCHASE_ORDER",
+                    entity=SimpleNamespace(entity_type="CONTRACT", name="Orden de compra 1"),
+                    children=(),
+                ),
+            ),
+        ),
+        graph_explanation="Este gráfico muestra cómo se conectan las fuentes públicas.",
+        procurement_items=(
+            SimpleNamespace(
+                contract_name="Orden de compra 1",
+                supplier="EMPRESA EJEMPLO SPA",
+                dataset="ChileCompra",
+                evidence_count=1,
+                evidence_links=(SimpleNamespace(title="e1", url="https://example.com/e1", published_at=None),),
+            ),
+        ),
+        lobby_items=(
+            SimpleNamespace(
+                subject="Reunión sobre contratación",
+                organization="SERVICIO DE SALUD ARAUCO",
+                counterparty="EMPRESA EJEMPLO SPA",
+                date=date(2026, 3, 15),
+                dataset="Lobby",
+                evidence_count=1,
+                evidence_links=(SimpleNamespace(title="e2", url="https://example.com/e2", published_at=None),),
+            ),
+        ),
+        role_items=(
+            SimpleNamespace(
+                role_title="Director regional",
+                holder="SERVICIO DE SALUD ARAUCO",
+                period="2024-2025",
+                dataset="Transparencia",
+                evidence_count=1,
+                evidence_links=(SimpleNamespace(title="e3", url="https://example.com/e3", published_at=None),),
+            ),
+        ),
+        evidence_groups=(
+            SimpleNamespace(
+                dataset="ChileCompra",
+                links=(SimpleNamespace(title="e1", url="https://example.com/e1", published_at=None),),
+            ),
+            SimpleNamespace(
+                dataset="Lobby",
+                links=(SimpleNamespace(title="e2", url="https://example.com/e2", published_at=None),),
+            ),
+        ),
+        explanation="Esta página muestra una sola entidad con sus contratos, reuniones, roles, evidencia y cronología.\nNo afirma causalidad, irregularidad ni intención.\nLa evidencia importa porque permite revisar el origen de cada registro.",
+    )
+
+    monkeypatch.setattr(streamlit_app, "render_entity_selector", lambda st, session, key_prefix, label: None)
+    monkeypatch.setattr(streamlit_app, "build_investigation_view", lambda session, entity_id: view)
+
+    streamlit_app.render_investigation_page(fake_st, object())
+
+    assert fake_st.titles == ["Investigación"]
+    assert fake_st.tab_labels == []
+    assert "Métricas clave" in fake_st.subheaders
+    assert "Cronología" in fake_st.subheaders
+    assert "Conexiones" in fake_st.subheaders
+    assert "Contratos y compras" in fake_st.subheaders
+    assert "Lobby" in fake_st.subheaders
+    assert "Transparencia" in fake_st.subheaders
+    assert "Evidencia" in fake_st.subheaders
+    assert "Explicación" in fake_st.subheaders
+    assert any("DIVISION LOGISTICA DEL EJERCITO" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("ChileCompra" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("La evidencia importa" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_investigation_page_shows_empty_states(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] = "11111111-1111-1111-1111-111111111111"
+    fake_st.session_state["page"] = streamlit_app.PAGE_INVESTIGATION
+    view = SimpleNamespace(
+        profile=_profile(),
+        entity_type_label="Organismo",
+        summary="Resumen",
+        dataset_badges=(),
+        metrics=SimpleNamespace(contracts=0, suppliers=0, lobby_meetings=0, public_roles=0, evidence=0, relationships=0),
+        timeline=None,
+        graph=None,
+        graph_explanation="No hay grafo disponible para esta entidad.",
+        procurement_items=(),
+        lobby_items=(),
+        role_items=(),
+        evidence_groups=(),
+        explanation="Texto de explicación.",
+    )
+
+    monkeypatch.setattr(streamlit_app, "render_entity_selector", lambda st, session, key_prefix, label: None)
+    monkeypatch.setattr(streamlit_app, "build_investigation_view", lambda session, entity_id: view)
+
+    streamlit_app.render_investigation_page(fake_st, object())
+
+    assert any("No hay cronología disponible" in info for info in fake_st.infos)
+    assert any("No hay grafo disponible" in info for info in fake_st.infos)
+    assert any("No hay contratos o compras públicas" in info for info in fake_st.infos)
+    assert any("No hay reuniones de lobby" in info for info in fake_st.infos)
+    assert any("No hay roles públicos" in info for info in fake_st.infos)
+    assert any("No hay evidencia enlazada" in info for info in fake_st.infos)
 
 
 def test_render_cross_dataset_home_section_shows_only_available_connections(monkeypatch) -> None:
@@ -457,7 +667,7 @@ def test_render_entity_search_page_profile_button_shows_profile(monkeypatch) -> 
     streamlit_app.render_entity_search_page(fake_st, object())
 
     assert fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] == selected.id
-    assert fake_st.session_state["page"] == streamlit_app.PAGE_PROFILE
+    assert fake_st.session_state["page"] == streamlit_app.PAGE_INVESTIGATION
     assert fake_st.rerun_count == 1
     assert "Perfil seleccionado" not in fake_st.subheaders
     assert not any("Resumen de la entidad" in markdown for markdown, _ in fake_st.markdowns)
@@ -490,11 +700,41 @@ def test_render_entity_profile_page_uses_tabs(monkeypatch) -> None:
     )
     streamlit_app.render_entity_profile_page(fake_st, object())
 
-    assert fake_st.tab_labels == ["Resumen", "Relaciones", "Evidencia", "Explicación"]
+    assert fake_st.tab_labels == ["Resumen", "Cronologia", "Relaciones", "Evidencia", "Explicación"]
     assert any("Resumen de la entidad" in markdown for markdown, _ in fake_st.markdowns)
     assert any("¿Qué significa esto?" in markdown for markdown, _ in fake_st.markdowns)
     assert "entity_profile_query" not in fake_st.text_input_calls
     assert not any("entity-grid" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_entity_profile_page_shows_timeline_tab(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    selected_id = "11111111-1111-1111-1111-111111111111"
+    fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] = selected_id
+    monkeypatch.setattr(streamlit_app, "get_entity_profile", lambda session, entity_id: _profile(entity_id))
+    monkeypatch.setattr(streamlit_app, "build_entity_timeline", lambda session, entity_id: _timeline(entity_id))
+    monkeypatch.setattr(
+        streamlit_app,
+        "explain_entity",
+        lambda session, entity_id: EntityExplanation(
+            entity_id=entity_id,
+            entity_name="SERVICIO DE SALUD ARAUCO",
+            entity_type="PUBLIC_ORGANIZATION",
+            public_contracts=4,
+            suppliers=3,
+            source_names=("ChileCompra",),
+        ),
+    )
+
+    streamlit_app.render_entity_profile_page(fake_st, object())
+
+    assert "Cronologia" in fake_st.tab_labels
+    assert "Construyendo cronologia..." in fake_st.spinners
+    assert "Cronologia" in fake_st.subheaders
+    assert any("timeline-card-grid" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("LOBBY" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Lobby meeting" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Evidencia: 1" in markdown for markdown, _ in fake_st.markdowns)
 
 
 def test_render_entity_profile_page_empty_state_goes_to_search() -> None:
