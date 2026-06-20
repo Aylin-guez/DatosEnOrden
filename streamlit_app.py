@@ -4,11 +4,16 @@ from contextlib import nullcontext
 from dataclasses import asdict, dataclass
 from html import escape
 from pathlib import Path
+import re
 import sys
+import traceback
 from typing import Sequence
+
+from sqlalchemy.engine import make_url
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
+from datosenorden.core.config import get_settings
 from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.dataset_registry import DatasetDetails
 from datosenorden.maintenance.dataset_registry import DatasetSummary
@@ -58,6 +63,7 @@ PAGE_ORDER = (
 )
 
 GLOBAL_SELECTED_ENTITY_KEY = "selected_entity_id"
+GLOBAL_PENDING_PAGE_KEY = "_pending_page"
 ENTITY_SELECTOR_EMPTY_MESSAGE = "Busca una entidad para comenzar."
 HOME_QUESTION_KEY = "home_example_question"
 
@@ -105,6 +111,46 @@ class SearchCard:
     purchase_orders: int
     claims: int
     relationships: int
+
+
+class StreamlitDataLoadError(RuntimeError):
+    def __init__(self, function_name: str, original: Exception) -> None:
+        super().__init__(f"{function_name} failed: {original}")
+        self.function_name = function_name
+        self.original = original
+
+
+def load_streamlit_data(function_name: str, loader):  # noqa: ANN001
+    try:
+        return loader()
+    except StreamlitDataLoadError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise StreamlitDataLoadError(function_name, exc) from exc
+
+
+def sanitized_database_url() -> str:
+    return make_url(get_settings().database_url).render_as_string(hide_password=True)
+
+
+def sanitize_diagnostic_text(text: object) -> str:
+    rendered = str(text)
+    database_url = get_settings().database_url
+    safe_database_url = sanitized_database_url()
+    rendered = rendered.replace(database_url, safe_database_url)
+    password = make_url(database_url).password
+    if password:
+        rendered = rendered.replace(password, "***")
+    return re.sub(r":([^:@/\s]+)@", r":***@", rendered)
+
+
+def render_data_load_error(st, error: StreamlitDataLoadError) -> None:  # noqa: ANN001
+    st.error("The explorer could not load data from PostgreSQL.")
+    st.info(f"DATABASE_URL: {sanitized_database_url()}")
+    st.info(f"Function failed: {error.function_name}")
+    st.info(f"Exception type: {type(error.original).__name__}")
+    st.info("Exception message:")
+    st.code(sanitize_diagnostic_text(error.original), language="text")
 
 
 def build_home_summary(rows: Sequence[DatasetSummary]) -> HomeSummary:
@@ -318,7 +364,7 @@ def render_dataset_selector(
         format_func=_dataset_option_label,
         placeholder="Elige un conjunto de datos",
     )
-    if selected_entity_id is None:
+    if selected is None:
         st.info("Elige un conjunto de datos para ver los detalles.")
         return None
     return selected
@@ -474,10 +520,10 @@ def _render_investigation_links(st, links) -> None:  # noqa: ANN001
 
 
 def render_cross_dataset_home_section(st, session) -> None:  # noqa: ANN001
-    try:
-        rows = list_cross_dataset_organizations(session)
-    except Exception:  # noqa: BLE001
-        return
+    rows = load_streamlit_data(
+        "list_cross_dataset_organizations",
+        lambda: list_cross_dataset_organizations(session),
+    )
     if not rows:
         return
     st.subheader("Conexiones entre fuentes")
@@ -516,10 +562,10 @@ def render_cross_dataset_detail(st, row: CrossDatasetOrganizationSummary) -> Non
 
 
 def render_cross_dataset_profile_block(st, session, profile: EntityProfile) -> None:  # noqa: ANN001
-    try:
-        summary = get_cross_dataset_organization_summary(session, profile.entity.id)
-    except Exception:  # noqa: BLE001
-        return
+    summary = load_streamlit_data(
+        "get_cross_dataset_organization_summary",
+        lambda: get_cross_dataset_organization_summary(session, profile.entity.id),
+    )
     if summary is None:
         return
     _render_detail_card(
@@ -776,7 +822,7 @@ def _render_entity_card_grid(
 
 
 def _navigate_to_page(st, page_name: str) -> None:  # noqa: ANN001
-    st.session_state["page"] = page_name
+    st.session_state[GLOBAL_PENDING_PAGE_KEY] = page_name
     rerun = getattr(st, "rerun", None)
     if callable(rerun):
         rerun()
@@ -808,7 +854,10 @@ def render_demo_banner(st) -> None:  # noqa: ANN001
 
 
 def render_demo_start_panel(st, session) -> None:  # noqa: ANN001
-    demo_profile = resolve_demo_entity_profile(session)
+    demo_profile = load_streamlit_data(
+        "resolve_demo_entity_profile",
+        lambda: resolve_demo_entity_profile(session),
+    )
     st.subheader("Comenzar demo")
     if demo_profile is None:
         st.info("Todavia no encontramos la entidad recomendada para la demo.")
@@ -869,10 +918,12 @@ def render_app(st) -> None:  # noqa: ANN001
     _inject_css(st)
     st.markdown('<div id="top"></div>', unsafe_allow_html=True)
     st.sidebar.title("DatosEnOrden")
-    selected_page = st.session_state.get("page", PAGE_HOME)
+    pending_page = st.session_state.pop(GLOBAL_PENDING_PAGE_KEY, None)
+    if pending_page in PAGE_ORDER:
+        st.session_state["page"] = pending_page
+    selected_page = st.session_state.setdefault("page", PAGE_HOME)
     selected_index = PAGE_ORDER.index(selected_page) if selected_page in PAGE_ORDER else 0
     page = st.sidebar.radio("Secciones", PAGE_ORDER, index=selected_index, key="page")
-    st.session_state["page"] = page
     sidebar_markdown = getattr(st.sidebar, "markdown", None)
     if callable(sidebar_markdown):
         sidebar_markdown(
@@ -882,7 +933,7 @@ def render_app(st) -> None:  # noqa: ANN001
     if demo_mode_enabled():
         render_demo_banner(st)
 
-    with SessionLocal() as session:
+    with load_streamlit_data("SessionLocal", SessionLocal) as session:
         if page == PAGE_HOME:
             render_home_page(st, session)
         elif page == PAGE_DATASETS:
@@ -894,7 +945,7 @@ def render_app(st) -> None:  # noqa: ANN001
 
 
 def render_home_page(st, session) -> None:  # noqa: ANN001
-    rows = list_datasets(session)
+    rows = load_streamlit_data("list_datasets", lambda: list_datasets(session))
     summary = build_home_summary(rows)
     active_rows = [row for row in rows if row.health == "active" and not row.planned]
     planned_rows = [row for row in rows if row.planned]
@@ -960,7 +1011,7 @@ def render_home_page(st, session) -> None:  # noqa: ANN001
     _render_roadmap(st)
 
 def render_dataset_explorer_page(st, session) -> None:  # noqa: ANN001
-    rows = list_datasets(session)
+    rows = load_streamlit_data("list_datasets", lambda: list_datasets(session))
     st.title("Conjuntos de datos")
     if not rows:
         st.info("Todavía no hay conjuntos de datos registrados.")
@@ -971,7 +1022,10 @@ def render_dataset_explorer_page(st, session) -> None:  # noqa: ANN001
         return
 
     with _spinner(st, "Cargando detalles del conjunto de datos..."):
-        details = get_dataset_details(session, selected.slug)
+        details = load_streamlit_data(
+            "get_dataset_details",
+            lambda: get_dataset_details(session, selected.slug),
+        )
     if details is None:
         st.warning("Conjunto de datos no encontrado.")
         return
@@ -1136,10 +1190,10 @@ def render_graph_view_page(st, session) -> None:  # noqa: ANN001
 
     with _spinner(st, "Preparando explicación del grafo..."):
         explanation = explain_graph(graph)
-    try:
-        cross_dataset_summary = get_cross_dataset_organization_summary(session, selected_entity_id)
-    except Exception:  # noqa: BLE001
-        cross_dataset_summary = None
+    cross_dataset_summary = load_streamlit_data(
+        "get_cross_dataset_organization_summary",
+        lambda: get_cross_dataset_organization_summary(session, selected_entity_id),
+    )
     dataset_badges = cross_dataset_summary.datasets if cross_dataset_summary is not None else ()
     _render_summary_text_block(st, render_graph_explanation_text(explanation), title="Explicación del grafo")
     render_visual_graph(st, graph, dataset_badges=dataset_badges)
@@ -1200,12 +1254,15 @@ def render_human_explanation_page(st, session) -> None:  # noqa: ANN001
     mode = st.selectbox("Qué quieres explicar", ["Conjunto de datos", "Entidad"])
 
     if mode == "Conjunto de datos":
-        rows = list_datasets(session)
+        rows = load_streamlit_data("list_datasets", lambda: list_datasets(session))
         selected = render_dataset_selector(st, session, rows, key_prefix="human_dataset", label="Elige un conjunto de datos")
         if selected is None:
             return
         with _spinner(st, "Cargando detalles del conjunto de datos..."):
-            details = get_dataset_details(session, selected.slug)
+            details = load_streamlit_data(
+                "get_dataset_details",
+                lambda: get_dataset_details(session, selected.slug),
+            )
         if details is None:
             st.warning("Conjunto de datos no encontrado.")
             return
@@ -1414,7 +1471,7 @@ def _evidence_answer_lines(session) -> list[str]:  # noqa: ANN001
         return lines
     return [
         f"{row.name}: {row.evidence} evidencia(s), {row.claims} afirmaciÃ³n(es), {row.relationships} relaciÃ³n(es)"
-        for row in list_datasets(session)
+        for row in load_streamlit_data("list_datasets", lambda: list_datasets(session))
         if row.evidence or row.claims or row.relationships
     ][:5]
 
@@ -2234,9 +2291,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         render_app(st)
-    except Exception:  # noqa: BLE001
-        st.error("The explorer could not load data from PostgreSQL.")
-        st.info("Check DATABASE_URL and confirm PostgreSQL is reachable.")
+    except StreamlitDataLoadError as exc:
+        traceback.print_exception(type(exc.original), exc.original, exc.original.__traceback__)
+        render_data_load_error(st, exc)
         return 1
     return 0
 

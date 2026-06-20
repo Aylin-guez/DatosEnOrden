@@ -6,6 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 import sys
 
+import pytest
+
 from datosenorden.maintenance.dataset_registry import DatasetCountRow
 from datosenorden.maintenance.dataset_registry import DatasetDetails
 from datosenorden.maintenance.dataset_registry import DatasetSummary
@@ -59,7 +61,8 @@ class _FakeTab:
 
 
 class _FakeSidebar:
-    def __init__(self):
+    def __init__(self, session_state):
+        self.session_state = session_state
         self.radio_value = streamlit_app.PAGE_HOME
         self.markdowns: list[tuple[str, bool]] = []
         self.radio_calls: list[tuple[str, tuple[str, ...], int, str | None]] = []
@@ -69,6 +72,8 @@ class _FakeSidebar:
 
     def radio(self, label, options, index=0, key=None):  # noqa: ANN001
         self.radio_calls.append((label, tuple(options), index, key))
+        if key is not None:
+            self.session_state[key] = self.radio_value
         return self.radio_value
 
     def markdown(self, text, unsafe_allow_html=False):  # noqa: ANN001
@@ -77,8 +82,8 @@ class _FakeSidebar:
 
 class _FakeStreamlit:
     def __init__(self):
-        self.sidebar = _FakeSidebar()
         self.session_state = {}
+        self.sidebar = _FakeSidebar(self.session_state)
         self.tables: list[object] = []
         self.codes: list[tuple[str, str | None]] = []
         self.titles: list[str] = []
@@ -216,6 +221,12 @@ def _timeline(entity_id: str = "11111111-1111-1111-1111-111111111111"):
     )
 
 
+@pytest.fixture(autouse=True)
+def _stub_optional_cross_dataset_loads(monkeypatch):
+    monkeypatch.setattr(streamlit_app, "list_cross_dataset_organizations", lambda session: ())
+    monkeypatch.setattr(streamlit_app, "get_cross_dataset_organization_summary", lambda session, entity_id: None)
+
+
 def _cross_dataset_summary() -> CrossDatasetOrganizationSummary:
     return CrossDatasetOrganizationSummary(
         organization_id="11111111-1111-1111-1111-111111111111",
@@ -322,6 +333,42 @@ def test_search_cards_normalizes_results() -> None:
             relationships=8,
         )
     ]
+
+
+def test_render_data_load_error_shows_sanitized_diagnostics(monkeypatch) -> None:
+    database_url = "postgresql+psycopg://diag_user:secret_pass@localhost:5432/diag_db"
+    monkeypatch.setattr(streamlit_app, "get_settings", lambda: SimpleNamespace(database_url=database_url))
+    fake_st = _FakeStreamlit()
+    original = RuntimeError(f"could not connect to {database_url}")
+    error = streamlit_app.StreamlitDataLoadError("list_datasets", original)
+
+    streamlit_app.render_data_load_error(fake_st, error)
+
+    joined_infos = "\n".join(fake_st.infos)
+    joined_codes = "\n".join(text for text, _ in fake_st.codes)
+    rendered = f"{joined_infos}\n{joined_codes}"
+    assert fake_st.errors == ["The explorer could not load data from PostgreSQL."]
+    assert "DATABASE_URL: postgresql+psycopg://diag_user:***@localhost:5432/diag_db" in joined_infos
+    assert "Function failed: list_datasets" in joined_infos
+    assert "Exception type: RuntimeError" in joined_infos
+    assert "Exception message:" in joined_infos
+    assert "could not connect to postgresql+psycopg://diag_user:***@localhost:5432/diag_db" in joined_codes
+    assert "secret_pass" not in rendered
+    assert database_url not in rendered
+
+
+def test_load_streamlit_data_wraps_failures_with_function_name() -> None:
+    original = ValueError("bad database state")
+
+    try:
+        streamlit_app.load_streamlit_data("list_datasets", lambda: (_ for _ in ()).throw(original))
+    except streamlit_app.StreamlitDataLoadError as exc:
+        error = exc
+    else:  # pragma: no cover - defensive
+        raise AssertionError("Expected StreamlitDataLoadError")
+
+    assert error.function_name == "list_datasets"
+    assert error.original is original
 
 
 def test_render_app_uses_sidebar_only_navigation(monkeypatch) -> None:
@@ -667,7 +714,7 @@ def test_render_entity_search_page_profile_button_shows_profile(monkeypatch) -> 
     streamlit_app.render_entity_search_page(fake_st, object())
 
     assert fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] == selected.id
-    assert fake_st.session_state["page"] == streamlit_app.PAGE_INVESTIGATION
+    assert fake_st.session_state[streamlit_app.GLOBAL_PENDING_PAGE_KEY] == streamlit_app.PAGE_INVESTIGATION
     assert fake_st.rerun_count == 1
     assert "Perfil seleccionado" not in fake_st.subheaders
     assert not any("Resumen de la entidad" in markdown for markdown, _ in fake_st.markdowns)
@@ -744,7 +791,7 @@ def test_render_entity_profile_page_empty_state_goes_to_search() -> None:
     streamlit_app.render_entity_profile_page(fake_st, object())
 
     assert fake_st.infos == ["Selecciona una entidad desde la pestaña Buscar."]
-    assert fake_st.session_state["page"] == streamlit_app.PAGE_SEARCH
+    assert fake_st.session_state[streamlit_app.GLOBAL_PENDING_PAGE_KEY] == streamlit_app.PAGE_SEARCH
     assert fake_st.rerun_count == 1
     assert fake_st.text_input_calls == []
 
@@ -810,7 +857,7 @@ def test_render_graph_view_page_empty_state_goes_to_search() -> None:
         "Este gráfico muestra cómo se conectan las fuentes públicas.",
         "Selecciona una entidad desde Buscar para ver su grafo.",
     ]
-    assert fake_st.session_state["page"] == streamlit_app.PAGE_SEARCH
+    assert fake_st.session_state[streamlit_app.GLOBAL_PENDING_PAGE_KEY] == streamlit_app.PAGE_SEARCH
     assert fake_st.rerun_count == 1
     assert fake_st.text_input_calls == []
 
@@ -847,7 +894,7 @@ def test_render_human_explanation_page_entity_empty_state_goes_to_search() -> No
     streamlit_app.render_human_explanation_page(fake_st, object())
 
     assert fake_st.infos == ["Selecciona una entidad desde Buscar para ver su explicación."]
-    assert fake_st.session_state["page"] == streamlit_app.PAGE_SEARCH
+    assert fake_st.session_state[streamlit_app.GLOBAL_PENDING_PAGE_KEY] == streamlit_app.PAGE_SEARCH
     assert fake_st.rerun_count == 1
     assert fake_st.text_input_calls == []
 
