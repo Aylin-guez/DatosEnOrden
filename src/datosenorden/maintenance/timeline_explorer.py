@@ -458,3 +458,23 @@ def _summarize_entity(entity: Entity) -> EntitySummary:
         name=entity.name,
         external_id=entity.external_id,
     )
+
+
+DATASET_LABELS["servel-authorities-sample"] = "SERVEL"
+EVENT_LABELS.update(
+    {
+        "AUTHORITY_ELECTED_TO_OFFICE": "Se registro una autoridad asociada a un cargo electo.",
+        "AUTHORITY_REPRESENTS_TERRITORY": "Se registro una autoridad asociada a un territorio de representacion.",
+        "OFFICE_BELONGS_TO_MUNICIPALITY": "Se registro un cargo vinculado a un municipio.",
+        "AUTHORITY_HAS_ELECTORAL_PERIOD": "Se registro una autoridad asociada a un periodo electoral.",
+    }
+)
+
+_ORIGINAL_EVENT_EXPLANATION = _event_explanation
+
+
+def _event_explanation(predicate: str, dataset: str) -> str:  # type: ignore[override]
+    if dataset == "SERVEL":
+        intro = "Fuente de autoridades electas."
+        return f"{intro} {event_explanation(predicate)}"
+    return _ORIGINAL_EVENT_EXPLANATION(predicate, dataset)

@@ -80,6 +80,7 @@ def test_dataset_catalog_discovers_local_plugins() -> None:
     assert "contraloria" in slugs
     assert "municipalidades" in slugs
     assert "lobby" in slugs
+    assert "servel" in slugs
 
 
 def test_contraloria_sample_payload_contains_required_markers() -> None:
@@ -306,8 +307,10 @@ def test_municipalidades_summary_renders_neutral_text(monkeypatch) -> None:
 def test_cross_dataset_and_timeline_helpers_include_new_local_datasets() -> None:
     assert cross_dataset_explorer._dataset_group("contraloria-control-report-sample") == "contraloria"
     assert cross_dataset_explorer._dataset_group("municipalidades-project-sample") == "municipalidades"
+    assert cross_dataset_explorer._dataset_group("servel-authorities-sample") == "servel"
     assert timeline_explorer._dataset_badge("contraloria-control-report-sample") == "CONTRALORIA"
     assert timeline_explorer._dataset_badge("municipalidades-project-sample") == "MUNICIPALIDADES"
+    assert timeline_explorer._dataset_badge("servel-authorities-sample") == "SERVEL"
 
 
 def test_investigation_helpers_label_new_datasets_without_special_case() -> None:
@@ -320,20 +323,28 @@ def test_investigation_helpers_label_new_datasets_without_special_case() -> None
             source_record=SimpleNamespace(dataset=SimpleNamespace(name="municipalidades-project-sample")),
             predicate=MUNICIPALITY_EXECUTES_PROJECT_PREDICATE,
         ),
+        SimpleNamespace(
+            source_record=SimpleNamespace(dataset=SimpleNamespace(name="servel-authorities-sample")),
+            predicate="AUTHORITY_ELECTED_TO_OFFICE",
+        ),
     )
     badges = investigation_view._dataset_badges_for_claims(claims)  # noqa: SLF001
 
-    assert badges == ("Contraloria", "Municipalidades")
+    assert badges == ("Contraloria", "Municipalidades", "SERVEL")
     assert graph_explanation_for_chain(("PUBLIC_ORGANIZATION", "CONTROL_REPORT", "PUBLIC_OBSERVATION")).startswith(
         "El organismo aparece vinculado a un informe de control"
     )
+    assert graph_explanation_for_chain(("PERSON", "ROLE", "MUNICIPALITY")).startswith("SERVEL muestra")
 
 
 def test_relationship_explanations_are_neutral() -> None:
     report = relationship_explanation("CONTROL_REPORT_HAS_OBSERVATION")
+    servel_report = relationship_explanation("AUTHORITY_HAS_ELECTORAL_PERIOD")
     assert "observaciones registradas" in report
+    assert "autoridad" in relationship_explanation("AUTHORITY_HAS_ELECTORAL_PERIOD").lower()
     forbidden_terms = ("suspicious", "irregular", "conflict", "influence", "corruption", "risk")
     assert not any(term in report.lower() for term in forbidden_terms)
+    assert not any(term in servel_report.lower() for term in forbidden_terms)
 
 
 class _IdempotencyStore:

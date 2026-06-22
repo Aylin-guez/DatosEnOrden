@@ -463,3 +463,52 @@ def _graph_chain(root: EntityGraphNodeSummary) -> tuple[str, ...]:
 
 def _format_date(value: date | None) -> str:
     return value.isoformat() if value is not None else "Sin fecha"
+
+
+SERVEL_PREDICATES = {"AUTHORITY_ELECTED_TO_OFFICE"}
+ROLE_PREDICATES = TRANSPARENCIA_PREDICATES | SERVEL_PREDICATES
+
+_ORIGINAL_SUMMARY_TEXT = _summary_text
+_ORIGINAL_ROLE_ITEMS = _role_items
+_ORIGINAL_ROLE_PERIOD_FROM_OBJECT_VALUE = _role_period_from_object_value
+
+
+def _summary_text(entity_name: str, dataset_badges: tuple[str, ...]) -> str:  # type: ignore[override]
+    if any(dataset.upper() == "SERVEL" for dataset in dataset_badges):
+        return (
+            f"Esta vista reune la informacion publica guardada para {entity_name} en {', '.join(dataset_badges)}. "
+            "No interpreta causalidad ni intencion."
+        )
+    return _ORIGINAL_SUMMARY_TEXT(entity_name, dataset_badges)
+
+
+def _role_period_from_object_value(claim: Claim) -> str:  # type: ignore[override]
+    return _object_value_text(
+        claim,
+        "period_label",
+        default=_ORIGINAL_ROLE_PERIOD_FROM_OBJECT_VALUE(claim),
+    )
+
+
+def _role_items(
+    claims: tuple[Claim, ...],
+    evidence_by_claim: dict[str, tuple[InvestigationEvidenceLink, ...]],
+) -> tuple[InvestigationRoleItem, ...]:  # type: ignore[override]
+    items: list[InvestigationRoleItem] = []
+    for claim in claims:
+        if claim.predicate not in ROLE_PREDICATES:
+            continue
+        dataset = _dataset_group(str(claim.source_record.dataset.name))
+        if dataset is None:
+            continue
+        items.append(
+            InvestigationRoleItem(
+                dataset=dataset_display_name(dataset),
+                holder=claim.subject_entity.name,
+                role_title=_role_title_from_object_entity(claim),
+                period=_role_period_from_object_value(claim),
+                evidence_count=len(evidence_by_claim.get(str(claim.id), ())),
+                evidence_links=evidence_by_claim.get(str(claim.id), ()),
+            )
+        )
+    return tuple(items)

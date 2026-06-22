@@ -55,6 +55,7 @@ def test_build_entity_comparison_reports_multiple_sources(monkeypatch) -> None:
         "Transparencia Activa",
         "Contraloria",
         "Municipalidades",
+        "SERVEL",
     }
     assert report["dataset_facts"][0]["dataset"] in report["datasets_present"]
     assert any(
@@ -63,7 +64,13 @@ def test_build_entity_comparison_reports_multiple_sources(monkeypatch) -> None:
     )
     assert "Contraloria records contain observations related to the organization." in report["consistency_observations"]
     assert "Municipal records reference the organization." in report["consistency_observations"]
-    assert "5 public sources" in report["coverage_summary"]
+    assert "6 public sources" in report["coverage_summary"]
+    assert any(fact["dataset"] == "SERVEL" for fact in report["dataset_facts"])
+    assert any(
+        "elected authorities" in sentence.lower()
+        for fact in report["dataset_facts"]
+        for sentence in fact["facts"]
+    )
     _assert_neutral(report)
 
 
@@ -167,6 +174,7 @@ def _multiple_sources_fixture() -> _ComparisonFixture:
             (_claim("33333333-3333-3333-3333-333333333333", source_record_id, "ORGANIZATION_HAS_PUBLIC_ROLE"), "transparencia-activa-sample"),
             (_claim("44444444-4444-4444-4444-444444444444", source_record_id, "ORGANIZATION_HAS_CONTROL_REPORT"), "contraloria-control-report-sample"),
             (_claim("55555555-5555-5555-5555-555555555555", source_record_id, "MUNICIPALITY_EXECUTES_PROJECT"), "municipalidades-project-sample"),
+            (_claim("66666666-6666-6666-6666-666666666666", source_record_id, "AUTHORITY_ELECTED_TO_OFFICE"), "servel-authorities-sample"),
         ),
         relationship_rows=(
             (_relationship("61111111-1111-1111-1111-111111111111", "ISSUES_PURCHASE_ORDER"), "chilecompra-ordenes-compra"),
@@ -174,6 +182,7 @@ def _multiple_sources_fixture() -> _ComparisonFixture:
             (_relationship("63333333-3333-3333-3333-333333333333", "ORGANIZATION_HAS_PUBLIC_ROLE"), "transparencia-activa-sample"),
             (_relationship("64444444-4444-4444-4444-444444444444", "ORGANIZATION_HAS_CONTROL_REPORT"), "contraloria-control-report-sample"),
             (_relationship("65555555-5555-5555-5555-555555555555", "MUNICIPALITY_EXECUTES_PROJECT"), "municipalidades-project-sample"),
+            (_relationship("66666666-6666-6666-6666-666666666667", "AUTHORITY_ELECTED_TO_OFFICE"), "servel-authorities-sample"),
         ),
         evidence_rows=(
             (_evidence("71111111-1111-1111-1111-111111111111"), "chilecompra-ordenes-compra"),
@@ -181,6 +190,7 @@ def _multiple_sources_fixture() -> _ComparisonFixture:
             (_evidence("73333333-3333-3333-3333-333333333333"), "transparencia-activa-sample"),
             (_evidence("74444444-4444-4444-4444-444444444444"), "contraloria-control-report-sample"),
             (_evidence("75555555-5555-5555-5555-555555555555"), "municipalidades-project-sample"),
+            (_evidence("76666666-6666-6666-6666-666666666666"), "servel-authorities-sample"),
         ),
     )
 

@@ -131,6 +131,12 @@ def test_cross_dataset_summary_can_include_transparencia(monkeypatch) -> None:
     assert "* Transparencia Activa" in report
 
 
+def test_cross_dataset_group_recognizes_servel_sample() -> None:
+    assert cross_dataset_explorer._dataset_group("servel-authorities-sample") == "servel"
+    report = citizen_friendly_explanation()
+    assert "elected authority records" in report
+
+
 def test_render_cross_dataset_connections_text_is_neutral() -> None:
     report = render_cross_dataset_connections_text(_summary())
 

@@ -363,3 +363,41 @@ def _count_phrase(count: int, noun: str) -> str:
     if count == 1:
         return f"1 {noun}"
     return f"{count} {noun}s"
+
+
+SERVEL_MARKERS = (
+    "AUTHORITY_ELECTED_TO_OFFICE",
+    "AUTHORITY_REPRESENTS_TERRITORY",
+    "OFFICE_BELONGS_TO_MUNICIPALITY",
+    "AUTHORITY_HAS_ELECTORAL_PERIOD",
+)
+
+_ORIGINAL_BUCKET_CATEGORIES = _bucket_categories
+_ORIGINAL_ACTIVITY_SENTENCES = _activity_sentences
+_ORIGINAL_CONSISTENCY_OBSERVATIONS = _consistency_observations
+
+
+def _bucket_categories(bucket: _DatasetBucket) -> set[str]:  # type: ignore[override]
+    categories = _ORIGINAL_BUCKET_CATEGORIES(bucket)
+    names = tuple(bucket.predicate_counts.keys()) + tuple(bucket.relationship_type_counts.keys())
+    for name in names:
+        upper = name.upper()
+        if any(marker in upper for marker in SERVEL_MARKERS):
+            categories.add("servel")
+            break
+    return categories
+
+
+def _activity_sentences(bucket: _DatasetBucket) -> list[str]:  # type: ignore[override]
+    categories = _bucket_categories(bucket)
+    if "servel" in categories:
+        return ["Records describe elected authorities, public offices, territories, and electoral periods."]
+    return _ORIGINAL_ACTIVITY_SENTENCES(bucket)
+
+
+def _consistency_observations(datasets_present: list[str], buckets: tuple[_DatasetBucket, ...]) -> list[str]:  # type: ignore[override]
+    observations = _ORIGINAL_CONSISTENCY_OBSERVATIONS(datasets_present, buckets)
+    categories = set().union(*(_bucket_categories(bucket) for bucket in buckets)) if buckets else set()
+    if "servel" in categories and "SERVEL records describe elected authority information." not in observations:
+        observations.append("SERVEL records describe elected authority information.")
+    return observations

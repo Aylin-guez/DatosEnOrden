@@ -9,6 +9,10 @@ RELATIONSHIP_EXPLANATIONS = {
     "ORGANIZATION_HAS_PUBLIC_ROLE": "El organismo aparece asociado a un cargo publico.",
     "PERSON_HOLDS_PUBLIC_ROLE": "La persona aparece asociada a un cargo publico.",
     "ROLE_BELONGS_TO_ORGANIZATION": "El cargo publico pertenece a un organismo.",
+    "AUTHORITY_ELECTED_TO_OFFICE": "La autoridad aparece asociada a un cargo electo o de representacion.",
+    "AUTHORITY_REPRESENTS_TERRITORY": "La autoridad aparece asociada a un territorio de representacion.",
+    "OFFICE_BELONGS_TO_MUNICIPALITY": "El cargo o puesto pertenece a un municipio.",
+    "AUTHORITY_HAS_ELECTORAL_PERIOD": "La autoridad aparece asociada a un periodo electoral.",
     "BUDGET_ALLOCATED_TO": "El presupuesto aparece asignado a un organismo.",
     "AWARDS_CONTRACT": "El organismo adjudica un contrato.",
     "COUNTERPARTY_PARTICIPATED_IN_LOBBY": "La contraparte aparece asociada a una reunion de lobby.",
@@ -34,6 +38,10 @@ EVENT_EXPLANATIONS = {
     "ORGANIZATION_HAS_PUBLIC_ROLE": "Se registro un cargo publico asociado.",
     "PERSON_HOLDS_PUBLIC_ROLE": "Se registro una persona asociada a un cargo publico.",
     "ROLE_BELONGS_TO_ORGANIZATION": "Se registro un cargo vinculado a un organismo.",
+    "AUTHORITY_ELECTED_TO_OFFICE": "Se registro una autoridad vinculada a un cargo electo.",
+    "AUTHORITY_REPRESENTS_TERRITORY": "Se registro una autoridad vinculada a un territorio de representacion.",
+    "OFFICE_BELONGS_TO_MUNICIPALITY": "Se registro un cargo vinculado a un municipio.",
+    "AUTHORITY_HAS_ELECTORAL_PERIOD": "Se registro un periodo electoral asociado a la autoridad.",
     "ORGANIZATION_HAS_CONTROL_REPORT": "Se registro un informe de control asociado.",
     "CONTROL_REPORT_HAS_OBSERVATION": "Se registro una observacion asociada al informe.",
     "MUNICIPALITY_EXECUTES_PROJECT": "Se registro la ejecucion de un proyecto.",
@@ -67,6 +75,8 @@ def event_explanation(predicate: str) -> str:
 
 
 def graph_explanation_for_chain(chain: tuple[str, ...]) -> str:
+    if "ELECTORAL_PERIOD" in chain or chain[:3] == ("PERSON", "ROLE", "MUNICIPALITY"):
+        return "SERVEL muestra autoridades electas, cargos publicos, territorios y periodos electorales de muestra. Este prototipo usa datos de muestra, no datos oficiales. No implica irregularidad."
     if chain[:3] == ("PUBLIC_ORGANIZATION", "ROLE", "PERSON"):
         return "Transparencia Activa muestra informacion administrativa publicada por organismos. Este prototipo usa datos de muestra, no datos oficiales. No implica irregularidad; solo representa informacion publica o de muestra."
     if chain[:5] == ("BUDGET", "PUBLIC_ORGANIZATION", "CONTRACT", "COMPANY", "LOBBY_MEETING"):

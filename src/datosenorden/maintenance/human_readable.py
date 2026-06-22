@@ -68,6 +68,7 @@ class DatasetExplanation:
     contracts: int
     organizations: int
     suppliers: int
+    periods: int = 0
 
 
 @dataclass(frozen=True)
@@ -395,3 +396,134 @@ def _dataset_display_name(dataset_name: str) -> str:
     from datosenorden.maintenance.explanations import dataset_display_name
 
     return dataset_display_name(dataset_name)
+
+
+_ORIGINAL_ENTITY_TYPE_LABEL = entity_type_label
+_ORIGINAL_ENTITY_TYPE_DISPLAY_LABEL = entity_type_display_label
+_ORIGINAL_EXPLAIN_DATASET = explain_dataset
+_ORIGINAL_RENDER_DATASET_EXPLANATION_TEXT = render_dataset_explanation_text
+_ORIGINAL_RENDER_DATASET_EXPLANATION_HTML = render_dataset_explanation_html
+_ORIGINAL_DATASET_SUMMARY_TEXT = _dataset_summary_text
+_ORIGINAL_GRAPH_MEANING_FOR_CHAIN = _graph_meaning_for_chain
+
+
+def entity_type_label(entity_type: str) -> str:  # type: ignore[override]
+    if entity_type == "ELECTORAL_PERIOD":
+        return "periodo electoral"
+    return _ORIGINAL_ENTITY_TYPE_LABEL(entity_type)
+
+
+def entity_type_display_label(entity_type: str) -> str:  # type: ignore[override]
+    if entity_type == "ELECTORAL_PERIOD":
+        return "Periodo electoral"
+    return _ORIGINAL_ENTITY_TYPE_DISPLAY_LABEL(entity_type)
+
+
+def explain_dataset(details: Any) -> DatasetExplanation:  # type: ignore[override]
+    if getattr(details, "name", "") != "SERVEL":
+        return _ORIGINAL_EXPLAIN_DATASET(details)
+
+    authorities = _count_dataset_type(details, "PERSON")
+    offices = _count_dataset_type(details, "ROLE")
+    territories = _count_dataset_type(details, "MUNICIPALITY")
+    periods = _count_dataset_type(details, "ELECTORAL_PERIOD")
+    return DatasetExplanation(
+        name=details.name,
+        summary=_dataset_summary_text(details.name),
+        contracts=authorities,
+        organizations=offices,
+        suppliers=territories,
+        periods=periods,
+    )
+
+
+def render_dataset_explanation_text(explanation: DatasetExplanation) -> str:  # type: ignore[override]
+    if explanation.name != "SERVEL":
+        return _ORIGINAL_RENDER_DATASET_EXPLANATION_TEXT(explanation)
+
+    lines = [
+        explanation.summary,
+        "Este conjunto de datos incluye:",
+        f"* {explanation.contracts} autoridades electas",
+        f"* {explanation.organizations} cargos publicos",
+        f"* {explanation.suppliers} territorios",
+        f"* {explanation.periods} periodos electorales",
+        "",
+        "Â¿QuÃ© significa esto?",
+        f"{human_label('source_record')}: registro original cargado en PostgreSQL.",
+        f"{human_label('claim')}: dato derivado desde una fuente.",
+        f"{human_label('relationship_public')}: conexiÃ³n entre entidades guardadas.",
+        f"{human_label('entity')}: autoridad, cargo, territorio o periodo electoral.",
+    ]
+    return "\n".join(lines)
+
+
+def render_dataset_explanation_html(explanation: DatasetExplanation) -> str:  # type: ignore[override]
+    if explanation.name != "SERVEL":
+        return _ORIGINAL_RENDER_DATASET_EXPLANATION_HTML(explanation)
+
+    return (
+        '<section class="wide explain">'
+        "<h2>Â¿QuÃ© significa esto?</h2>"
+        f"<p>{escape(explanation.summary)}</p>"
+        "<p>Este conjunto de datos incluye:</p>"
+        "<ul>"
+        f"<li>{explanation.contracts} autoridades electas</li>"
+        f"<li>{explanation.organizations} cargos publicos</li>"
+        f"<li>{explanation.suppliers} territorios</li>"
+        f"<li>{explanation.periods} periodos electorales</li>"
+        "</ul>"
+        "</section>"
+    )
+
+
+def _graph_meaning_for_chain(chain: tuple[str, ...]) -> str:  # type: ignore[override]
+    if "ELECTORAL_PERIOD" in chain or chain[:3] == ("PERSON", "ROLE", "MUNICIPALITY"):
+        return "SERVEL muestra autoridades electas, cargos publicos, territorios y periodos electorales de muestra. Este prototipo usa datos de muestra, no datos oficiales. No implica irregularidad."
+    return _ORIGINAL_GRAPH_MEANING_FOR_CHAIN(chain)
+
+
+def _dataset_summary_text(dataset_name: str) -> str:  # type: ignore[override]
+    if dataset_name == "SERVEL":
+        return "SERVEL muestra autoridades electas, cargos publicos, territorios y periodos electorales de muestra. Este prototipo usa datos de muestra, no datos oficiales. No implica irregularidad; solo representa informacion publica o de muestra."
+    return _ORIGINAL_DATASET_SUMMARY_TEXT(dataset_name)
+
+
+def render_dataset_explanation_text(explanation: DatasetExplanation) -> str:  # type: ignore[override]
+    if explanation.name != "SERVEL":
+        return _ORIGINAL_RENDER_DATASET_EXPLANATION_TEXT(explanation)
+
+    lines = [
+        explanation.summary,
+        "Este conjunto de datos incluye:",
+        f"* {explanation.contracts} autoridades electas",
+        f"* {explanation.organizations} cargos publicos",
+        f"* {explanation.suppliers} territorios",
+        f"* {explanation.periods} periodos electorales",
+        "",
+        "Que significa esto?",
+        f"{human_label('source_record')}: registro original cargado en PostgreSQL.",
+        f"{human_label('claim')}: dato derivado desde una fuente.",
+        f"{human_label('relationship_public')}: conexion entre entidades guardadas.",
+        f"{human_label('entity')}: autoridad, cargo, territorio o periodo electoral.",
+    ]
+    return "\n".join(lines)
+
+
+def render_dataset_explanation_html(explanation: DatasetExplanation) -> str:  # type: ignore[override]
+    if explanation.name != "SERVEL":
+        return _ORIGINAL_RENDER_DATASET_EXPLANATION_HTML(explanation)
+
+    return (
+        '<section class="wide explain">'
+        "<h2>Que significa esto?</h2>"
+        f"<p>{escape(explanation.summary)}</p>"
+        "<p>Este conjunto de datos incluye:</p>"
+        "<ul>"
+        f"<li>{explanation.contracts} autoridades electas</li>"
+        f"<li>{explanation.organizations} cargos publicos</li>"
+        f"<li>{explanation.suppliers} territorios</li>"
+        f"<li>{explanation.periods} periodos electorales</li>"
+        "</ul>"
+        "</section>"
+    )

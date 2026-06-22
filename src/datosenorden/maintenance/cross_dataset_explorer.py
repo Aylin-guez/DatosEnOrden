@@ -487,3 +487,47 @@ def _dataset_catalog():
     from datosenorden.datasets import dataset_catalog
 
     return dataset_catalog()
+
+
+_ORIGINAL_CITIZEN_FRIENDLY_EXPLANATION = citizen_friendly_explanation
+_ORIGINAL_DATASET_GROUP = _dataset_group
+
+
+def citizen_friendly_explanation() -> str:  # type: ignore[override]
+    return "\n".join(
+        [
+            "This organization appears in more than one public dataset.",
+            "",
+            "The available records show:",
+            "* procurement activity in ChileCompra",
+            "* registered lobby meetings",
+            "* administrative role records in Transparencia Activa when sample data is loaded",
+            "* elected authority records and electoral periods in SERVEL when sample data is loaded",
+            "* additional local prototype datasets when they are loaded",
+            "* public relationships and supporting evidence",
+            "",
+            "The platform only presents stored records and does not imply any relationship beyond the available public information.",
+        ]
+    )
+
+
+def _dataset_group(dataset_name: str) -> str | None:  # type: ignore[override]
+    cleaned = dataset_name.strip()
+    if not cleaned:
+        return None
+    if dataset_group := _dataset_group_from_registry(cleaned):
+        return dataset_group
+    normalized = cleaned.lower()
+    if normalized.startswith("chilecompra"):
+        return "chilecompra"
+    if "lobby" in normalized:
+        return "lobby"
+    if "transparencia" in normalized:
+        return "transparencia"
+    if "contraloria" in normalized:
+        return "contraloria"
+    if "municipal" in normalized:
+        return "municipalidades"
+    if "servel" in normalized:
+        return "servel"
+    return None

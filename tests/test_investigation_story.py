@@ -36,6 +36,7 @@ def test_build_investigation_story_generates_neutral_multi_source_story(monkeypa
         "ChileCompra",
         "Lobby",
         "Transparencia Activa",
+        "SERVEL",
         "Contraloria",
         "Municipalidades",
     ]
@@ -44,6 +45,7 @@ def test_build_investigation_story_generates_neutral_multi_source_story(monkeypa
     assert any("procurement records" in item.lower() for item in story["key_findings"])
     assert any("public meetings" in item.lower() for item in story["important_connections"])
     assert any("compare information across datasets" in item.lower() for item in story["questions_for_citizens"])
+    assert any("elected authority records" in item.lower() for item in story["questions_for_citizens"])
     _assert_neutral(story)
 
 
@@ -135,6 +137,7 @@ def _multi_source_fixture() -> _StoryFixture:
             _event("2024-01-01", "ChileCompra", "Procurement activity appears in public records."),
             _event("2024-03-01", "Lobby", "Public meetings are recorded."),
             _event("2024-04-01", "Transparencia", "Public transparency records reference the organization."),
+            _event("2024-05-01", "SERVEL", "Elected authority records reference the organization."),
             _event("2024-05-01", "Contraloria", "Control records contain observations."),
             _event("2024-06-01", "Municipalidades", "Municipal records reference the organization."),
         )
@@ -157,6 +160,12 @@ def _multi_source_fixture() -> _StoryFixture:
             role_title="Cargo publico",
             period="2024",
         ),
+        SimpleNamespace(
+            dataset="SERVEL",
+            holder="Autoridad Electa de Muestra Uno",
+            role_title="Alcaldia de muestra",
+            period="Periodo electoral 2024-2028",
+        ),
     )
     comparison = {
         "entity_name": entity.name,
@@ -165,6 +174,7 @@ def _multi_source_fixture() -> _StoryFixture:
             "ChileCompra",
             "Lobby",
             "Transparencia Activa",
+            "SERVEL",
             "Contraloria",
             "Municipalidades",
         ],
@@ -172,6 +182,7 @@ def _multi_source_fixture() -> _StoryFixture:
             {"dataset": "ChileCompra", "headline": "ChileCompra records", "facts": ["1 source record"]},
             {"dataset": "Lobby", "headline": "Lobby records", "facts": ["1 source record"]},
             {"dataset": "Transparencia Activa", "headline": "Transparencia Activa records", "facts": ["1 source record"]},
+            {"dataset": "SERVEL", "headline": "SERVEL records", "facts": ["1 source record", "Records describe elected authorities, public offices, territories, and electoral periods."]},
             {"dataset": "Contraloria", "headline": "Contraloria records", "facts": ["1 source record"]},
             {"dataset": "Municipalidades", "headline": "Municipalidades records", "facts": ["1 source record"]},
         ],
@@ -179,6 +190,7 @@ def _multi_source_fixture() -> _StoryFixture:
             "The organization appears in multiple public datasets.",
             "The organization appears in procurement records and also has registered meetings.",
             "The organization is connected to public transparency records.",
+            "SERVEL records describe elected authority information.",
             "Contraloria records contain observations related to the organization.",
             "Municipal records reference the organization.",
         ],

@@ -21,6 +21,9 @@ def test_resolve_dataset_matches_slug_alias_and_name() -> None:
     assert resolve_dataset("transparencia-activa") is not None
     assert resolve_dataset("contraloria") is not None
     assert resolve_dataset("municipalidades") is not None
+    assert resolve_dataset("servel") is not None
+    assert resolve_dataset("servel-sample") is not None
+    assert resolve_dataset("elected-authorities") is not None
     assert resolve_dataset("unknown") is None
 
 
@@ -46,6 +49,7 @@ def test_list_datasets_discovers_registered_modules(monkeypatch) -> None:
     assert rows[0].name == "ChileCompra"
     assert rows[1].name == "Contraloria"
     assert rows[-1].name == "Transparencia Activa"
+    assert any(row.slug == "servel" for row in rows)
 
 
 def test_get_dataset_details_uses_wiring(monkeypatch) -> None:

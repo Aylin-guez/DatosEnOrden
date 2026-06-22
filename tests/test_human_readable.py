@@ -115,3 +115,28 @@ def test_render_dataset_explanation_text_handles_transparencia_neutrally() -> No
     assert "Transparencia Activa muestra informacion administrativa" in report
     assert "datos de muestra, no datos oficiales" in report
     assert "No implica irregularidad" in report
+
+
+def test_entity_type_label_includes_servel_period() -> None:
+    assert entity_type_label("ELECTORAL_PERIOD") == "periodo electoral"
+
+
+def test_render_dataset_explanation_text_handles_servel_neutrally() -> None:
+    report = render_dataset_explanation_text(
+        DatasetExplanation(
+            name="SERVEL",
+            summary=(
+                "SERVEL muestra autoridades electas, cargos publicos, territorios y periodos electorales de muestra. "
+                "Este prototipo usa datos de muestra, no datos oficiales. "
+                "No implica irregularidad; solo representa informacion publica o de muestra."
+            ),
+            contracts=2,
+            organizations=2,
+            suppliers=1,
+            periods=2,
+        )
+    )
+
+    assert "autoridades electas" in report
+    assert "periodos electorales" in report
+    assert "No implica irregularidad" in report

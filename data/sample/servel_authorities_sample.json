@@ -1,0 +1,32 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "records": [
+    {
+      "external_id": "servel-2024-arauco-01",
+      "authority_name": "Autoridad Electa de Muestra Uno",
+      "office_name": "Alcaldia de muestra",
+      "municipality_name": "Municipalidad de Arauco",
+      "territory_name": "Comuna de Arauco",
+      "period_name": "Periodo electoral 2024-2028",
+      "period_start": "2024-12-06",
+      "period_end": "2028-12-05",
+      "election_cycle": "2024",
+      "source_url": "local://sample/servel/arauco/01",
+      "source_dataset_name": "SERVEL authorities sample"
+    },
+    {
+      "external_id": "servel-2021-arauco-02",
+      "authority_name": "Autoridad Electa de Muestra Dos",
+      "office_name": "Concejo municipal de muestra",
+      "municipality_name": "Municipalidad de Arauco",
+      "territory_name": "Comuna de Arauco",
+      "period_name": "Periodo electoral 2021-2024",
+      "period_start": "2021-12-06",
+      "period_end": "2024-12-05",
+      "election_cycle": "2021",
+      "source_url": "local://sample/servel/arauco/02",
+      "source_dataset_name": "SERVEL authorities sample"
+    }
+  ]
+}

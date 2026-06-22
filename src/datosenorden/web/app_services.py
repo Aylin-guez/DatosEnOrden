@@ -252,3 +252,37 @@ def _relationship_cards(neighbors: Any) -> list[dict[str, Any]]:
             }
         )
     return cards
+
+
+_ORIGINAL_ENTITY_TYPE_LABEL = _entity_type_label
+_ORIGINAL_NARRATIVE_SUMMARY = _narrative_summary
+
+
+def _entity_type_label(entity_type: str) -> str:  # type: ignore[override]
+    if entity_type == "ELECTORAL_PERIOD":
+        return "Periodo electoral"
+    return _ORIGINAL_ENTITY_TYPE_LABEL(entity_type)
+
+
+def _narrative_summary(view: Any) -> str:  # type: ignore[override]
+    entity_name = view.profile.entity.name
+    datasets = ", ".join(view.dataset_badges) if view.dataset_badges else "las fuentes disponibles"
+    parts = [f"{entity_name} aparece en {datasets}."]
+    available: list[str] = []
+    if view.procurement_items:
+        available.append("actividad de compras publicas")
+    if view.role_items:
+        if any(getattr(item, "dataset", "") == "SERVEL" for item in view.role_items):
+            available.append("registros de autoridades electas")
+        else:
+            available.append("registros de transparencia administrativa")
+    if view.lobby_items:
+        available.append("registros de lobby")
+    if view.graph is not None:
+        available.append("relaciones institucionales")
+    if view.evidence_groups:
+        available.append("evidencia asociada")
+    if available:
+        parts.append("Los registros disponibles incluyen " + ", ".join(available) + ".")
+    parts.append("Esto no afirma causalidad, irregularidad ni responsabilidad; cada conexion debe revisarse en su evidencia original.")
+    return " ".join(parts)

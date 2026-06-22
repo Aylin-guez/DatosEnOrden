@@ -198,3 +198,35 @@ def _questions_for_citizens(view, comparison: dict[str, object]) -> tuple[str, .
 
 def _dedupe_preserve_order(values: list[str]) -> list[str]:
     return list(OrderedDict.fromkeys(value for value in values if value))
+
+
+_ORIGINAL_KEY_FINDINGS = _key_findings
+_ORIGINAL_IMPORTANT_CONNECTIONS = _important_connections
+_ORIGINAL_QUESTIONS_FOR_CITIZENS = _questions_for_citizens
+
+
+def _key_findings(comparison: dict[str, object], view) -> tuple[str, ...]:  # type: ignore[override]
+    findings = list(_ORIGINAL_KEY_FINDINGS(comparison, view))
+    if any(getattr(item, "dataset", "") == "SERVEL" for item in getattr(view, "role_items", ())):
+        findings = [
+            item
+            for item in findings
+            if item != "The organization is connected to public transparency records."
+        ]
+        if "The entity is connected to elected authority records." not in findings:
+            findings.append("The entity is connected to elected authority records.")
+    return tuple(_dedupe_preserve_order(findings)[:5])
+
+
+def _important_connections(view, comparison: dict[str, object]) -> tuple[str, ...]:  # type: ignore[override]
+    return _ORIGINAL_IMPORTANT_CONNECTIONS(view, comparison)
+
+
+def _questions_for_citizens(view, comparison: dict[str, object]) -> tuple[str, ...]:  # type: ignore[override]
+    questions = list(_ORIGINAL_QUESTIONS_FOR_CITIZENS(view, comparison))
+    if any(getattr(item, "dataset", "") == "SERVEL" for item in getattr(view, "role_items", ())):
+        questions = [
+            item for item in questions if item != "Would you like to inspect transparency records?"
+        ]
+        questions.append("Would you like to review elected authority records?")
+    return tuple(_dedupe_preserve_order(questions)[:5])

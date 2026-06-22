@@ -205,6 +205,10 @@ def test_search_entities_returns_json_like_values_for_non_empty_query(monkeypatc
     ]
 
 
+def test_entity_type_label_includes_servel_period() -> None:
+    assert app_services._entity_type_label("ELECTORAL_PERIOD") == "Periodo electoral"
+
+
 def test_get_investigation_returns_expected_top_level_sections_for_demo_entity(monkeypatch) -> None:
     _patch_session(monkeypatch)
     monkeypatch.setattr(app_services, "build_investigation_view", lambda session, entity_id: _investigation_view())
