@@ -8,6 +8,8 @@ from typing import Iterable
 from sqlalchemy import distinct, func, select, union_all
 from sqlalchemy.orm import Session
 
+from datosenorden.datasets import dataset_definition_for_name
+from datosenorden.datasets import dataset_catalog
 from datosenorden.maintenance.human_readable import explain_dataset
 from datosenorden.maintenance.human_readable import render_dataset_explanation_html
 from datosenorden.models import Claim, Dataset, Entity, Evidence, RelationshipPublic, SourceRecord
@@ -61,45 +63,16 @@ class DatasetDetails:
     planned: bool
 
 
-DATASET_REGISTRY: tuple[DatasetRegistryEntry, ...] = (
+DATASET_REGISTRY: tuple[DatasetRegistryEntry, ...] = tuple(
     DatasetRegistryEntry(
-        slug="chilecompra",
-        name="ChileCompra",
-        dataset_names=("chilecompra-licitaciones", "chilecompra-ordenes-compra"),
-        source_names=("ChileCompra API Mercado Publico",),
-        aliases=("chilecompra-api", "mercado-publico"),
-    ),
-    DatasetRegistryEntry(
-        slug="dipres-prototype",
-        name="DIPRES Prototype",
-        dataset_names=("dipres-budget-sample",),
-        source_names=("DatosEnOrden DIPRES Sample",),
-        aliases=("dipres", "dipres-sample"),
-    ),
-    DatasetRegistryEntry(
-        slug="dipres-real",
-        name="DIPRES Real",
-        dataset_names=(),
-        source_names=("DIPRES",),
-        planned=True,
-    ),
-    DatasetRegistryEntry(
-        slug="lobby",
-        name="Lobby",
-        dataset_names=("lobby-meeting-sample",),
-        source_names=("DatosEnOrden Lobby Sample",),
-        aliases=("lobby-sample", "lobby-prototype"),
-    ),
-    DatasetRegistryEntry(
-        slug="transparencia",
-        name="Transparencia Activa",
-        dataset_names=("transparencia-activa-sample",),
-        source_names=("DatosEnOrden Transparencia Activa Sample",),
-        aliases=("transparencia", "transparencia-activa", "transparencia-sample"),
-    ),
-    DatasetRegistryEntry(slug="servel", name="SERVEL", dataset_names=(), planned=True),
-    DatasetRegistryEntry(slug="contraloria", name="Contraloria", dataset_names=(), planned=True),
-    DatasetRegistryEntry(slug="municipalities", name="Municipalities", dataset_names=(), planned=True),
+        slug=definition.dataset_slug,
+        name=definition.dataset_name,
+        dataset_names=definition.dataset_names,
+        source_names=definition.source_names,
+        aliases=definition.aliases,
+        planned=definition.planned,
+    )
+    for definition in dataset_catalog()
 )
 
 
@@ -369,14 +342,17 @@ def render_dataset_profile_html(details: DatasetDetails) -> str:
 
 
 def resolve_dataset(dataset_slug: str) -> DatasetRegistryEntry | None:
-    cleaned = dataset_slug.strip().lower()
-    if not cleaned:
+    definition = dataset_definition_for_name(dataset_slug)
+    if definition is None:
         return None
-    for entry in DATASET_REGISTRY:
-        aliases = {entry.slug.lower(), entry.name.lower(), *(alias.lower() for alias in entry.aliases)}
-        if cleaned in aliases:
-            return entry
-    return None
+    return DatasetRegistryEntry(
+        slug=definition.dataset_slug,
+        name=definition.dataset_name,
+        dataset_names=definition.dataset_names,
+        source_names=definition.source_names,
+        aliases=definition.aliases,
+        planned=definition.planned,
+    )
 
 
 def _summarize_dataset(session: Session, entry: DatasetRegistryEntry) -> DatasetSummary:

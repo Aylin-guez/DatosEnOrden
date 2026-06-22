@@ -11,6 +11,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from datosenorden.etl.core.time import parse_chilecompra_date
+from datosenorden.maintenance.explanations import dataset_display_name
+from datosenorden.maintenance.explanations import event_explanation
 from datosenorden.maintenance.entity_explorer import EntitySummary
 from datosenorden.models import Claim, Dataset, Entity, Evidence, RelationshipPublic, SourceRecord
 
@@ -21,20 +23,26 @@ DATASET_LABELS = {
     "dipres-budget-sample": "DIPRES",
     "lobby-meeting-sample": "LOBBY",
     "transparencia-activa-sample": "TRANSPARENCIA",
+    "contraloria-control-report-sample": "CONTRALORIA",
+    "municipalidades-project-sample": "MUNICIPALIDADES",
 }
 
 EVENT_LABELS = {
-    "ISSUES_PURCHASE_ORDER": "Purchase order",
-    "RECEIVES_CONTRACT": "Purchase order",
-    "HAS_APPROVED_BUDGET": "Budget assigned",
-    "HAS_EXECUTED_BUDGET": "Budget execution recorded",
-    "MATCHED_TO_ORGANIZATION": "Budget assigned",
-    "ORGANIZATION_HELD_LOBBY_MEETING": "Lobby meeting",
-    "COUNTERPARTY_PARTICIPATED_IN_LOBBY": "Lobby meeting",
-    "LOBBY_MEETING_ABOUT_SUBJECT": "Lobby meeting",
-    "ORGANIZATION_HAS_PUBLIC_ROLE": "Role period",
-    "PERSON_HOLDS_PUBLIC_ROLE": "Role period",
-    "ROLE_BELONGS_TO_ORGANIZATION": "Role period",
+    "ISSUES_PURCHASE_ORDER": "Se registro una orden de compra asociada.",
+    "RECEIVES_CONTRACT": "Se registro un contrato asociado.",
+    "HAS_APPROVED_BUDGET": "Se registro presupuesto aprobado asociado.",
+    "HAS_EXECUTED_BUDGET": "Se registro ejecucion presupuestaria asociada.",
+    "MATCHED_TO_ORGANIZATION": "Se registro una coincidencia con un organismo.",
+    "ORGANIZATION_HELD_LOBBY_MEETING": "Se registro una reunion de lobby asociada.",
+    "COUNTERPARTY_PARTICIPATED_IN_LOBBY": "Se registro una contraparte en una reunion de lobby.",
+    "LOBBY_MEETING_ABOUT_SUBJECT": "Se registro la materia de una reunion de lobby.",
+    "ORGANIZATION_HAS_PUBLIC_ROLE": "Se registro un cargo publico asociado.",
+    "PERSON_HOLDS_PUBLIC_ROLE": "Se registro una persona asociada a un cargo publico.",
+    "ROLE_BELONGS_TO_ORGANIZATION": "Se registro un cargo vinculado a un organismo.",
+    "ORGANIZATION_HAS_CONTROL_REPORT": "Se registro un informe de control asociado.",
+    "CONTROL_REPORT_HAS_OBSERVATION": "Se registro una observacion asociada al informe.",
+    "MUNICIPALITY_EXECUTES_PROJECT": "Se registro la ejecucion de un proyecto.",
+    "MUNICIPALITY_SPENDS_ON": "Se registro un gasto municipal asociado.",
 }
 
 
@@ -389,23 +397,25 @@ def _period_start(period: str) -> date | None:
 def _event_title(predicate: str, dataset_name: str) -> str:
     if dataset_name in {"chilecompra-ordenes-compra", "chilecompra-licitaciones"}:
         return EVENT_LABELS.get(predicate, "ChileCompra event")
-    return EVENT_LABELS.get(predicate, predicate.replace("_", " ").title())
+    return EVENT_LABELS.get(predicate, event_explanation(predicate))
 
 
 def _event_explanation(predicate: str, dataset: str) -> str:
-    if dataset == "DIPRES":
-        return "Registro presupuestario asociado a la entidad."
-    if dataset == "LOBBY":
-        return "Registro de reunion de lobby asociado a la entidad."
-    if dataset == "CHILECOMPRA":
-        return "Registro de compra publica asociado a la entidad."
-    if dataset == "TRANSPARENCIA":
-        return "Registro administrativo de cargo o periodo asociado a la entidad."
-    return f"Evento derivado de la afirmacion {predicate}."
+    intro = {
+        "DIPRES": "Fuente presupuestaria.",
+        "LOBBY": "Fuente de lobby.",
+        "CHILECOMPRA": "Fuente de compras publicas.",
+        "TRANSPARENCIA": "Fuente de transparencia administrativa.",
+        "CONTRALORIA": "Fuente de control.",
+        "MUNICIPALIDADES": "Fuente municipal.",
+    }.get(dataset, "Fuente publica.")
+    return f"{intro} {event_explanation(predicate)}"
 
 
 def _dataset_badge(dataset_name: str) -> str:
-    return DATASET_LABELS.get(dataset_name, dataset_name.upper() if dataset_name else "UNKNOWN")
+    if not dataset_name:
+        return "UNKNOWN"
+    return DATASET_LABELS.get(dataset_name, dataset_display_name(dataset_name).upper())
 
 
 def _events_by_year(events: tuple[TimelineEvent, ...]) -> dict[int, tuple[TimelineEvent, ...]]:
@@ -431,7 +441,12 @@ def _render_event_card_html(event: TimelineEvent) -> str:
         f'<span class="badge">relationships {event.relationship_count}</span>'
         "</div>"
         f'<p class="muted">{escape(event.explanation)}</p>'
+        "<details>"
+        "<summary>Detalles tecnicos</summary>"
         f'<div class="counts">claim_id={escape(event.claim_id)}</div>'
+        f'<div class="counts">source_record_id={escape(event.source_record_id)}</div>'
+        f'<div class="counts">predicate={escape(event.predicate)}</div>'
+        "</details>"
         "</article>"
     )
 

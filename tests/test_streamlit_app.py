@@ -471,6 +471,17 @@ def test_render_home_page_clickable_question_shows_supplier_answer(monkeypatch) 
     assert any("EMPRESA EJEMPLO SPA: 3 contrato(s)" in markdown for markdown, _ in fake_st.markdowns)
 
 
+def test_render_example_questions_uses_utf8_spanish_labels() -> None:
+    fake_st = _FakeStreamlit()
+
+    streamlit_app.render_example_questions(fake_st, object())
+
+    labels = [label for columns in fake_st.columns_created for column in columns for label in (column.button_labels or [])]
+    assert "¿Qué proveedores recibieron contratos?" in labels
+    assert "¿Qué organismos emitieron órdenes de compra?" in labels
+    assert "¿Qué evidencia respalda una relación?" in labels
+
+
 def test_render_app_shows_demo_banner_when_demo_mode_is_enabled(monkeypatch) -> None:
     fake_st = _FakeStreamlit()
 
@@ -526,6 +537,33 @@ def test_render_home_page_shows_demo_panel_when_demo_mode_is_enabled(monkeypatch
         "Ver cronología",
         "Ver evidencia",
     ]
+
+
+def test_demo_start_panel_investigation_button_opens_selected_entity(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    fake_st.button_values["demo_step_entity"] = True
+    datasets = (DatasetSummary("chilecompra", "ChileCompra", 10, 20, 30, 40, 50, "active", False),)
+    demo_profile = SimpleNamespace(
+        entity=SimpleNamespace(
+            entity_type="PUBLIC_ORGANIZATION",
+            name="DIVISION LOGISTICA DEL EJERCITO",
+            id="11111111-1111-1111-1111-111111111111",
+        ),
+        claims=(1, 2),
+        relationships=(1,),
+        evidences=(1,),
+    )
+    monkeypatch.setattr(streamlit_app, "demo_mode_enabled", lambda: True)
+    monkeypatch.setattr(streamlit_app, "resolve_demo_entity_profile", lambda session: demo_profile)
+    monkeypatch.setattr(streamlit_app, "list_datasets", lambda session: datasets)
+    monkeypatch.setattr(streamlit_app, "suggested_entity_cards", lambda session: [])
+    monkeypatch.setattr(streamlit_app, "search_entity_cards", lambda session, query: [])
+
+    streamlit_app.render_home_page(fake_st, object())
+
+    assert fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] == demo_profile.entity.id
+    assert fake_st.session_state[streamlit_app.GLOBAL_PENDING_PAGE_KEY] == streamlit_app.PAGE_INVESTIGATION
+    assert fake_st.rerun_count == 1
 
 
 def test_render_investigation_page_renders_single_entity_view(monkeypatch) -> None:
@@ -593,12 +631,14 @@ def test_render_investigation_page_renders_single_entity_view(monkeypatch) -> No
         explanation="Esta página muestra una sola entidad con sus contratos, reuniones, roles, evidencia y cronología.\nNo afirma causalidad, irregularidad ni intención.\nLa evidencia importa porque permite revisar el origen de cada registro.",
     )
 
-    monkeypatch.setattr(streamlit_app, "render_entity_selector", lambda st, session, key_prefix, label: None)
+    selector_calls = []
+    monkeypatch.setattr(streamlit_app, "render_entity_selector", lambda st, session, key_prefix, label: selector_calls.append(key_prefix))
     monkeypatch.setattr(streamlit_app, "build_investigation_view", lambda session, entity_id: view)
 
     streamlit_app.render_investigation_page(fake_st, object())
 
     assert fake_st.titles == ["Investigación"]
+    assert selector_calls == []
     assert fake_st.tab_labels == []
     assert "Métricas clave" in fake_st.subheaders
     assert "Cronología" in fake_st.subheaders
@@ -608,6 +648,9 @@ def test_render_investigation_page_renders_single_entity_view(monkeypatch) -> No
     assert "Transparencia" in fake_st.subheaders
     assert "Evidencia" in fake_st.subheaders
     assert "Explicación" in fake_st.subheaders
+    assert fake_st.subheaders.count("Transparencia") == 1
+    assert fake_st.subheaders.count("Evidencia") == 1
+    assert fake_st.subheaders.count("Explicación") == 1
     assert any("DIVISION LOGISTICA DEL EJERCITO" in markdown for markdown, _ in fake_st.markdowns)
     assert any("ChileCompra" in markdown for markdown, _ in fake_st.markdowns)
     assert any("La evidencia importa" in markdown for markdown, _ in fake_st.markdowns)
@@ -659,6 +702,49 @@ def test_render_cross_dataset_home_section_shows_only_available_connections(monk
     assert any("Lobby" in markdown for markdown, _ in fake_st.markdowns)
     assert any("Contratos: 4" in markdown for markdown, _ in fake_st.markdowns)
     assert any("Reuniones Lobby: 1" in markdown for markdown, _ in fake_st.markdowns)
+
+
+def test_render_dataset_page_investigation_button_opens_selected_entity(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    dataset = DatasetSummary("chilecompra", "ChileCompra", 10, 20, 30, 40, 50, "active", False)
+    details = DatasetDetails(
+        slug="chilecompra",
+        name="ChileCompra",
+        health="active",
+        source_records=10,
+        entities=20,
+        claims=30,
+        evidence=40,
+        relationships=50,
+        source_names=("ChileCompra API",),
+        dataset_names=("chilecompra-ordenes-compra",),
+        entities_by_type=(),
+        claims_by_type=(),
+        relationship_types=(),
+        ingestion_stats=(),
+        planned=False,
+    )
+    selected = streamlit_app.SearchCard(
+        id="11111111-1111-1111-1111-111111111111",
+        name="SERVICIO DE SALUD ARAUCO",
+        entity_type="PUBLIC_ORGANIZATION",
+        external_id="buyer-1",
+        purchase_orders=4,
+        claims=8,
+        relationships=8,
+    )
+    fake_st.selectbox_values["dataset_explorer_select"] = dataset
+    fake_st.button_values[f"dataset_investigation_profile_{selected.id}"] = True
+    monkeypatch.setattr(streamlit_app, "list_datasets", lambda session: (dataset,))
+    monkeypatch.setattr(streamlit_app, "get_dataset_details", lambda session, slug: details)
+    monkeypatch.setattr(streamlit_app, "explain_dataset", lambda details: DatasetExplanation("ChileCompra", "Resumen", 30, 20, 10))
+    monkeypatch.setattr(streamlit_app, "suggested_entity_cards", lambda session: [selected])
+
+    streamlit_app.render_dataset_explorer_page(fake_st, object())
+
+    assert fake_st.session_state[streamlit_app.GLOBAL_SELECTED_ENTITY_KEY] == selected.id
+    assert fake_st.session_state[streamlit_app.GLOBAL_PENDING_PAGE_KEY] == streamlit_app.PAGE_INVESTIGATION
+    assert fake_st.rerun_count == 1
 
 
 def test_render_cross_dataset_profile_block_lists_sources_and_connections(monkeypatch) -> None:

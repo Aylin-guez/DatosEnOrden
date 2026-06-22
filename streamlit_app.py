@@ -73,21 +73,21 @@ QUESTION_BUDGETS = "budgets_connected_to_contracts"
 QUESTION_EVIDENCE = "relationship_evidence"
 
 EXAMPLE_QUESTIONS = (
-    (QUESTION_SUPPLIERS, "Â¿QuÃ© proveedores recibieron contratos?"),
-    (QUESTION_BUYERS, "Â¿QuÃ© organismos emitieron Ã³rdenes de compra?"),
-    (QUESTION_BUDGETS, "Â¿QuÃ© presupuestos estÃ¡n conectados con contratos?"),
-    (QUESTION_EVIDENCE, "Â¿QuÃ© evidencia respalda una relaciÃ³n?"),
+    (QUESTION_SUPPLIERS, "¿Qué proveedores recibieron contratos?"),
+    (QUESTION_BUYERS, "¿Qué organismos emitieron órdenes de compra?"),
+    (QUESTION_BUDGETS, "¿Qué presupuestos están conectados con contratos?"),
+    (QUESTION_EVIDENCE, "¿Qué evidencia respalda una relación?"),
 )
 
 RELATIONSHIP_LABELS = {
     "BUDGET_ALLOCATED_TO": "Presupuesto asignado a",
     "ISSUES_PURCHASE_ORDER": "Emite orden de compra",
     "RECEIVES_CONTRACT": "Recibe contrato",
-    "PUBLISHED_TENDER": "Publica licitaciÃ³n",
+    "PUBLISHED_TENDER": "Publica licitación",
     "AWARDS_CONTRACT": "Adjudica contrato",
-    "ORGANIZATION_HELD_LOBBY_MEETING": "ReuniÃ³n de lobby registrada",
-    "COUNTERPARTY_PARTICIPATED_IN_LOBBY": "Contraparte participÃ³",
-    "LOBBY_MEETING_ABOUT_SUBJECT": "Materia tratada en reuniÃ³n",
+    "ORGANIZATION_HELD_LOBBY_MEETING": "Reunión de lobby registrada",
+    "COUNTERPARTY_PARTICIPATED_IN_LOBBY": "Contraparte participó",
+    "LOBBY_MEETING_ABOUT_SUBJECT": "Materia tratada en reunión",
 }
 
 
@@ -799,9 +799,7 @@ def _render_entity_card_grid(
     for card in cards:
         st.markdown(build_entity_card_html(card, highlighted=card.id == highlighted_id), unsafe_allow_html=True)
         if st.button(button_label, key=f"{key_prefix}_profile_{card.id}"):
-            st.session_state[GLOBAL_SELECTED_ENTITY_KEY] = card.id
-            if key_prefix == "entity_search":
-                _navigate_to_page(st, PAGE_INVESTIGATION)
+            _open_investigation_for_entity(st, card.id)
             clicked_card = card
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -819,6 +817,11 @@ def _render_entity_card_grid(
     if profile is None:
         return None
     return _search_card_from_profile(profile)
+
+
+def _open_investigation_for_entity(st, entity_id: str) -> None:  # noqa: ANN001
+    st.session_state[GLOBAL_SELECTED_ENTITY_KEY] = entity_id
+    _navigate_to_page(st, PAGE_INVESTIGATION)
 
 
 def _navigate_to_page(st, page_name: str) -> None:  # noqa: ANN001
@@ -909,8 +912,11 @@ def render_demo_start_panel(st, session) -> None:  # noqa: ANN001
             unsafe_allow_html=True,
         )
         if column.button(title, key=key):
-            st.session_state[GLOBAL_SELECTED_ENTITY_KEY] = demo_profile.entity.id
-            _navigate_to_page(st, target_page)
+            if target_page == PAGE_INVESTIGATION:
+                _open_investigation_for_entity(st, demo_profile.entity.id)
+            else:
+                st.session_state[GLOBAL_SELECTED_ENTITY_KEY] = demo_profile.entity.id
+                _navigate_to_page(st, target_page)
 
 
 def render_app(st) -> None:  # noqa: ANN001
@@ -1035,6 +1041,8 @@ def render_dataset_explorer_page(st, session) -> None:  # noqa: ANN001
     render_dataset_summary_cards(st, details, explanation)
     render_count_cards(st, "Afirmaciones por tipo", details.claims_by_type, empty_message="Todavía no hay evidencias.")
     render_count_cards(st, "Relaciones por tipo", details.relationship_types, empty_message="Todavía no hay relaciones.")
+    st.subheader("Investigar entidad")
+    render_entity_selector(st, session, key_prefix="dataset_investigation", label="Busca una entidad del conjunto")
 
 
 def render_entity_search_page(st, session) -> None:  # noqa: ANN001
@@ -1044,9 +1052,10 @@ def render_entity_search_page(st, session) -> None:  # noqa: ANN001
 
 def render_investigation_page(st, session) -> None:  # noqa: ANN001
     st.title("Investigación")
-    render_entity_selector(st, session, key_prefix="investigation", label="Busca por nombre")
-
     selected_entity_id = _selected_entity_id(st)
+    if selected_entity_id is None:
+        render_entity_selector(st, session, key_prefix="investigation", label="Busca por nombre")
+        selected_entity_id = _selected_entity_id(st)
     if selected_entity_id is None:
         st.info("Selecciona una entidad para ver todo su contexto en una sola página.")
         return
@@ -1214,7 +1223,7 @@ def render_visual_graph(st, graph, *, dataset_badges: Sequence[str] = ()) -> Non
   </div>
   <div class="graph-flow-arrow">&rarr;</div>
   <div class="graph-flow-relation">
-    <span>RelaciÃ³n</span>
+    <span>Relación</span>
     <strong>{escape(edge['relationship_label'])}</strong>
     <small>{escape(edge['relationship'])}</small>
   </div>
@@ -1378,7 +1387,7 @@ def render_example_answer(st, session, question_key: str) -> None:  # noqa: ANN0
     if question_key == QUESTION_SUPPLIERS:
         suppliers = list_suppliers(session, limit=5)
         if not suppliers:
-            _render_answer_panel(st, "Proveedores con contratos", ["No hay proveedores con contratos cargados todavÃ­a."])
+            _render_answer_panel(st, "Proveedores con contratos", ["No hay proveedores con contratos cargados todavía."])
             return
         _render_answer_panel(
             st,
@@ -1390,11 +1399,11 @@ def render_example_answer(st, session, question_key: str) -> None:  # noqa: ANN0
     if question_key == QUESTION_BUYERS:
         buyers = list_buyers(session, limit=5)
         if not buyers:
-            _render_answer_panel(st, "Organismos con Ã³rdenes de compra", ["No hay organismos con Ã³rdenes cargadas todavÃ­a."])
+            _render_answer_panel(st, "Organismos con órdenes de compra", ["No hay organismos con órdenes cargadas todavía."])
             return
         _render_answer_panel(
             st,
-            "Organismos con Ã³rdenes de compra",
+            "Organismos con órdenes de compra",
             [f"{buyer.name}: {buyer.purchase_orders} orden(es) o contrato(s) relacionado(s)" for buyer in buyers],
         )
         return
@@ -1463,14 +1472,14 @@ def _evidence_answer_lines(session) -> list[str]:  # noqa: ANN001
             lines.append(f"{profile.entity.name}: {len(profile.evidences)} evidencia(s). Ejemplo: {first.title} ({first.url})")
         elif profile.claims or profile.relationships:
             lines.append(
-                f"{profile.entity.name}: {len(profile.claims)} afirmaciÃ³n(es) y {len(profile.relationships)} relaciÃ³n(es) registradas."
+                f"{profile.entity.name}: {len(profile.claims)} afirmación(es) y {len(profile.relationships)} relación(es) registradas."
             )
         if len(lines) >= 5:
             return lines
     if lines:
         return lines
     return [
-        f"{row.name}: {row.evidence} evidencia(s), {row.claims} afirmaciÃ³n(es), {row.relationships} relaciÃ³n(es)"
+        f"{row.name}: {row.evidence} evidencia(s), {row.claims} afirmación(es), {row.relationships} relación(es)"
         for row in load_streamlit_data("list_datasets", lambda: list_datasets(session))
         if row.evidence or row.claims or row.relationships
     ][:5]
@@ -1481,7 +1490,7 @@ def _legacy_render_selected_entity_profile(st, session, entity_id: str) -> None:
         with _spinner(st, "Cargando perfil de entidad..."):
             profile = get_entity_profile(session, entity_id)
     except (TypeError, ValueError):
-        st.error("Elige una entidad vÃ¡lida desde los resultados de bÃºsqueda.")
+        st.error("Elige una entidad válida desde los resultados de búsqueda.")
         return
     if profile is None:
         st.warning("Entidad no encontrada.")

@@ -1,0 +1,21 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "dataset_name": "municipalidades-project-sample",
+  "source_name": "DatosEnOrden Municipalidades Sample",
+  "records": [
+    {
+      "external_id": "municipalidades-2026-arauco-project-01",
+      "municipality_name": "ILUSTRE MUNICIPALIDAD DE ARAUCO",
+      "project_name": "Mejoramiento de plaza local de muestra",
+      "spending_item_name": "Compra de materiales de mantencion",
+      "period": "2026-05",
+      "period_date": "2026-05-01",
+      "amount": 1500000,
+      "currency": "CLP",
+      "source_url": "local://sample/municipalidades/municipalidades-2026-arauco-project-01",
+      "source_dataset_name": "municipalidades-project-sample",
+      "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. This is not official municipal data and does not imply irregularity."
+    }
+  ]
+}

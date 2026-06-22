@@ -1,3 +1,7 @@
+.web
+.states
+assets/external/
+*.db
 .env
 .venv/
 __pycache__/

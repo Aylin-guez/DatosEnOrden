@@ -6,19 +6,9 @@ from uuid import UUID
 from sqlalchemy import distinct, or_, select
 from sqlalchemy.orm import Session, joinedload
 
+from datosenorden.maintenance.explanations import dataset_display_name
 from datosenorden.models import Claim, Dataset, Entity, Evidence, RelationshipPublic, SourceRecord
 
-CHILECOMPRA_DATASET = "chilecompra"
-LOBBY_DATASET = "lobby"
-TRANSPARENCIA_DATASET = "transparencia"
-CHILECOMPRA_PREDICATES = frozenset(
-    {
-        "ISSUES_PURCHASE_ORDER",
-        "RECEIVES_CONTRACT",
-        "PUBLISHED_TENDER",
-        "AWARDS_CONTRACT",
-    }
-)
 LOBBY_ORGANIZATION_PREDICATE = "ORGANIZATION_HELD_LOBBY_MEETING"
 LOBBY_COUNTERPARTY_PREDICATE = "COUNTERPARTY_PARTICIPATED_IN_LOBBY"
 PROCUREMENT_ORGANIZATION_PREDICATE = "ISSUES_PURCHASE_ORDER"
@@ -73,13 +63,13 @@ def get_cross_dataset_organization_summary(
         session,
         organization.id,
         PROCUREMENT_ORGANIZATION_PREDICATE,
-        dataset_group=CHILECOMPRA_DATASET,
+        dataset_group="chilecompra",
     )
     lobby_meetings = _count_distinct_claim_objects(
         session,
         organization.id,
         LOBBY_ORGANIZATION_PREDICATE,
-        dataset_group=LOBBY_DATASET,
+        dataset_group="lobby",
     )
     return CrossDatasetOrganizationSummary(
         organization_id=str(organization.id),
@@ -104,6 +94,7 @@ def citizen_friendly_explanation() -> str:
             "* procurement activity in ChileCompra",
             "* registered lobby meetings",
             "* administrative role records in Transparencia Activa when sample data is loaded",
+            "* additional local prototype datasets when they are loaded",
             "* public relationships and supporting evidence",
             "",
             "The platform only presents stored records and does not imply any relationship beyond the available public information.",
@@ -127,7 +118,7 @@ def render_cross_dataset_summary_text(rows: tuple[CrossDatasetOrganizationSummar
                 "",
                 "datasets:",
                 "",
-                *[f"* {dataset}" for dataset in row.datasets],
+                *[f"* {dataset_display_name(dataset)}" for dataset in row.datasets],
                 "",
                 f"lobby_meetings:",
                 str(row.lobby_meetings),
@@ -455,11 +446,44 @@ def _unique_connections(connections) -> tuple[CrossDatasetConnection, ...]:  # n
 
 
 def _dataset_group(dataset_name: str) -> str | None:
-    normalized = dataset_name.lower()
+    cleaned = dataset_name.strip()
+    if not cleaned:
+        return None
+    if dataset_group := _dataset_group_from_registry(cleaned):
+        return dataset_group
+    normalized = cleaned.lower()
     if normalized.startswith("chilecompra"):
-        return CHILECOMPRA_DATASET
+        return "chilecompra"
     if "lobby" in normalized:
-        return LOBBY_DATASET
+        return "lobby"
     if "transparencia" in normalized:
-        return TRANSPARENCIA_DATASET
+        return "transparencia"
+    if "contraloria" in normalized:
+        return "contraloria"
+    if "municipal" in normalized:
+        return "municipalidades"
     return None
+
+
+def _dataset_group_from_registry(dataset_name: str) -> str | None:
+    rows = (
+        (definition.dataset_slug, definition.dataset_names, definition.source_names, definition.aliases)
+        for definition in _dataset_catalog()
+    )
+    cleaned = dataset_name.strip().lower()
+    for slug, dataset_names, source_names, aliases in rows:
+        if cleaned == slug.lower():
+            return slug
+        if cleaned in {name.lower() for name in dataset_names}:
+            return slug
+        if cleaned in {name.lower() for name in source_names}:
+            return slug
+        if cleaned in {alias.lower() for alias in aliases}:
+            return slug
+    return None
+
+
+def _dataset_catalog():
+    from datosenorden.datasets import dataset_catalog
+
+    return dataset_catalog()

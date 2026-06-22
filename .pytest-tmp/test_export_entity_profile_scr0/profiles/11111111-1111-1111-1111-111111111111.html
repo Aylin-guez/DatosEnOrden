@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Entity profile: SKY AIRLINE S.A.</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --panel: #ffffff;
+      --ink: #1f2933;
+      --muted: #52616b;
+      --line: #d8dee4;
+      --accent: #0f766e;
+      --accent-soft: rgba(15, 118, 110, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    main {
+      width: 95%;
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 28px 0 48px;
+    }
+    header {
+      margin-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0 0;
+    }
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      text-decoration: none;
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    h1, h2 { margin: 0; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.1rem; margin-bottom: 12px; }
+    .muted { color: var(--muted); }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    @media (min-width: 1280px) {
+      .metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    }
+    .metric, section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .metric { padding: 14px; }
+    .metric strong { display: block; font-size: 1.5rem; }
+    .metric span { color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    @media (min-width: 900px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (min-width: 1320px) {
+      .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    section { padding: 16px; overflow: hidden; }
+    .wide { grid-column: 1 / -1; }
+    .neighbor-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .neighbor-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      background: linear-gradient(180deg, #fff, #fbfcfd);
+      min-height: 150px;
+    }
+    .neighbor-card h3 {
+      margin: 0 0 6px;
+      font-size: 1rem;
+    }
+    .neighbor-card .relationship {
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .neighbor-card .meta {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .neighbor-card .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .neighbor-card .links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      max-height: 460px;
+    }
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: var(--panel);
+      color: var(--muted);
+      z-index: 1;
+    }
+    td { overflow-wrap: anywhere; }
+    a { color: var(--accent); }
+    footer {
+      margin-top: 26px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 24px;
+      font-size: 0.92rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>SKY AIRLINE S.A.</h1>
+      <div class="muted">
+        id=11111111-1111-1111-1111-111111111111 | type=COMPANY |
+        external_id=chilecompra:supplier:76123456-7
+      </div>
+      <nav>
+        <a href="profiles/11111111-1111-1111-1111-111111111111.html">profile_html</a><a href="graph_exports/entity_11111111-1111-1111-1111-111111111111.html">graph_html</a>
+      </nav>
+    </header>
+    <div class="metrics">
+      <div class="metric"><strong>1</strong><span>claims</span></div>
+      <div class="metric"><strong>1</strong><span>relationships</span></div>
+      <div class="metric"><strong>1</strong><span>evidence links</span></div>
+      <div class="metric"><strong>1</strong><span>related entities</span></div>
+      <div class="metric"><strong>1</strong><span>direct neighbors</span></div>
+    </div>
+    <div class="grid">
+      <section class="wide">
+        <h2>Direct neighbors</h2>
+        <div class="neighbor-cards"><article class="neighbor-card"><div class="relationship">RECEIVES_CONTRACT (outgoing)</div><h3>CONTRACT | Pasajes aereos</h3><div class="meta"><span>id=22222222-2222-2222-2222-222222222222</span><span>source=SKY AIRLINE S.A.</span><span>target=Pasajes aereos</span></div><div class="links"><a href="profiles/22222222-2222-2222-2222-222222222222.html">entity_profile</a><a href="graph_exports/entity_22222222-2222-2222-2222-222222222222.html">entity_graph</a></div></article></div>
+      </section>
+      <section class="wide explain"><h2>¿Qué significa esto?</h2><p>Esta página usa lenguaje simple para que cualquier persona pueda entender el gráfico.</p><ul><li><strong>Fuente</strong>: registro original cargado en PostgreSQL.</li><li><strong>Afirmación verificable</strong>: dato derivado desde una fuente.</li><li><strong>Relación pública</strong>: conexión entre entidades guardadas.</li><li><strong>Entidad</strong>: organismo, contrato, proveedor o presupuesto.</li></ul></section>
+      <section class="wide">
+        <h2>Relationship counts</h2>
+        <div class="metrics"><div class="metric"><strong>1</strong><span>RECEIVES_CONTRACT</span></div></div>
+      </section>
+      <section><h2>Related entities</h2><div class="table-wrap"><table><thead><tr><th>Type</th><th>Name</th><th>External ID</th><th>ID</th></tr></thead><tbody><tr><td>CONTRACT</td><td>Pasajes aereos</td><td>chilecompra:purchase_order:2097-241-SE14</td><td>22222222-2222-2222-2222-222222222222</td></tr></tbody></table></div></section>
+      <section class="wide"><h2>Claims</h2><div class="table-wrap"><table><thead><tr><th>Predicate</th><th>Status</th><th>Subject</th><th>Object</th><th>Evidence</th><th>Relationships</th><th>ID</th></tr></thead><tbody><tr><td>RECEIVES_CONTRACT</td><td>validated</td><td>SKY AIRLINE S.A.</td><td>CONTRACT | Pasajes aereos</td><td>1</td><td>1</td><td>33333333-3333-3333-3333-333333333333</td></tr></tbody></table></div></section>
+      <section class="wide"><h2>Relationships</h2><div class="table-wrap"><table><thead><tr><th>Type</th><th>Status</th><th>Related entity</th><th>Source</th><th>Target</th><th>Claim ID</th></tr></thead><tbody><tr><td>RECEIVES_CONTRACT</td><td>published</td><td>Pasajes aereos</td><td>SKY AIRLINE S.A.</td><td>Pasajes aereos</td><td>33333333-3333-3333-3333-333333333333</td></tr></tbody></table></div></section>
+      <section class="wide"><h2>Evidence links</h2><div class="table-wrap"><table><thead><tr><th>Title</th><th>URL</th><th>Published at</th><th>Claim ID</th></tr></thead><tbody><tr><td>Ficha Mercado Publico orden de compra</td><td><a href="https://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?qs=2097-241-SE14">https://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?qs=2097-241-SE14</a></td><td>None</td><td>33333333-3333-3333-3333-333333333333</td></tr></tbody></table></div></section>
+    </div>
+    <footer>
+      <span>Generated at 2026-06-18T12:30:00+00:00</span>
+      <span>Source: DatosEnOrden local dataset</span>
+    </footer>
+  </main>
+</body>
+</html>

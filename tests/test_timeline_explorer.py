@@ -132,7 +132,11 @@ def test_timeline_merges_multi_dataset_events(monkeypatch) -> None:
 
     assert timeline is not None
     assert [event.dataset for event in timeline.events] == ["TRANSPARENCIA", "LOBBY", "CHILECOMPRA"]
-    assert [event.title for event in timeline.events] == ["Role period", "Lobby meeting", "Purchase order"]
+    assert [event.title for event in timeline.events] == [
+        "Se registro un cargo publico asociado.",
+        "Se registro una reunion de lobby asociada.",
+        "Se registro una orden de compra asociada.",
+    ]
     assert timeline.events[-1].evidence_count == 2
 
 
@@ -149,7 +153,7 @@ def test_render_entity_timeline_text_matches_cli_contract() -> None:
                 event_date=date(2026, 1, 1),
                 dataset="DIPRES",
                 dataset_name="dipres-budget-sample",
-                title="Budget assigned",
+                title="Se registro presupuesto aprobado asociado.",
                 explanation="Registro presupuestario asociado a la entidad.",
                 claim_id="22222222-2222-2222-2222-222222222222",
                 predicate="HAS_APPROVED_BUDGET",
@@ -168,7 +172,7 @@ def test_render_entity_timeline_text_matches_cli_contract() -> None:
     assert "DIVISION LOGISTICA DEL EJERCITO" in report
     assert "2026-01-01" in report
     assert "[DIPRES]" in report
-    assert "Budget assigned" in report
+    assert "Se registro presupuesto aprobado asociado." in report
     assert "evidence_count=1" in report
     assert "relationship_count=0" in report
 
@@ -186,7 +190,7 @@ def test_render_entity_timeline_html_groups_by_year_and_counts() -> None:
                 event_date=date(2025, 12, 1),
                 dataset="TRANSPARENCIA",
                 dataset_name="transparencia-activa-sample",
-                title="Role period",
+                title="Se registro un cargo publico asociado.",
                 explanation="Registro administrativo de cargo o periodo asociado a la entidad.",
                 claim_id="22222222-2222-2222-2222-222222222222",
                 predicate="ORGANIZATION_HAS_PUBLIC_ROLE",
@@ -198,7 +202,7 @@ def test_render_entity_timeline_html_groups_by_year_and_counts() -> None:
                 event_date=date(2026, 1, 1),
                 dataset="DIPRES",
                 dataset_name="dipres-budget-sample",
-                title="Budget assigned",
+                title="Se registro presupuesto aprobado asociado.",
                 explanation="Registro presupuestario asociado a la entidad.",
                 claim_id="33333333-3333-3333-3333-333333333333",
                 predicate="HAS_APPROVED_BUDGET",

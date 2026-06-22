@@ -1,0 +1,20 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "dataset_name": "contraloria-control-report-sample",
+  "source_name": "DatosEnOrden Contraloria Sample",
+  "records": [
+    {
+      "external_id": "contraloria-2026-division-logistica-ejercito-report-01",
+      "organization_name": "DIVISION LOGISTICA DEL EJERCITO",
+      "report_number": "24-2026",
+      "report_title": "Revision de control administrativo de muestra",
+      "observation_text": "Se registran observaciones de muestra sobre trazabilidad documental y respaldo administrativo.",
+      "report_date": "2026-04-20",
+      "observation_date": "2026-04-21",
+      "source_url": "local://sample/contraloria/contraloria-2026-division-logistica-ejercito-report-01",
+      "source_dataset_name": "contraloria-control-report-sample",
+      "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. This is not official Contraloria data and does not imply irregularity."
+    }
+  ]
+}

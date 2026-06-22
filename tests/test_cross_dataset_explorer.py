@@ -97,8 +97,8 @@ def test_render_cross_dataset_summary_text_matches_cli_contract() -> None:
     assert "cross_dataset_summary:" in report
     assert "organizations_in_multiple_datasets:\n1" in report
     assert "organization:\nSERVICIO DE SALUD ARAUCO" in report
-    assert "* chilecompra" in report
-    assert "* lobby" in report
+    assert "* ChileCompra" in report
+    assert "* Lobby" in report
     assert "lobby_meetings:\n1" in report
     assert "contracts:\n4" in report
     assert "relationships:\n6" in report
@@ -128,7 +128,7 @@ def test_cross_dataset_summary_can_include_transparencia(monkeypatch) -> None:
     assert row is not None
     assert row.datasets == ("chilecompra", "lobby", "transparencia")
     report = render_cross_dataset_summary_text((row,))
-    assert "* transparencia" in report
+    assert "* Transparencia Activa" in report
 
 
 def test_render_cross_dataset_connections_text_is_neutral() -> None:

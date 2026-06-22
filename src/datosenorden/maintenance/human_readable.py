@@ -392,6 +392,6 @@ def _graph_meaning_for_chain(chain: tuple[str, ...]) -> str:
 
 
 def _dataset_display_name(dataset_name: str) -> str:
-    if dataset_name in DATASET_NAME_LABELS:
-        return DATASET_NAME_LABELS[dataset_name]
-    return dataset_name
+    from datosenorden.maintenance.explanations import dataset_display_name
+
+    return dataset_display_name(dataset_name)

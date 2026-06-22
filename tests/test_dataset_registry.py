@@ -19,10 +19,12 @@ def test_resolve_dataset_matches_slug_alias_and_name() -> None:
     assert resolve_dataset("dipres") is not None
     assert resolve_dataset("lobby-sample") is not None
     assert resolve_dataset("transparencia-activa") is not None
+    assert resolve_dataset("contraloria") is not None
+    assert resolve_dataset("municipalidades") is not None
     assert resolve_dataset("unknown") is None
 
 
-def test_list_datasets_preserves_registry_order(monkeypatch) -> None:
+def test_list_datasets_discovers_registered_modules(monkeypatch) -> None:
     def _summarize_dataset(session, entry):  # noqa: ANN001
         return DatasetSummary(
             slug=entry.slug,
@@ -42,8 +44,8 @@ def test_list_datasets_preserves_registry_order(monkeypatch) -> None:
 
     assert len(rows) == len(DATASET_REGISTRY)
     assert rows[0].name == "ChileCompra"
-    assert rows[1].name == "DIPRES Prototype"
-    assert rows[-1].name == "Municipalities"
+    assert rows[1].name == "Contraloria"
+    assert rows[-1].name == "Transparencia Activa"
 
 
 def test_get_dataset_details_uses_wiring(monkeypatch) -> None:

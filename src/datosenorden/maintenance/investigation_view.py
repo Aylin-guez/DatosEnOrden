@@ -9,13 +9,13 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from datosenorden.maintenance.cross_dataset_explorer import _dataset_group
+from datosenorden.maintenance.explanations import dataset_display_name
+from datosenorden.maintenance.explanations import graph_explanation_for_chain
 from datosenorden.maintenance.entity_explorer import EntityGraphNodeSummary
 from datosenorden.maintenance.entity_explorer import EntityProfile
 from datosenorden.maintenance.entity_explorer import build_entity_graph
 from datosenorden.maintenance.entity_explorer import get_entity_profile
 from datosenorden.maintenance.human_readable import entity_type_display_label
-from datosenorden.maintenance.human_readable import explain_graph
-from datosenorden.maintenance.human_readable import render_graph_explanation_text
 from datosenorden.maintenance.timeline_explorer import EntityTimeline
 from datosenorden.maintenance.timeline_explorer import build_entity_timeline
 from datosenorden.models import Claim, Dataset, Evidence, RelationshipPublic, SourceRecord
@@ -36,14 +36,6 @@ TRANSPARENCIA_PREDICATES = {
     "PERSON_HOLDS_PUBLIC_ROLE",
     "ROLE_BELONGS_TO_ORGANIZATION",
 }
-
-DATASET_LABELS = {
-    "chilecompra": "ChileCompra",
-    "dipres": "DIPRES",
-    "lobby": "Lobby",
-    "transparencia": "Transparencia",
-}
-
 
 @dataclass(frozen=True)
 class InvestigationEvidenceLink:
@@ -96,6 +88,8 @@ class InvestigationMetrics:
     public_roles: int
     evidence: int
     relationships: int
+    datasets_involved: int = 0
+    connected_entities: int = 0
 
 
 @dataclass(frozen=True)
@@ -144,6 +138,8 @@ def build_investigation_view(session: Session, entity_id: str) -> InvestigationV
         public_roles=len(role_items),
         evidence=evidence_count,
         relationships=len(profile.relationships),
+        datasets_involved=len(dataset_badges),
+        connected_entities=len(profile.direct_neighbors),
     )
 
     return InvestigationView(
@@ -197,7 +193,7 @@ def _investigation_explanation_text() -> str:
 def _graph_explanation_text(graph: EntityGraphNodeSummary | None) -> str:
     if graph is None:
         return "No hay grafo disponible para esta entidad."
-    return render_graph_explanation_text(explain_graph(graph))
+    return graph_explanation_for_chain(_graph_chain(graph))
 
 
 def _load_entity_claims(session: Session, entity_id: UUID) -> tuple[Claim, ...]:
@@ -240,7 +236,7 @@ def _dataset_badges_for_claims(claims: tuple[Claim, ...]) -> tuple[str, ...]:
         if dataset_name is None or dataset_name in seen:
             continue
         seen.add(dataset_name)
-        badges.append(DATASET_LABELS.get(dataset_name, dataset_name.title()))
+        badges.append(dataset_display_name(dataset_name))
     return tuple(badges)
 
 
@@ -290,7 +286,7 @@ def _group_evidence_by_dataset(session: Session, claim_ids: tuple[str, ...]) -> 
         )
     return tuple(
         InvestigationEvidenceGroup(
-            dataset=DATASET_LABELS.get(dataset, dataset.title()),
+            dataset=dataset_display_name(dataset),
             links=tuple(links.values()),
         )
         for dataset, links in sorted(grouped.items(), key=lambda item: item[0])
@@ -313,7 +309,7 @@ def _procurement_items(
         contract_name = _contract_name_for_claim(claim)
         items.append(
             InvestigationProcurementItem(
-                dataset=DATASET_LABELS.get(dataset, dataset.title()),
+                dataset=dataset_display_name(dataset),
                 contract_name=contract_name,
                 supplier=supplier,
                 evidence_count=len(evidence_by_claim.get(str(claim.id), ())),
@@ -361,7 +357,7 @@ def _lobby_items(
             subject = _subject_from_object_value(claim)
         items.append(
             InvestigationLobbyItem(
-                dataset=DATASET_LABELS.get(dataset, dataset.title()),
+                dataset=dataset_display_name(dataset),
                 date=claim.valid_from,
                 organization=organization_name,
                 counterparty=counterparty_name,
@@ -386,7 +382,7 @@ def _role_items(
             continue
         items.append(
             InvestigationRoleItem(
-                dataset=DATASET_LABELS.get(dataset, dataset.title()),
+                dataset=dataset_display_name(dataset),
                 holder=claim.subject_entity.name,
                 role_title=_role_title_from_object_entity(claim),
                 period=_role_period_from_object_value(claim),
@@ -449,6 +445,20 @@ def _object_value_text(claim: Claim, key: str, *, default: str) -> str:
     if isinstance(value, dict) and value.get(key) is not None:
         return str(value[key])
     return default
+
+
+def _graph_chain(root: EntityGraphNodeSummary) -> tuple[str, ...]:
+    chain = [root.entity.entity_type]
+    current = root
+    seen = {root.entity.id}
+    while current.children:
+        next_node = current.children[0]
+        if next_node.entity.id in seen:
+            break
+        chain.append(next_node.entity.entity_type)
+        seen.add(next_node.entity.id)
+        current = next_node
+    return tuple(chain)
 
 
 def _format_date(value: date | None) -> str:
