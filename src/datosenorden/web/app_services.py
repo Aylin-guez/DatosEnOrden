@@ -11,6 +11,8 @@ from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
 from datosenorden.maintenance.dataset_registry import list_datasets
 from datosenorden.maintenance.demo_pack import build_demo_status
+from datosenorden.maintenance.entity_comparison import build_entity_comparison
+from datosenorden.maintenance.investigation_story import build_investigation_story
 from datosenorden.maintenance.entity_explorer import search_buyers
 from datosenorden.maintenance.entity_explorer import search_suppliers
 from datosenorden.maintenance.explanations import relationship_explanation
@@ -112,6 +114,14 @@ def get_dataset_summary() -> dict[str, Any]:
 def get_cross_dataset_connections() -> list[dict[str, Any]]:
     with _session_scope() as session:
         return [_jsonify(row) for row in list_cross_dataset_organizations(session)]
+
+
+def get_entity_comparison(entity_id: str) -> dict[str, Any]:
+    return _jsonify(build_entity_comparison(entity_id))
+
+
+def get_investigation_story(entity_id: str) -> dict[str, Any]:
+    return _jsonify(build_investigation_story(entity_id))
 
 
 def get_demo_status() -> dict[str, Any]:
