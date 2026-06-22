@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
-$ReflexApp = Join-Path $ProjectRoot "web\reflex_app"
+$ReflexApp = $ProjectRoot
 
 Write-Host "DatosEnOrden Reflex dev runner"
 Write-Host "Project root: $ProjectRoot"

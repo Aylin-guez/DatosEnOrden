@@ -1,11 +1,12 @@
 # DatosEnOrden Reflex prototype
 
-This is a minimal local Reflex frontend over `datosenorden.web.app_services`.
+This folder is retained for legacy notes. The runnable Reflex app now lives at
+the repository root in `reflex_app/`.
 
-Run from this folder:
+Run from the repository root:
 
 ```powershell
-$env:PYTHONPATH="..\..\src"
+$env:PYTHONPATH="src"
 reflex run
 ```
 

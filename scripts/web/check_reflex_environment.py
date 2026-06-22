@@ -13,7 +13,7 @@ from typing import Sequence
 
 MIN_NODE_VERSION = (22, 12, 0)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-REFLEX_APP_DIR = PROJECT_ROOT / "web" / "reflex_app"
+REFLEX_APP_DIR = PROJECT_ROOT / "reflex_app"
 
 
 @dataclass(frozen=True)
@@ -95,7 +95,7 @@ def mask_database_url(url: str) -> str:
 
 
 def _add_import_paths() -> None:
-    for path in (PROJECT_ROOT / "src", REFLEX_APP_DIR):
+    for path in (PROJECT_ROOT, PROJECT_ROOT / "src"):
         text = str(path)
         if text not in sys.path:
             sys.path.insert(0, text)
@@ -143,7 +143,7 @@ def check_npm() -> CheckResult:
 
 
 def check_rxconfig() -> CheckResult:
-    path = REFLEX_APP_DIR / "rxconfig.py"
+    path = PROJECT_ROOT / "rxconfig.py"
     return CheckResult("rxconfig.py", path.exists(), str(path))
 
 

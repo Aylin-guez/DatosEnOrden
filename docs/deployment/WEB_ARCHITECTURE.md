@@ -19,5 +19,5 @@ Prepare DatosEnOrden for two parallel paths:
 ## Current folders
 
 - web/landing/: static landing page.
-- web/reflex_app/: future Reflex prototype.
+- reflex_app/: root Reflex prototype entrypoint.
 - src/datosenorden/web/: future frontend-independent service layer.

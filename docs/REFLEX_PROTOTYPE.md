@@ -24,8 +24,7 @@ The base project dependencies include Reflex for this prototype.
 From the repository root:
 
 ```powershell
-cd web\reflex_app
-$env:PYTHONPATH="..\..\src"
+$env:PYTHONPATH="src"
 reflex run
 ```
 

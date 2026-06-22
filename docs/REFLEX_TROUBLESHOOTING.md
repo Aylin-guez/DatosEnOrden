@@ -72,8 +72,7 @@ Node package operations and fewer file-watching issues.
 Use this to validate the Reflex app without starting the dev server:
 
 ```powershell
-cd web/reflex_app
-$env:PYTHONPATH="..\..\src"
+$env:PYTHONPATH="src"
 reflex compile --dry --no-rich
 ```
 
@@ -86,7 +85,7 @@ stale dev-server state.
 scripts/web/run_reflex_dev.ps1
 ```
 
-The runner changes into `web/reflex_app`, prints diagnostics, sets
+The runner changes into the repository root, prints diagnostics, sets
 `PYTHONPATH`, and runs:
 
 ```powershell
