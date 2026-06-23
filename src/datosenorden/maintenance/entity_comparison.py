@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 import datosenorden.datasets as datasets
 from datosenorden.db.session import SessionLocal
+from datosenorden.maintenance.dataset_metadata import dataset_metadata_for_name
 from datosenorden.models import Claim, Dataset, Entity, Evidence, RelationshipPublic, SourceRecord
 
 PROCUREMENT_MARKERS = (
@@ -34,6 +35,13 @@ MUNICIPAL_MARKERS = (
 )
 BUDGET_MARKERS = (
     "BUDGET",
+)
+OFFICIAL_PUBLICATION_MARKERS = (
+    "APPOINT",
+    "RESIGN",
+    "DECREE",
+    "PUBLICATION",
+    "OFFICIAL",
 )
 
 
@@ -89,6 +97,11 @@ def _build_entity_comparison(session: Session, entity_id: str) -> dict[str, obje
         "dataset_facts": dataset_facts,
         "consistency_observations": observations,
         "coverage_summary": coverage_summary,
+        "overlap_areas": _overlap_areas(datasets_present, ordered_buckets),
+        "dataset_contributions": [
+            _dataset_contribution(bucket.dataset)
+            for bucket in ordered_buckets
+        ],
     }
 
 
@@ -263,6 +276,8 @@ def _activity_sentences(bucket: _DatasetBucket) -> list[str]:
         sentences.append("Records describe municipal projects or spending linked to this organization.")
     if "budget" in categories:
         sentences.append("Records describe budget activity linked to this organization.")
+    if "official_publication" in categories:
+        sentences.append("Records describe official publication activity linked to this organization.")
     if not sentences:
         sentences.append("Records describe public activity linked to this organization.")
     return sentences[:2]
@@ -285,6 +300,8 @@ def _bucket_categories(bucket: _DatasetBucket) -> set[str]:
             categories.add("municipal")
         if any(marker in upper for marker in BUDGET_MARKERS):
             categories.add("budget")
+        if any(marker in upper for marker in OFFICIAL_PUBLICATION_MARKERS):
+            categories.add("official_publication")
     return categories
 
 
@@ -313,6 +330,8 @@ def _consistency_observations(datasets_present: list[str], buckets: tuple[_Datas
         observations.append("Municipal records reference the organization.")
     if "budget" in categories:
         observations.append("Budget records reference the organization.")
+    if "official_publication" in categories:
+        observations.append("Official publication records reference the organization or related public offices.")
 
     if not observations:
         observations.append("This organization appears in multiple public sources.")
@@ -363,6 +382,46 @@ def _count_phrase(count: int, noun: str) -> str:
     if count == 1:
         return f"1 {noun}"
     return f"{count} {noun}s"
+
+
+def _dataset_contribution(dataset: str) -> dict[str, object]:
+    metadata = dataset_metadata_for_name(dataset)
+    if metadata is None:
+        return {
+            "dataset": dataset,
+            "category": "general",
+            "summary": "Public records associated with this entity.",
+            "contributes": ["Public records"],
+        }
+    return {
+        "dataset": metadata.name,
+        "category": metadata.category,
+        "summary": metadata.citizen_summary,
+        "contributes": list(metadata.contributes),
+    }
+
+
+def _overlap_areas(datasets_present: list[str], buckets: tuple[_DatasetBucket, ...]) -> list[str]:
+    if len(datasets_present) < 2:
+        return ["Organization name"] if datasets_present else []
+
+    areas = ["Organization name"]
+    categories = {
+        metadata.category
+        for bucket in buckets
+        if (metadata := dataset_metadata_for_name(bucket.dataset)) is not None
+    }
+    if "budget" in categories and "procurement" in categories:
+        areas.append("Budget relationship")
+    if "lobby" in categories and "transparency" in categories:
+        areas.append("Public meetings and administrative records")
+    if "authorities" in categories and "transparency" in categories:
+        areas.append("Authority records")
+    if "audits" in categories:
+        areas.append("Audit trail")
+    if "official_publication" in categories:
+        areas.append("Official publications")
+    return list(dict.fromkeys(areas))
 
 
 SERVEL_MARKERS = (

@@ -8,6 +8,8 @@ py -3.14 -m pip install -e .
 py -3.14 -m pip show reflex
 ```
 
+- Prefer Python 3.14 when available. Use `py -3.14` first, and fall back to the direct Python 3.14 executable if the launcher is unavailable.
+
 ## Root Run
 
 ```powershell
@@ -98,6 +100,9 @@ python scripts/municipalidades_summary.py
 python scripts/load_transparencia_sample.py
 python scripts/transparencia_summary.py
 python scripts/load_dipres_sample.py
+python scripts/load_diario_oficial_sample.py
+python scripts/diario_oficial_summary.py
+python scripts/discovery_cases.py
 python scripts/dataset_summary.py
 python scripts/dataset_details.py
 python scripts/list_datasets.py

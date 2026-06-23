@@ -394,6 +394,16 @@ def test_get_data_ecosystem_returns_registry_payload(monkeypatch) -> None:
     assert ecosystem["roadmap"][0]["title"] == "Fuentes implementadas"
 
 
+def test_get_discovery_cases_returns_guided_examples() -> None:
+    payload = app_services.get_discovery_cases()
+
+    assert "cases" in payload
+    assert any(case["id"] == "public_spending" for case in payload["cases"])
+    assert any(case["id"] == "public_roles" for case in payload["cases"])
+    forbidden_terms = ("accus", "irregular", "risk", "suspicious", "corrupt", "fraud")
+    assert not any(term in str(payload).lower() for term in forbidden_terms)
+
+
 def test_cross_dataset_connections_include_shared_organizations(monkeypatch) -> None:
     _patch_session(monkeypatch)
     row = CrossDatasetOrganizationSummary(

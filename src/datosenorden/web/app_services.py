@@ -11,6 +11,7 @@ from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
 from datosenorden.maintenance.dataset_registry import list_datasets
 from datosenorden.maintenance.demo_pack import build_demo_status
+from datosenorden.maintenance.discovery_cases import get_discovery_cases as _get_discovery_cases
 from datosenorden.maintenance.ecosystem_registry import build_ecosystem_registry
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.investigation_export import export_investigation_markdown
@@ -122,6 +123,10 @@ def get_dataset_summary() -> dict[str, Any]:
 def get_data_ecosystem() -> dict[str, Any]:
     with _session_scope() as session:
         return _jsonify(build_ecosystem_registry(session))
+
+
+def get_discovery_cases() -> dict[str, Any]:
+    return _jsonify(_get_discovery_cases())
 
 
 def get_cross_dataset_connections() -> list[dict[str, Any]]:

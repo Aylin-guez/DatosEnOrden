@@ -48,6 +48,7 @@ DATASET_NAME_LABELS = {
     "dipres-budget-sample": "DIPRES Prototype",
     "lobby-meeting-sample": "Lobby",
     "transparencia-activa-sample": "Transparencia Activa",
+    "diario-oficial-sample": "Diario Oficial",
 }
 
 
@@ -253,6 +254,8 @@ def _dataset_summary_text(dataset_name: str) -> str:
         return "DIPRES Prototype contiene información de presupuesto de muestra. Actualmente incluye ejemplos de ministerios, servicios, presupuestos aprobados, presupuestos ejecutados y año fiscal."
     if dataset_name == "Lobby":
         return "Lobby contiene reuniones de lobby de muestra. El sample local no es dato oficial y solo valida conexiones entre organismos públicos, contrapartes y evidencia."
+    if dataset_name == "Diario Oficial":
+        return "Diario Oficial muestra publicaciones oficiales de muestra sobre nombramientos, renuncias, decretos y actos administrativos. Este prototipo usa datos locales, no datos oficiales."
     return f"{dataset_name} contiene datos públicos guardados en el sistema."
 
 
@@ -384,6 +387,8 @@ def _graph_meaning_for_chain(chain: tuple[str, ...]) -> str:
         return "Esta reunión de lobby conecta un organismo público con una contraparte registrada. La relación no implica irregularidad; solo muestra una reunión registrada o de muestra."
     if chain[:3] == ("COMPANY", "LOBBY_MEETING", "PUBLIC_ORGANIZATION"):
         return "Esta contraparte aparece conectada a una reunión de lobby con un organismo público. La relación es descriptiva y no implica irregularidad."
+    if chain[:3] in {("PERSON", "ROLE", "PUBLIC_ORGANIZATION"), ("PUBLIC_ORGANIZATION", "ROLE", "PERSON")}:
+        return "Diario Oficial muestra nombramientos, renuncias y cargos públicos vinculados a una publicación oficial. La relación es descriptiva y no implica juicio alguno."
     if chain[:3] == ("PUBLIC_ORGANIZATION", "CONTRACT", "COMPANY"):
         return "El organismo emite compras públicas que conectan contratos y proveedores."
     if not chain:

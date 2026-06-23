@@ -43,6 +43,11 @@ EVENT_LABELS = {
     "CONTROL_REPORT_HAS_OBSERVATION": "Se registro una observacion asociada al informe.",
     "MUNICIPALITY_EXECUTES_PROJECT": "Se registro la ejecucion de un proyecto.",
     "MUNICIPALITY_SPENDS_ON": "Se registro un gasto municipal asociado.",
+    "PERSON_APPOINTED_TO_PUBLIC_OFFICE": "Se registro un nombramiento en un cargo publico.",
+    "PERSON_RESIGNED_FROM_PUBLIC_OFFICE": "Se registro una renuncia a un cargo publico.",
+    "DECREE_APPLIES_TO_ORGANIZATION": "Se registro una publicacion oficial asociada a una organizacion.",
+    "OFFICIAL_PUBLICATION_REFERENCES_ENTITY": "Se registro una publicacion oficial que referencia una entidad.",
+    "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION": "Se registro un cargo publico vinculado a una organizacion.",
 }
 
 
@@ -408,6 +413,8 @@ def _event_explanation(predicate: str, dataset: str) -> str:
         "TRANSPARENCIA": "Fuente de transparencia administrativa.",
         "CONTRALORIA": "Fuente de control.",
         "MUNICIPALIDADES": "Fuente municipal.",
+        "DIARIO OFICIAL": "Fuente de publicaciones oficiales.",
+        "DIARIO_OFICIAL": "Fuente de publicaciones oficiales.",
     }.get(dataset, "Fuente publica.")
     return f"{intro} {event_explanation(predicate)}"
 

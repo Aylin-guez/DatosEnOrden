@@ -1,0 +1,34 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "records": [
+    {
+      "external_id": "diario-2026-0001",
+      "publication_date": "2026-04-10",
+      "publication_number": "N° 12.345",
+      "publication_title": "Decreto exento de nombramiento de muestra",
+      "document_kind": "Decreto exento",
+      "event_kind": "appointment",
+      "person_name": "Persona de Muestra Uno",
+      "office_name": "Directora de servicio de muestra",
+      "organization_name": "Servicio de Salud Arauco",
+      "decree_number": "DE-2026-01",
+      "publication_section": "Nombramientos",
+      "source_url": "local://sample/diario-oficial/2026-04-10/12345"
+    },
+    {
+      "external_id": "diario-2026-0002",
+      "publication_date": "2026-05-02",
+      "publication_number": "N° 12.402",
+      "publication_title": "Renuncia administrativa de muestra",
+      "document_kind": "Resolución",
+      "event_kind": "resignation",
+      "person_name": "Persona de Muestra Dos",
+      "office_name": "Jefatura regional de muestra",
+      "organization_name": "Subsecretaría de Muestra",
+      "decree_number": "RES-2026-08",
+      "publication_section": "Renuncias",
+      "source_url": "local://sample/diario-oficial/2026-05-02/12402"
+    }
+  ]
+}

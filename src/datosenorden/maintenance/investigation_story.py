@@ -110,6 +110,8 @@ def _key_findings(comparison: dict[str, object], view) -> tuple[str, ...]:  # no
         findings.append("The organization is connected to public meetings.")
     if getattr(view, "role_items", ()):
         findings.append("The organization is connected to public transparency records.")
+    if any(getattr(item, "dataset", "") == "Diario Oficial" for item in getattr(view, "role_items", ())):
+        findings.append("The organization appears in official publication records.")
 
     deduped = _dedupe_preserve_order(findings)
     if not deduped:
@@ -180,6 +182,8 @@ def _questions_for_citizens(view, comparison: dict[str, object]) -> tuple[str, .
         questions.append("Would you like to review related public meetings?")
     if getattr(view, "role_items", ()):
         questions.append("Would you like to inspect transparency records?")
+    if any(getattr(item, "dataset", "") == "Diario Oficial" for item in getattr(view, "role_items", ())):
+        questions.append("Would you like to review official publication records?")
     if "contraloria" in normalized:
         questions.append("Would you like to review control reports?")
     if "municipal" in normalized:

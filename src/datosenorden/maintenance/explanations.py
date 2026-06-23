@@ -13,6 +13,11 @@ RELATIONSHIP_EXPLANATIONS = {
     "AUTHORITY_REPRESENTS_TERRITORY": "La autoridad aparece asociada a un territorio de representacion.",
     "OFFICE_BELONGS_TO_MUNICIPALITY": "El cargo o puesto pertenece a un municipio.",
     "AUTHORITY_HAS_ELECTORAL_PERIOD": "La autoridad aparece asociada a un periodo electoral.",
+    "PERSON_APPOINTED_TO_PUBLIC_OFFICE": "La persona aparece asociada a un nombramiento o designacion en un cargo publico.",
+    "PERSON_RESIGNED_FROM_PUBLIC_OFFICE": "La persona aparece asociada a una renuncia o cese de cargo publico.",
+    "DECREE_APPLIES_TO_ORGANIZATION": "La publicacion oficial aparece asociada a una organizacion.",
+    "OFFICIAL_PUBLICATION_REFERENCES_ENTITY": "La publicacion oficial hace referencia a una entidad.",
+    "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION": "El cargo publico pertenece a una organizacion.",
     "BUDGET_ALLOCATED_TO": "El presupuesto aparece asignado a un organismo.",
     "AWARDS_CONTRACT": "El organismo adjudica un contrato.",
     "COUNTERPARTY_PARTICIPATED_IN_LOBBY": "La contraparte aparece asociada a una reunion de lobby.",
@@ -46,6 +51,11 @@ EVENT_EXPLANATIONS = {
     "CONTROL_REPORT_HAS_OBSERVATION": "Se registro una observacion asociada al informe.",
     "MUNICIPALITY_EXECUTES_PROJECT": "Se registro la ejecucion de un proyecto.",
     "MUNICIPALITY_SPENDS_ON": "Se registro un gasto municipal asociado.",
+    "PERSON_APPOINTED_TO_PUBLIC_OFFICE": "Se registro un nombramiento en un cargo publico.",
+    "PERSON_RESIGNED_FROM_PUBLIC_OFFICE": "Se registro una renuncia a un cargo publico.",
+    "DECREE_APPLIES_TO_ORGANIZATION": "Se registro una publicacion oficial asociada a una organizacion.",
+    "OFFICIAL_PUBLICATION_REFERENCES_ENTITY": "Se registro una publicacion oficial que referencia una entidad.",
+    "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION": "Se registro un cargo publico vinculado a una organizacion.",
 }
 
 
@@ -79,6 +89,8 @@ def graph_explanation_for_chain(chain: tuple[str, ...]) -> str:
         return "SERVEL muestra autoridades electas, cargos publicos, territorios y periodos electorales de muestra. Este prototipo usa datos de muestra, no datos oficiales. No implica irregularidad."
     if chain[:3] == ("PUBLIC_ORGANIZATION", "ROLE", "PERSON"):
         return "Transparencia Activa muestra informacion administrativa publicada por organismos. Este prototipo usa datos de muestra, no datos oficiales. No implica irregularidad; solo representa informacion publica o de muestra."
+    if chain[:3] in {("PERSON", "ROLE", "PUBLIC_ORGANIZATION"), ("PUBLIC_ORGANIZATION", "ROLE", "PERSON")}:
+        return "Diario Oficial muestra nombramientos, renuncias y cargos publicos vinculados con una publicacion oficial. La relacion es descriptiva y no implica juicio alguno."
     if chain[:5] == ("BUDGET", "PUBLIC_ORGANIZATION", "CONTRACT", "COMPANY", "LOBBY_MEETING"):
         return "El organismo se conecta con presupuesto, contratos, una contraparte y una reunion de lobby registrada o de muestra. La relacion no implica irregularidad."
     if chain[:4] == ("BUDGET", "PUBLIC_ORGANIZATION", "CONTRACT", "COMPANY"):

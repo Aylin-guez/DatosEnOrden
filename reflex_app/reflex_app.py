@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from urllib.parse import quote_plus
+
 import reflex as rx
 
 from datosenorden.web.app_services import get_cross_dataset_connections
 from datosenorden.web.app_services import get_dataset_summary
 from datosenorden.web.app_services import get_demo_status
+from datosenorden.web.app_services import get_discovery_cases
 from datosenorden.web.app_services import get_investigation
 from datosenorden.web.app_services import get_entity_comparison
 from datosenorden.web.app_services import get_investigation_graph
@@ -27,6 +30,7 @@ GRAPH_EXPLANATION = (
 
 PAGE_HOME = "home"
 PAGE_ECOSYSTEM = "ecosystem"
+PAGE_DISCOVER = "discover"
 PAGE_SEARCH = "search"
 PAGE_INVESTIGATION = "investigation"
 
@@ -192,6 +196,39 @@ def _nav_class(active: bool) -> str:
     return "nav-link nav-link-active" if active else "nav-link"
 
 
+def _entity_badge_class(entity_type: str) -> str:
+    labels = {
+        "PUBLIC_ORGANIZATION": "badge badge-teal",
+        "MUNICIPALITY": "badge badge-teal",
+        "PERSON": "badge badge-purple",
+        "ROLE": "badge badge-purple",
+        "LOBBY_MEETING": "badge badge-purple",
+        "CONTRACT": "badge badge-amber",
+        "BUDGET": "badge badge-amber",
+        "CONTROL_REPORT": "badge badge-amber",
+        "PUBLIC_OBSERVATION": "badge badge-amber",
+        "PUBLIC_PROJECT": "badge badge-teal",
+        "SPENDING_ITEM": "badge badge-amber",
+        "ELECTORAL_PERIOD": "badge badge-purple",
+    }
+    return labels.get(entity_type, "badge")
+
+
+def _search_href(query: str) -> str:
+    cleaned = query.strip()
+    if not cleaned:
+        return "/search"
+    return f"/search?q={quote_plus(cleaned)}"
+
+
+def page_section(title: str, *children, subtitle: str | None = None) -> rx.Component:
+    body = [rx.text(title, class_name="section-title")]
+    if subtitle is not None:
+        body.append(rx.text(subtitle, class_name="section-subtitle"))
+    body.extend(children)
+    return rx.vstack(*body, spacing="3", align="stretch", class_name="page-section")
+
+
 def _clear_investigation_state(self) -> None:
     self.selected_entity_id = ""
     self.selected_entity_name = ""
@@ -333,6 +370,8 @@ class AppState(rx.State):
     ecosystem_concept_count: int = 0
     connection_rows: list[dict] = []
     connection_rows_preview: list[dict] = []
+    discovery_case_rows: list[dict] = []
+    discovery_case_preview: list[dict] = []
     demo_missing: list[str] = []
     total_datasets: int = 0
     active_datasets: int = 0
@@ -404,6 +443,18 @@ class AppState(rx.State):
                 for row in get_cross_dataset_connections()
             ]
             self.connection_rows_preview = self.connection_rows[:6]
+            discovery = get_discovery_cases()
+            self.discovery_case_rows = [
+                {
+                    **row,
+                    "id_label": str(row.get("id", "")).replace("_", " "),
+                    "concepts_text": " | ".join(str(item) for item in row.get("concepts", [])),
+                    "sources_text": " | ".join(str(item) for item in row.get("suggested_sources", [])),
+                    "search_href": _search_href(str(row.get("example_query", ""))),
+                }
+                for row in discovery.get("cases", [])
+            ]
+            self.discovery_case_preview = self.discovery_case_rows[:3]
             demo_status = get_demo_status()
             self.demo_missing = [item.get("label", "") for item in demo_status.get("missing", [])]
             self.total_datasets = int(totals.get("datasets", 0))
@@ -412,6 +463,20 @@ class AppState(rx.State):
             self.total_relationships = int(totals.get("relationships", 0))
         except Exception as exc:  # noqa: BLE001
             self.error_message = f"{type(exc).__name__}: {exc}"
+
+    def load_discover(self) -> None:
+        self.load_home()
+
+    def load_search(self) -> None:
+        self.load_home()
+        self.results = []
+        self.workspace_matches = []
+        query_value = str(self.router.url.query_parameters.get("q", "")).strip()
+        if query_value:
+            self.query = query_value
+            self.run_search()
+        else:
+            self.query = ""
 
     def load_ecosystem(self) -> None:
         self.error_message = ""
@@ -442,6 +507,7 @@ class AppState(rx.State):
                 {
                     **dict(row),
                     "sources_text": " | ".join(str(item) for item in row.get("sources", [])),
+                    "note_text": "Diario Oficial ya figura como prototipo local." if row.get("status") == "prototype" else "",
                 }
                 for row in ecosystem.get("roadmap", [])
             ]
@@ -639,6 +705,7 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
     nav_items = rx.hstack(
         rx.link("Inicio", href="/", class_name=_nav_class(active_page == PAGE_HOME)),
         rx.link("Ecosistema", href="/ecosystem", class_name=_nav_class(active_page == PAGE_ECOSYSTEM)),
+        rx.link("Descubre", href="/discover", class_name=_nav_class(active_page == PAGE_DISCOVER)),
         rx.link("Buscar", href="/search", class_name=_nav_class(active_page == PAGE_SEARCH)),
         rx.link("Expediente", href="/investigation", class_name=_nav_class(active_page == PAGE_INVESTIGATION)),
         spacing="2",
@@ -702,11 +769,30 @@ def ecosystem_source_card(row: dict) -> rx.Component:
             align="center",
         ),
         rx.text(row["description"], class_name="muted"),
-        rx.text(f"category: {row['category']} | coverage: {row['coverage']}", class_name="muted small"),
-        rx.text(f"concepts: {row['concepts_text']}", class_name="source-fact"),
-        rx.text(f"conecta con: {row.get('connects_with_text', '')}", class_name="source-fact"),
-        rx.text(f"entidades: {row.get('entities_text', '')}", class_name="muted small"),
-        rx.text(f"relationships: {row['relationships_text']}", class_name="technical-line"),
+        rx.hstack(
+            rx.text(f"categoria: {row['category']}", class_name="mini-pill"),
+            rx.text(f"cobertura: {row['coverage']}", class_name="mini-pill mini-pill-purple"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.text(f"qué aporta: {row['concepts_text']}", class_name="source-fact"),
+        rx.text(f"con qué se cruza: {row.get('connects_with_text', '')}", class_name="source-fact"),
+        rx.accordion.root(
+            rx.accordion.item(
+                header="Detalles técnicos de metadata",
+                content=rx.vstack(
+                    rx.text(f"entidades: {row.get('entities_text', '')}", class_name="technical-line"),
+                    rx.text(f"relationships: {row['relationships_text']}", class_name="technical-line"),
+                    spacing="2",
+                    align="stretch",
+                ),
+                value=f"source-meta-{row['slug']}",
+            ),
+            type="single",
+            collapsible=True,
+            variant="ghost",
+            class_name="technical-accordion",
+        ),
         class_name="card ecosystem-card",
     )
 
@@ -728,6 +814,7 @@ def ecosystem_roadmap_card(row: dict) -> rx.Component:
     return rx.box(
         rx.text(row["title"], class_name="card-title"),
         rx.text(row["sources_text"], class_name="source-fact"),
+        rx.text(row.get("note_text", ""), class_name="muted small"),
         class_name="card",
     )
 
@@ -954,7 +1041,7 @@ def timeline_year_card(row: dict) -> rx.Component:
 def workspace_match_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.text(row["entity_type"], class_name="badge badge-purple"),
+            rx.text(row.get("entity_type_label", _human_label(row.get("entity_type", ""))), class_name=_entity_badge_class(str(row.get("entity_type", "")))),
             rx.text(row["source_hint"], class_name="muted small"),
             justify="between",
             align="center",
@@ -968,7 +1055,7 @@ def workspace_match_card(row: dict) -> rx.Component:
             wrap="wrap",
         ),
         rx.button("Abrir expediente", on_click=AppState.open_investigation(row["entity_id"], row["entity_name"]), class_name="button button-secondary"),
-        class_name="card example-card",
+        class_name="card example-card search-result-card",
     )
 
 
@@ -1021,6 +1108,31 @@ def search_example_card(row: dict) -> rx.Component:
     )
 
 
+def discovery_case_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["title"], class_name="card-title"),
+            rx.text(row["id_label"], class_name="badge badge-purple"),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["description"], class_name="muted small"),
+        rx.hstack(
+            rx.text(row.get("concepts_text", ""), class_name="search-chip"),
+            rx.text(row.get("sources_text", ""), class_name="mini-pill mini-pill-purple"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.text(f"Ejemplo: {row['example_query']}", class_name="source-fact"),
+        rx.button(
+            row.get("cta", "Explorar"),
+            on_click=rx.redirect(row["search_href"]),
+            class_name="button button-secondary",
+        ),
+        class_name="card example-card discovery-card",
+    )
+
+
 def start_from_ecosystem_card() -> rx.Component:
     return rx.link(
         rx.box(
@@ -1041,14 +1153,18 @@ def investigation_empty_state() -> rx.Component:
             rx.text("Un expediente reúne las fuentes públicas disponibles para una entidad.", class_name="subtitle"),
             class_name="hero",
         ),
-        rx.hstack(
-            rx.button("Buscar una entidad", on_click=rx.redirect("/search"), class_name="button"),
-            rx.button("Entender fuentes", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
-            spacing="3",
-            wrap="wrap",
+        page_section(
+            "Buscar una entidad",
+            rx.hstack(
+                rx.button("Buscar una entidad", on_click=rx.redirect("/search"), class_name="button"),
+                rx.button("Entender fuentes", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+            ),
+            subtitle="Salta al punto de entrada más útil.",
         ),
-        rx.box(
-            rx.text("Ver ejemplos", class_name="section-title"),
+        page_section(
+            "Ver ejemplos",
             rx.cond(
                 AppState.connection_rows_preview,
                 rx.grid(
@@ -1059,12 +1175,12 @@ def investigation_empty_state() -> rx.Component:
                 ),
                 rx.text("Todavía no hay ejemplos disponibles.", class_name="muted small"),
             ),
-            class_name="card",
+            subtitle="Casos que ya cruzan fuentes locales.",
         ),
-        rx.box(
-            rx.text("Entender fuentes", class_name="section-title"),
+        page_section(
+            "Entender fuentes",
             start_from_ecosystem_card(),
-            class_name="card",
+            subtitle="Explora primero el mapa si falta contexto.",
         ),
         spacing="4",
         align="stretch",
@@ -1073,22 +1189,22 @@ def investigation_empty_state() -> rx.Component:
 
 def search_empty_state() -> rx.Component:
     return rx.vstack(
-        rx.box(
-            rx.text("Sugerencias de búsqueda", class_name="section-title"),
+        page_section(
+            "Prueba con estos ejemplos",
             rx.cond(
-                AppState.connection_rows_preview,
+                AppState.discovery_case_rows,
                 rx.grid(
-                    rx.foreach(AppState.connection_rows_preview, search_example_card),
+                    rx.foreach(AppState.discovery_case_rows, discovery_case_card),
                     columns="2",
                     spacing="3",
                     class_name="responsive-grid",
                 ),
                 rx.text("Todavía no hay sugerencias disponibles.", class_name="muted small"),
             ),
-            class_name="card",
+            subtitle="Casos guiados antes de buscar.",
         ),
-        rx.box(
-            rx.text("Qué puedes buscar?", class_name="section-title"),
+        page_section(
+            "¿Qué puedes buscar?",
             rx.hstack(
                 rx.foreach(
                     [
@@ -1106,12 +1222,26 @@ def search_empty_state() -> rx.Component:
                 wrap="wrap",
                 class_name="chip-row",
             ),
-            class_name="card",
+            subtitle="Términos útiles para empezar.",
         ),
-        rx.box(
-            rx.text("Empieza por el ecosistema", class_name="section-title"),
+        page_section(
+            "Ejemplos de expediente",
+            rx.cond(
+                AppState.connection_rows_preview,
+                rx.grid(
+                    rx.foreach(AppState.connection_rows_preview, search_example_card),
+                    columns="2",
+                    spacing="3",
+                    class_name="responsive-grid",
+                ),
+                rx.text("Todavía no hay ejemplos disponibles.", class_name="muted small"),
+            ),
+            subtitle="Cruces visibles entre fuentes locales.",
+        ),
+        page_section(
+            "Empieza por el ecosistema",
             start_from_ecosystem_card(),
-            class_name="card",
+            subtitle="Si no sabes qué buscar, explora primero las fuentes disponibles.",
         ),
         spacing="4",
         align="stretch",
@@ -1431,16 +1561,31 @@ def home() -> rx.Component:
             ),
             class_name="hero",
         ),
-        rx.grid(
-            flow_card(1, "Explora fuentes", "Revisa qué bases existen hoy, cuáles están en desarrollo y cuáles se planean."),
-            flow_card(2, "Busca una entidad", "Encuentra organismos, proveedores, autoridades o cargos públicos."),
-            flow_card(3, "Abre un expediente", "Cruza fuentes, evidencia y trazabilidad en una sola vista."),
-            columns="3",
-            spacing="3",
-            class_name="responsive-grid",
+        page_section(
+            "Recorrido",
+            rx.grid(
+                flow_card(1, "Explora fuentes", "Revisa qué bases existen hoy, cuáles están en desarrollo y cuáles se planean."),
+                flow_card(2, "Busca una entidad", "Encuentra organismos, proveedores, autoridades o cargos públicos."),
+                flow_card(3, "Abre un expediente", "Cruza fuentes, evidencia y trazabilidad en una sola vista."),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Un recorrido simple antes de entrar en la búsqueda.",
         ),
-        rx.box(
-            rx.text("Métricas compactas", class_name="section-title"),
+        page_section(
+            "Descubre",
+            rx.grid(
+                rx.foreach(AppState.discovery_case_preview, discovery_case_card),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            rx.link("Ver todos los casos", href="/discover", class_name="badge badge-purple"),
+            subtitle="Casos guiados para empezar por una pregunta.",
+        ),
+        page_section(
+            "Métricas compactas",
             rx.hstack(
                 metric("Fuentes", AppState.total_datasets),
                 metric("Activas", AppState.active_datasets),
@@ -1449,20 +1594,20 @@ def home() -> rx.Component:
                 spacing="3",
                 wrap="wrap",
             ),
-            class_name="card",
+            subtitle="Resumen breve al final del recorrido.",
         ),
-        rx.box(
-            rx.text("Conjuntos de datos", class_name="section-title"),
+        page_section(
+            "Conjuntos de datos",
             rx.grid(
                 rx.foreach(AppState.dataset_rows, dataset_card),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            class_name="card",
+            subtitle="Fuentes que ya están disponibles localmente.",
         ),
-        rx.box(
-            rx.text("Conexiones destacadas", class_name="section-title"),
+        page_section(
+            "Conexiones destacadas",
             rx.text("Explora entidades que aparecen en varias fuentes públicas.", class_name="section-subtitle"),
             rx.grid(
                 rx.foreach(AppState.connection_rows_preview, connection_card),
@@ -1470,12 +1615,12 @@ def home() -> rx.Component:
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            class_name="card",
+            subtitle="Casos de ejemplo para abrir expedientes.",
         ),
-        rx.box(
-            rx.text("Estado de carga", class_name="section-title"),
+        page_section(
+            "Estado de carga",
             rx.foreach(AppState.demo_missing, lambda item: rx.text(item, class_name="muted")),
-            class_name="card",
+            subtitle="Chequeo local de disponibilidad.",
         ),
         on_mount=AppState.load_home,
         active_page=PAGE_HOME,
@@ -1493,16 +1638,20 @@ def ecosystem() -> rx.Component:
             ),
             class_name="hero",
         ),
-        rx.hstack(
-            metric("Fuentes activas", AppState.ecosystem_active_count),
-            metric("En desarrollo", AppState.ecosystem_prototype_count),
-            metric("Planificadas", AppState.ecosystem_planned_count),
-            metric("Conceptos", AppState.ecosystem_concept_count),
-            spacing="3",
-            wrap="wrap",
+        page_section(
+            "Resumen del mapa",
+            rx.hstack(
+                metric("Fuentes activas", AppState.ecosystem_active_count),
+                metric("En desarrollo", AppState.ecosystem_prototype_count),
+                metric("Planificadas", AppState.ecosystem_planned_count),
+                metric("Conceptos", AppState.ecosystem_concept_count),
+                spacing="3",
+                wrap="wrap",
+            ),
+            subtitle="Cobertura y alcance del mapa de fuentes.",
         ),
-        rx.box(
-            rx.text("Fuentes actuales", class_name="section-title"),
+        page_section(
+            "Fuentes actuales",
             rx.text("Fuentes activas", class_name="section-subtitle"),
             rx.grid(
                 rx.foreach(AppState.ecosystem_active_sources, ecosystem_source_card),
@@ -1524,20 +1673,20 @@ def ecosystem() -> rx.Component:
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            class_name="card",
+            subtitle="Estado actual, en desarrollo y lo que falta por integrar.",
         ),
-        rx.box(
-            rx.text("Qué conecta cada fuente", class_name="section-title"),
+        page_section(
+            "Qué conecta cada fuente",
             rx.grid(
                 rx.foreach(AppState.ecosystem_concepts, ecosystem_concept_card),
-                columns="3",
+                columns="4",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            class_name="card",
+            subtitle="Conceptos visibles en cada fuente.",
         ),
-        rx.box(
-            rx.text("Cómo se cruzan las fuentes", class_name="section-title"),
+        page_section(
+            "Cómo se cruzan las fuentes",
             rx.text("Cada concepto indica qué fuentes lo alimentan y si su cobertura es activa, parcial o futura.", class_name="muted"),
             rx.grid(
                 rx.foreach(AppState.ecosystem_roadmap, ecosystem_roadmap_card),
@@ -1545,20 +1694,71 @@ def ecosystem() -> rx.Component:
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            class_name="card",
+            subtitle="Lectura de cobertura y cruce entre fuentes.",
         ),
-        rx.box(
-            rx.text("Catálogo de metadatos", class_name="section-title"),
+        page_section(
+            "Catálogo de metadatos",
             rx.grid(
                 rx.foreach(AppState.ecosystem_sources, ecosystem_source_card),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            class_name="card",
+            subtitle="Detalle completo y trazabilidad técnica bajo demanda.",
         ),
         on_mount=AppState.load_ecosystem,
         active_page=PAGE_ECOSYSTEM,
+    )
+
+
+@rx.page(route="/discover", title="Descubre - DatosEnOrden")
+def discover() -> rx.Component:
+    return shell(
+        rx.box(
+            rx.text("Descubre qué puedes explorar", class_name="title"),
+            rx.text(
+                "Elige una pregunta inicial y DatosEnOrden te guía por las fuentes públicas disponibles.",
+                class_name="subtitle",
+            ),
+            class_name="hero",
+        ),
+        page_section(
+            "Casos guiados",
+            rx.grid(
+                rx.foreach(AppState.discovery_case_rows, discovery_case_card),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Puntos de entrada para empezar antes de buscar.",
+        ),
+        page_section(
+            "Qué puedes probar",
+            rx.hstack(
+                rx.text("Organismos públicos", class_name="search-chip"),
+                rx.text("Proveedores", class_name="search-chip"),
+                rx.text("Autoridades", class_name="search-chip"),
+                rx.text("Compras", class_name="search-chip"),
+                rx.text("Presupuestos", class_name="search-chip"),
+                rx.text("Reuniones", class_name="search-chip"),
+                rx.text("Cargos públicos", class_name="search-chip"),
+                spacing="2",
+                wrap="wrap",
+            ),
+            subtitle="Conceptos para orientar el primer recorrido.",
+        ),
+        page_section(
+            "Desde aquí",
+            rx.hstack(
+                rx.button("Buscar entidad", on_click=rx.redirect("/search"), class_name="button"),
+                rx.button("Ir al ecosistema", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+            ),
+            subtitle="Cambia de ruta sin perder el contexto.",
+        ),
+        on_mount=AppState.load_discover,
+        active_page=PAGE_DISCOVER,
     )
 
 
@@ -1577,7 +1777,8 @@ def search() -> rx.Component:
             ),
             class_name="hero",
         ),
-        rx.box(
+        page_section(
+            "Barra de búsqueda",
             rx.hstack(
                 rx.input(
                     placeholder="Busca organismo, proveedor, autoridad o cargo público",
@@ -1590,19 +1791,23 @@ def search() -> rx.Component:
                 align="center",
                 class_name="search-bar",
             ),
-            class_name="card",
+            subtitle="La entrada principal para abrir un expediente.",
         ),
         rx.cond(
             AppState.results,
-            rx.grid(
-                rx.foreach(AppState.results, result_card),
-                columns="2",
-                spacing="3",
-                class_name="responsive-grid",
+            page_section(
+                "Resultados",
+                rx.grid(
+                    rx.foreach(AppState.results, result_card),
+                    columns="3",
+                    spacing="3",
+                    class_name="responsive-grid",
+                ),
+                subtitle="Selecciona un resultado para abrir el expediente.",
             ),
             search_empty_state(),
         ),
-        on_mount=AppState.load_home,
+        on_mount=AppState.load_search,
         active_page=PAGE_SEARCH,
     )
 
@@ -1655,66 +1860,16 @@ def investigation() -> rx.Component:
         on_mount=AppState.load_investigation,
         active_page=PAGE_INVESTIGATION,
     )
-    return shell(
-        rx.cond( AppState.selected_entity_id == "",
-            rx.vstack(
-                rx.box(
-                    rx.text("Inicia un expediente", class_name="title"),
-                    rx.text(
-                        "Busca una entidad o abre un ejemplo para recorrer cómo se conectan las fuentes públicas.",
-                        class_name="subtitle",
-                    ),
-                    class_name="hero",
-                ),
-                rx.box(
-                    rx.text("Ejemplos disponibles", class_name="section-title"),
-                    rx.grid(
-                        rx.foreach(AppState.connection_rows, connection_card),
-                        columns="2",
-                        spacing="3",
-                        class_name="responsive-grid",
-                    ),
-                    class_name="card",
-                ),
-                spacing="4",
-                align="stretch",
-                on_mount=AppState.load_home,
-            ),
-            rx.box(
-                rx.vstack(
-                    rx.hstack(
-                        summary_metric_card("Datasets involved", AppState.datasets_involved),
-                        summary_metric_card("Evidence count", AppState.evidence_count),
-                        summary_metric_card("Relationships", AppState.relationship_count),
-                        summary_metric_card("Connected entities", AppState.connected_entities),
-                        spacing="2",
-                        wrap="wrap",
-                        class_name="summary-strip",
-                    ),
-                    rx.box(
-                        investigation_left_column(),
-                        investigation_center_column(),
-                        context_sidebar_panel(),
-                        class_name="investigation-layout",
-                    ),
-                    spacing="4",
-                    align="stretch",
-                    class_name="investigation-shell",
-                ),
-            ),
-        ),
-        on_mount=AppState.load_investigation,
-    )
 
 
 style = {
     "body": {
-        "background": "#0b0b0f",
+        "background": "#0f0f12",
         "color": "#f4f4f5",
         "font_family": "IBM Plex Sans, Inter, Segoe UI, sans-serif",
     },
     ".shell": {"min_height": "100vh", "padding": "0 0 28px"},
-    ".shell.theme-dark": {"background": "#0b0b0f", "color": "#f4f4f5"},
+    ".shell.theme-dark": {"background": "#0f0f12", "color": "#f4f4f5"},
     ".shell.theme-light": {"background": "#f4f4f5", "color": "#18181b"},
     ".shell-header": {
         "width": "100%",
@@ -1727,40 +1882,36 @@ style = {
         "border_bottom": "1px solid rgba(113, 113, 122, 0.18)",
     },
     ".nav-inner": {
-        "max_width": "1440px",
+        "max_width": "1760px",
         "margin": "0 auto",
-        "width": "95vw",
+        "width": "min(calc(100% - 48px), 1760px)",
         "padding": "16px 0",
         "gap": "16px",
     },
-    ".page": {"max_width": "1440px", "margin": "0 auto", "width": "95vw"},
+    ".page": {"max_width": "1760px", "margin": "0 auto", "width": "min(calc(100% - 48px), 1760px)"},
     ".brand": {"font_size": "20px", "font_weight": "800", "letter_spacing": "0.02em", "color": "#f4f4f5"},
     ".shell.theme-light .brand": {"color": "#18181b"},
-    ".nav-links": {"flex_wrap": "wrap", "gap": "8px", "justify_content": "center"},
+    ".nav-links": {"flex_wrap": "wrap", "gap": "22px", "justify_content": "center"},
     ".nav-link": {
         "display": "inline-flex",
         "align_items": "center",
         "justify_content": "center",
-        "border_radius": "999px",
-        "padding": "8px 12px",
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
-        "background": "rgba(31, 31, 36, 0.88)",
+        "padding": "8px 2px 10px",
+        "border_bottom": "2px solid transparent",
+        "background": "transparent",
         "color": "#d4d4d8",
         "font_weight": "600",
     },
     ".nav-link-active": {
-        "border_color": "rgba(45, 212, 191, 0.45)",
-        "background": "rgba(45, 212, 191, 0.14)",
+        "border_bottom": "2px solid #2dd4bf",
         "color": "#f4f4f5",
     },
     ".shell.theme-light .nav-link": {
-        "background": "#ffffff",
-        "border_color": "rgba(113, 113, 122, 0.18)",
+        "background": "transparent",
         "color": "#18181b",
     },
     ".shell.theme-light .nav-link-active": {
-        "background": "rgba(167, 139, 250, 0.12)",
-        "border_color": "rgba(167, 139, 250, 0.3)",
+        "border_bottom": "2px solid #c084fc",
         "color": "#18181b",
     },
     ".theme-toggle": {
@@ -1775,12 +1926,12 @@ style = {
         "background": "rgba(167, 139, 250, 0.12)",
         "color": "#18181b",
     },
-    ".shell-alert": {"width": "95vw", "max_width": "1440px", "margin": "16px auto 0"},
+    ".shell-alert": {"width": "min(calc(100% - 48px), 1760px)", "max_width": "1760px", "margin": "16px auto 0"},
     ".hero": {
-        "border": "1px solid rgba(161, 161, 170, 0.18)",
+        "border": "1px solid rgba(161, 161, 170, 0.14)",
         "border_radius": "18px",
         "padding": "28px",
-        "background": "linear-gradient(180deg, rgba(31, 31, 36, 0.96), rgba(24, 24, 27, 0.96))",
+        "background": "linear-gradient(180deg, rgba(31, 31, 36, 0.92), rgba(24, 24, 27, 0.92))",
     },
     ".shell.theme-light .hero": {
         "background": "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 248, 0.98))",
@@ -1793,8 +1944,13 @@ style = {
     ".shell.theme-light .section-title": {"color": "#18181b"},
     ".section-subtitle": {"color": "#a1a1aa", "margin_bottom": "14px"},
     ".shell.theme-light .section-subtitle": {"color": "#71717a"},
+    ".page-section": {
+        "display": "grid",
+        "gap": "14px",
+        "padding": "4px 0 10px",
+    },
     ".card": {
-        "border": "1px solid rgba(161, 161, 170, 0.18)",
+        "border": "1px solid rgba(161, 161, 170, 0.16)",
         "border_radius": "16px",
         "padding": "16px",
         "background": "#18181b",
@@ -1922,16 +2078,16 @@ style = {
     ".hero-actions": {"margin_top": "18px"},
     ".investigation-layout": {
         "display": "grid",
-        "grid_template_columns": "minmax(300px, 0.95fr) minmax(0, 1.55fr) minmax(320px, 380px)",
-        "gap": "14px",
+        "grid_template_columns": "minmax(320px, 1fr) minmax(0, 1.6fr) minmax(320px, 1.05fr)",
+        "gap": "16px",
         "align_items": "start",
     },
     ".investigation-shell": {"display": "grid", "gap": "14px"},
     ".story-main": {"min_width": "0"},
     ".investigation-left": {"display": "grid", "gap": "12px"},
     ".investigation-center": {"display": "grid", "gap": "12px"},
-    ".investigation-sidebar": {"max_height": "calc(100vh - 34px)", "overflow_y": "auto"},
-    ".context-panel": {"position": "sticky", "top": "18px", "display": "grid", "gap": "12px"},
+    ".investigation-sidebar": {"max_height": "none", "overflow_y": "visible"},
+    ".context-panel": {"position": "static", "top": "auto", "display": "grid", "gap": "12px"},
     ".investigation-card": {"padding": "12px", "gap": "8px"},
     ".investigation-section-title": {"margin_bottom": "4px", "font_size": "18px"},
     ".investigation-subtitle": {"margin_bottom": "4px", "font_size": "13px"},
@@ -2087,9 +2243,18 @@ style = {
         "border_color": "rgba(113, 113, 122, 0.24)",
         "color": "#18181b",
     },
-    ".search-bar": {"width": "100%", "align_items": "center"},
-    ".search-input": {"min_width": "520px", "width": "100%", "font_size": "16px", "padding": "14px 16px"},
-    ".search-button": {"padding": "12px 18px"},
+    ".search-bar": {"width": "100%", "align_items": "center", "gap": "12px"},
+    ".search-input": {
+        "min_width": "0",
+        "flex": "1 1 auto",
+        "width": "100%",
+        "font_size": "16px",
+        "padding": "14px 16px",
+        "height": "52px",
+    },
+    ".search-button": {"padding": "14px 18px", "height": "52px"},
+    ".search-result-card": {"min_height": "200px"},
+    ".discovery-card": {"min_height": "220px"},
     ".search-chip": {
         "border": "1px solid rgba(113, 113, 122, 0.2)",
         "border_radius": "999px",

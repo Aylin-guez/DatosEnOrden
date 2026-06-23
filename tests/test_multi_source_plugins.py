@@ -81,6 +81,7 @@ def test_dataset_catalog_discovers_local_plugins() -> None:
     assert "municipalidades" in slugs
     assert "lobby" in slugs
     assert "servel" in slugs
+    assert "diario_oficial" in slugs
 
 
 def test_contraloria_sample_payload_contains_required_markers() -> None:
