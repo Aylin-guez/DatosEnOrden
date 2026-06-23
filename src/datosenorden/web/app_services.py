@@ -12,6 +12,7 @@ from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_o
 from datosenorden.maintenance.dataset_registry import list_datasets
 from datosenorden.maintenance.demo_pack import build_demo_status
 from datosenorden.maintenance.discovery_cases import get_discovery_cases as _get_discovery_cases
+from datosenorden.maintenance.citizen_dashboard import build_citizen_dashboard
 from datosenorden.maintenance.ecosystem_registry import build_ecosystem_registry
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.investigation_export import export_investigation_markdown
@@ -24,6 +25,8 @@ from datosenorden.maintenance.investigation_report import export_investigation_r
 from datosenorden.maintenance.investigation_view import build_investigation_view
 from datosenorden.maintenance.investigation_view import investigation_explanation_text
 from datosenorden.maintenance.investigation_timeline import build_investigation_timeline
+from datosenorden.maintenance.guided_questions import get_guided_questions as _get_guided_questions
+from datosenorden.maintenance.institution_profile import build_institution_profile
 from datosenorden.maintenance.search_workspace import search_workspace as _search_workspace
 from datosenorden.maintenance.source_contributions import build_source_contributions
 from datosenorden.maintenance.source_trace import build_source_trace
@@ -91,6 +94,7 @@ def get_investigation(entity_id: str) -> dict[str, Any]:
         "contracts_compras": _jsonify(view.procurement_items),
         "lobby": _jsonify(view.lobby_items),
         "transparencia": _jsonify(view.role_items),
+        "registro_empresas": _jsonify(getattr(view, "registry_items", ())),
         "evidence": _jsonify(view.evidence_groups),
         "neutral_explanation": investigation_explanation_text(),
         "technical_details": {
@@ -129,6 +133,14 @@ def get_discovery_cases() -> dict[str, Any]:
     return _jsonify(_get_discovery_cases())
 
 
+def get_guided_questions() -> dict[str, Any]:
+    return _jsonify(_get_guided_questions())
+
+
+def get_institution_profile(entity_name: str) -> dict[str, Any]:
+    return _jsonify(build_institution_profile(entity_name))
+
+
 def get_cross_dataset_connections() -> list[dict[str, Any]]:
     with _session_scope() as session:
         return [_jsonify(row) for row in list_cross_dataset_organizations(session)]
@@ -164,6 +176,10 @@ def get_investigation_timeline(entity_id: str) -> dict[str, Any]:
 
 def get_source_contributions(entity_id: str) -> dict[str, Any]:
     return _jsonify(build_source_contributions(entity_id))
+
+
+def get_citizen_dashboard() -> dict[str, Any]:
+    return _jsonify(build_citizen_dashboard())
 
 
 def export_investigation_report(entity_id: str) -> str:

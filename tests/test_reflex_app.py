@@ -58,6 +58,35 @@ def test_load_home_populates_connection_preview(monkeypatch) -> None:
         "get_demo_status",
         lambda: {"missing": [{"label": "Carga lista"}]},
     )
+    monkeypatch.setattr(
+        reflex_app,
+        "get_guided_questions",
+        lambda: {
+            "questions": [
+                {
+                    "id": "who_sells_to_this_body",
+                    "title": "¿Quién vende a este organismo?",
+                    "description": "Demo.",
+                    "concepts": ["Organismo"],
+                    "suggested_sources": ["ChileCompra"],
+                    "example_query": "Demo",
+                    "search_query": "Demo",
+                    "cta": "Buscar",
+                }
+            ],
+            "categories": [
+                {
+                    "id": "public_organizations",
+                    "title": "Organismos públicos",
+                    "description": "Demo.",
+                    "examples": ["Entidad demo"],
+                    "suggested_sources": ["ChileCompra"],
+                    "search_query": "Entidad demo",
+                    "cta": "Explorar",
+                }
+            ],
+        },
+    )
 
     reflex_app.AppState.load_home.fn(state)
 
@@ -70,6 +99,8 @@ def test_load_home_populates_connection_preview(monkeypatch) -> None:
     assert state.active_datasets == 1
     assert state.total_claims == 2
     assert state.total_relationships == 3
+    assert state.guided_question_rows[0]["id"] == "who_sells_to_this_body"
+    assert state.guided_category_rows[0]["id"] == "public_organizations"
 
 
 def test_load_investigation_without_selection_uses_guided_empty_state(monkeypatch) -> None:
@@ -120,3 +151,66 @@ def test_load_investigation_without_selection_uses_guided_empty_state(monkeypatc
 def test_empty_state_helpers_render_without_error() -> None:
     assert reflex_app.search_empty_state() is not None
     assert reflex_app.investigation_empty_state() is not None
+
+
+def test_load_dashboard_populates_summary_metrics(monkeypatch) -> None:
+    state = SimpleNamespace(error_message="old")
+
+    monkeypatch.setattr(
+        reflex_app,
+        "get_citizen_dashboard",
+        lambda: {
+            "title": "¿Dónde fue mi plata?",
+            "summary": "Resumen demo.",
+            "metrics": {
+                "budget_total": 123,
+                "budget_currency": "CLP",
+                "contracts": 4,
+                "suppliers": 5,
+                "meetings": 6,
+                "authorities": 7,
+            },
+            "budget_rows": [
+                {
+                    "organization_name": "Entidad demo",
+                    "budget_entity_name": "Entidad demo",
+                    "fiscal_year": 2026,
+                    "approved_budget": 10,
+                    "executed_budget": 8,
+                    "purchase_orders": 2,
+                    "suppliers": 1,
+                    "currency": "CLP",
+                }
+            ],
+            "featured_entities": [
+                {
+                    "organization_id": "11111111-1111-1111-1111-111111111111",
+                    "organization_name": "Entidad demo",
+                    "datasets": ["ChileCompra"],
+                    "contracts": 1,
+                    "lobby_meetings": 1,
+                    "evidence": 2,
+                    "relationships": 3,
+                }
+            ],
+            "discovery_cases": [
+                {
+                    "id": "public_spending",
+                    "title": "Demo",
+                    "description": "Demo",
+                    "concepts": ["Presupuesto"],
+                    "suggested_sources": ["DIPRES"],
+                    "search_query": "Entidad demo",
+                    "example_query": "Entidad demo",
+                    "cta": "Explorar",
+                }
+            ],
+        },
+    )
+
+    reflex_app.AppState.load_dashboard.fn(state)
+
+    assert state.dashboard_title == "¿Dónde fue mi plata?"
+    assert state.dashboard_budget_total == 123
+    assert state.dashboard_contracts == 4
+    assert state.dashboard_featured_entities[0]["organization_name"] == "Entidad demo"

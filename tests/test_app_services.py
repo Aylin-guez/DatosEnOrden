@@ -20,6 +20,7 @@ from datosenorden.maintenance.investigation_view import InvestigationEvidenceGro
 from datosenorden.maintenance.investigation_view import InvestigationEvidenceLink
 from datosenorden.maintenance.investigation_view import InvestigationLobbyItem
 from datosenorden.maintenance.investigation_view import InvestigationMetrics
+from datosenorden.maintenance.investigation_view import InvestigationRegistryItem
 from datosenorden.maintenance.investigation_view import InvestigationProcurementItem
 from datosenorden.maintenance.investigation_view import InvestigationRoleItem
 from datosenorden.maintenance.investigation_view import InvestigationView
@@ -117,6 +118,21 @@ def _investigation_view() -> InvestigationView:
                 evidence_count=1,
                 evidence_links=(
                     InvestigationEvidenceLink("Evidencia lobby", "https://example.test/lobby", None),
+                ),
+            ),
+        ),
+        registry_items=(
+            InvestigationRegistryItem(
+                dataset="Registro Empresas",
+                company="EMPRESA EJEMPLO SPA",
+                person="Persona demo",
+                relation="Representante",
+                rut="76.123.456-7",
+                status="Vigente",
+                ownership_percentage="100",
+                evidence_count=1,
+                evidence_links=(
+                    InvestigationEvidenceLink("Evidencia empresa", "https://example.test/empresa", None),
                 ),
             ),
         ),
@@ -232,6 +248,7 @@ def test_get_investigation_returns_expected_top_level_sections_for_demo_entity(m
         "contracts_compras",
         "lobby",
         "transparencia",
+        "registro_empresas",
         "evidence",
         "neutral_explanation",
     }
@@ -247,6 +264,31 @@ def test_get_investigation_returns_expected_top_level_sections_for_demo_entity(m
     assert investigation["evidence"][0]["links"][0]["title"] == "Evidencia compra"
     assert investigation["evidence"][0]["links"][0]["published_at"] == "2026-01-01"
     assert "technical_details" in investigation
+
+
+def test_get_guided_questions_returns_rule_based_questions() -> None:
+    payload = app_services.get_guided_questions()
+
+    assert any(question["id"] == "who_sells_to_this_body" for question in payload["questions"])
+    assert any(category["id"] == "public_organizations" for category in payload["categories"])
+
+
+def test_get_institution_profile_passthrough(monkeypatch) -> None:
+    payload = {"entidad": {"nombre": "Entidad demo"}, "presupuesto": {"total": 0}, "contratos": []}
+    monkeypatch.setattr(app_services, "build_institution_profile", lambda entity_name: payload)
+
+    result = app_services.get_institution_profile("Entidad demo")
+
+    assert result == payload
+
+
+def test_get_citizen_dashboard_passthrough(monkeypatch) -> None:
+    payload = {"metrics": {"budget_total": 0}, "featured_entities": []}
+    monkeypatch.setattr(app_services, "build_citizen_dashboard", lambda: payload)
+
+    result = app_services.get_citizen_dashboard()
+
+    assert result == payload
 
 
 def test_get_source_trace_passthrough(monkeypatch) -> None:

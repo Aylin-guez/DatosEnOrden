@@ -39,6 +39,12 @@ TRANSPARENCIA_PREDICATES = {
     "PERSON_RESIGNED_FROM_PUBLIC_OFFICE",
     "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION",
 }
+REGISTRY_PREDICATES = {
+    "PERSON_REPRESENTS_COMPANY",
+    "PERSON_OWNS_COMPANY",
+    "COMPANY_REGISTERED_ON",
+    "COMPANY_MODIFIED_ON",
+}
 
 @dataclass(frozen=True)
 class InvestigationEvidenceLink:
@@ -78,6 +84,19 @@ class InvestigationRoleItem:
 
 
 @dataclass(frozen=True)
+class InvestigationRegistryItem:
+    dataset: str
+    company: str
+    person: str
+    relation: str
+    rut: str
+    status: str
+    ownership_percentage: str
+    evidence_count: int
+    evidence_links: tuple[InvestigationEvidenceLink, ...]
+
+
+@dataclass(frozen=True)
 class InvestigationEvidenceGroup:
     dataset: str
     links: tuple[InvestigationEvidenceLink, ...]
@@ -108,6 +127,7 @@ class InvestigationView:
     procurement_items: tuple[InvestigationProcurementItem, ...]
     lobby_items: tuple[InvestigationLobbyItem, ...]
     role_items: tuple[InvestigationRoleItem, ...]
+    registry_items: tuple[InvestigationRegistryItem, ...]
     evidence_groups: tuple[InvestigationEvidenceGroup, ...]
     explanation: str
 
@@ -128,6 +148,7 @@ def build_investigation_view(session: Session, entity_id: str) -> InvestigationV
     procurement_items = _procurement_items(session, claims, evidence_by_claim)
     lobby_items = _lobby_items(source_record_claims, evidence_by_claim, selected_entity_id=entity.id)
     role_items = _role_items(claims, evidence_by_claim)
+    registry_items = _registry_items(claims, evidence_by_claim)
     timeline = build_entity_timeline(session, entity_id)
     graph = build_entity_graph(session, entity_id, depth=1)
     graph_explanation = _graph_explanation_text(graph)
@@ -157,6 +178,7 @@ def build_investigation_view(session: Session, entity_id: str) -> InvestigationV
         procurement_items=procurement_items,
         lobby_items=lobby_items,
         role_items=role_items,
+        registry_items=registry_items,
         evidence_groups=evidence_groups,
         explanation=_investigation_explanation_text(),
     )
@@ -514,6 +536,42 @@ def _role_items(
                 holder=claim.subject_entity.name,
                 role_title=_role_title_from_object_entity(claim),
                 period=_role_period_from_object_value(claim),
+                evidence_count=len(evidence_by_claim.get(str(claim.id), ())),
+                evidence_links=evidence_by_claim.get(str(claim.id), ()),
+            )
+        )
+    return tuple(items)
+
+
+def _registry_items(
+    claims: tuple[Claim, ...],
+    evidence_by_claim: dict[str, tuple[InvestigationEvidenceLink, ...]],
+) -> tuple[InvestigationRegistryItem, ...]:
+    items: list[InvestigationRegistryItem] = []
+    for claim in claims:
+        if claim.predicate not in REGISTRY_PREDICATES:
+            continue
+        dataset = _dataset_group(str(claim.source_record.dataset.name))
+        if dataset is None:
+            continue
+        object_entity = claim.object_entity
+        company_name = object_entity.name if object_entity is not None else _object_value_text(claim, "company_name", default=claim.subject_entity.name)
+        person_name = claim.subject_entity.name if claim.subject_entity is not None else ""
+        relation = {
+            "PERSON_REPRESENTS_COMPANY": "Representante",
+            "PERSON_OWNS_COMPANY": "Socio",
+            "COMPANY_REGISTERED_ON": "Inscripcion",
+            "COMPANY_MODIFIED_ON": "Modificacion",
+        }.get(claim.predicate, claim.predicate.replace("_", " ").title())
+        items.append(
+            InvestigationRegistryItem(
+                dataset=dataset_display_name(dataset),
+                company=company_name,
+                person=person_name,
+                relation=relation,
+                rut=_object_value_text(claim, "company_rut", default=_object_value_text(claim, "rut_empresa", default="")),
+                status=_object_value_text(claim, "company_status", default=""),
+                ownership_percentage=_object_value_text(claim, "percentage_participation", default=""),
                 evidence_count=len(evidence_by_claim.get(str(claim.id), ())),
                 evidence_links=evidence_by_claim.get(str(claim.id), ()),
             )

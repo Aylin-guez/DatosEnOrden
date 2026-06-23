@@ -100,6 +100,8 @@ python scripts/municipalidades_summary.py
 python scripts/load_transparencia_sample.py
 python scripts/transparencia_summary.py
 python scripts/load_dipres_sample.py
+python scripts/load_registro_empresas_sample.py
+python scripts/registro_empresas_summary.py
 python scripts/load_diario_oficial_sample.py
 python scripts/diario_oficial_summary.py
 python scripts/discovery_cases.py
@@ -121,7 +123,7 @@ python -m reflex run
 ## Smoke Test
 
 ```powershell
-py -3.14 -m py_compile reflex_app/reflex_app.py src/datosenorden/web/app_services.py
+py -3.14 -m py_compile reflex_app/reflex_app.py src/datosenorden/web/app_services.py src/datosenorden/maintenance/registro_empresas_prototype.py src/datosenorden/maintenance/guided_questions.py src/datosenorden/maintenance/institution_profile.py src/datosenorden/maintenance/citizen_dashboard.py
 py -3.14 -m pytest -q --basetemp .pytest-tmp
 py -3.14 -m reflex compile --dry --no-rich
 ```

@@ -1,0 +1,71 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "records": [
+    {
+      "external_id": "registro-empresas:acme-tecnologias",
+      "source_url": "local://sample/registro-empresas/acme-tecnologias",
+      "publication_date": "2026-04-12",
+      "publication_number": "RE-001",
+      "publication_title": "Inscripcion y actualizacion societaria",
+      "company_rut": "76.123.456-7",
+      "company_name": "ACME TECNOLOGIAS SPA",
+      "company_constitution_date": "2021-06-01",
+      "company_modified_date": "2026-04-12",
+      "company_status": "Vigente",
+      "representative_name": "Ana Perez",
+      "owners": [
+        {
+          "name": "Ana Perez",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "external_id": "registro-empresas:servicios-norte",
+      "source_url": "local://sample/registro-empresas/servicios-norte",
+      "publication_date": "2026-04-15",
+      "publication_number": "RE-002",
+      "publication_title": "Modificacion de sociedad",
+      "company_rut": "77.234.567-8",
+      "company_name": "SERVICIOS NORTE LTDA",
+      "company_constitution_date": "2019-11-18",
+      "company_modified_date": "2026-04-15",
+      "company_status": "Modificada",
+      "representative_name": "Maria Gomez",
+      "owners": [
+        {
+          "name": "Maria Gomez",
+          "percentage": 60
+        },
+        {
+          "name": "Juan Diaz",
+          "percentage": 40
+        }
+      ]
+    },
+    {
+      "external_id": "registro-empresas:consultora-publica",
+      "source_url": "local://sample/registro-empresas/consultora-publica",
+      "publication_date": "2026-04-20",
+      "publication_number": "RE-003",
+      "publication_title": "Actualizacion de socios",
+      "company_rut": "78.345.678-9",
+      "company_name": "CONSULTORA PUBLICA SPA",
+      "company_constitution_date": "2020-02-03",
+      "company_modified_date": "2026-04-20",
+      "company_status": "Vigente",
+      "representative_name": "Pedro Rojas",
+      "owners": [
+        {
+          "name": "Pedro Rojas",
+          "percentage": 50
+        },
+        {
+          "name": "Laura Soto",
+          "percentage": 50
+        }
+      ]
+    }
+  ]
+}

@@ -28,3 +28,14 @@ def test_dataset_metadata_includes_diario_oficial_prototype() -> None:
     assert metadata.category == "official_publications"
     assert "appointments" in dataset_citizen_summary("Diario Oficial").lower()
     assert source_contribution_bullets("Diario Oficial")[0].startswith("- ")
+
+
+def test_dataset_metadata_includes_registro_empresas_prototype() -> None:
+    metadata = dataset_metadata_for_name("Registro Empresas")
+
+    assert metadata is not None
+    assert metadata.name == "Registro Empresas"
+    assert metadata.status == "prototype"
+    assert metadata.category == "company_registry"
+    assert "company registry" in dataset_citizen_summary("Registro Empresas").lower()
+    assert source_contribution_bullets("Registro Empresas")[0].startswith("- ")

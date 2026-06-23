@@ -43,6 +43,12 @@ OFFICIAL_PUBLICATION_MARKERS = (
     "PUBLICATION",
     "OFFICIAL",
 )
+COMPANY_REGISTRY_MARKERS = (
+    "COMPANY_REGISTERED_ON",
+    "COMPANY_MODIFIED_ON",
+    "PERSON_REPRESENTS_COMPANY",
+    "PERSON_OWNS_COMPANY",
+)
 
 
 @dataclass(frozen=True)
@@ -278,6 +284,8 @@ def _activity_sentences(bucket: _DatasetBucket) -> list[str]:
         sentences.append("Records describe budget activity linked to this organization.")
     if "official_publication" in categories:
         sentences.append("Records describe official publication activity linked to this organization.")
+    if "company_registry" in categories:
+        sentences.append("Records describe company registry activity linked to this organization.")
     if not sentences:
         sentences.append("Records describe public activity linked to this organization.")
     return sentences[:2]
@@ -302,6 +310,8 @@ def _bucket_categories(bucket: _DatasetBucket) -> set[str]:
             categories.add("budget")
         if any(marker in upper for marker in OFFICIAL_PUBLICATION_MARKERS):
             categories.add("official_publication")
+        if any(marker in upper for marker in COMPANY_REGISTRY_MARKERS):
+            categories.add("company_registry")
     return categories
 
 
@@ -332,6 +342,8 @@ def _consistency_observations(datasets_present: list[str], buckets: tuple[_Datas
         observations.append("Budget records reference the organization.")
     if "official_publication" in categories:
         observations.append("Official publication records reference the organization or related public offices.")
+    if "company_registry" in categories:
+        observations.append("Company registry records reference the organization or related company entities.")
 
     if not observations:
         observations.append("This organization appears in multiple public sources.")
@@ -421,6 +433,8 @@ def _overlap_areas(datasets_present: list[str], buckets: tuple[_DatasetBucket, .
         areas.append("Audit trail")
     if "official_publication" in categories:
         areas.append("Official publications")
+    if "company_registry" in categories:
+        areas.append("Company registry")
     return list(dict.fromkeys(areas))
 
 

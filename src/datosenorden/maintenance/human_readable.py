@@ -49,6 +49,7 @@ DATASET_NAME_LABELS = {
     "lobby-meeting-sample": "Lobby",
     "transparencia-activa-sample": "Transparencia Activa",
     "diario-oficial-sample": "Diario Oficial",
+    "registro-empresas-sample": "Registro Empresas",
 }
 
 
@@ -256,6 +257,8 @@ def _dataset_summary_text(dataset_name: str) -> str:
         return "Lobby contiene reuniones de lobby de muestra. El sample local no es dato oficial y solo valida conexiones entre organismos públicos, contrapartes y evidencia."
     if dataset_name == "Diario Oficial":
         return "Diario Oficial muestra publicaciones oficiales de muestra sobre nombramientos, renuncias, decretos y actos administrativos. Este prototipo usa datos locales, no datos oficiales."
+    if dataset_name == "Registro Empresas":
+        return "Registro Empresas muestra registros de muestra sobre empresas, representantes, socios, inscripciones y modificaciones. Este prototipo usa datos locales, no datos oficiales."
     return f"{dataset_name} contiene datos públicos guardados en el sistema."
 
 

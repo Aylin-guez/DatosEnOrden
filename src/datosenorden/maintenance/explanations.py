@@ -18,6 +18,10 @@ RELATIONSHIP_EXPLANATIONS = {
     "DECREE_APPLIES_TO_ORGANIZATION": "La publicacion oficial aparece asociada a una organizacion.",
     "OFFICIAL_PUBLICATION_REFERENCES_ENTITY": "La publicacion oficial hace referencia a una entidad.",
     "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION": "El cargo publico pertenece a una organizacion.",
+    "PERSON_REPRESENTS_COMPANY": "La persona aparece como representante de una empresa.",
+    "PERSON_OWNS_COMPANY": "La persona aparece como socia o dueña de una empresa.",
+    "COMPANY_REGISTERED_ON": "La empresa aparece registrada en una fuente de muestra.",
+    "COMPANY_MODIFIED_ON": "La empresa aparece con una modificacion o actualizacion de muestra.",
     "BUDGET_ALLOCATED_TO": "El presupuesto aparece asignado a un organismo.",
     "AWARDS_CONTRACT": "El organismo adjudica un contrato.",
     "COUNTERPARTY_PARTICIPATED_IN_LOBBY": "La contraparte aparece asociada a una reunion de lobby.",
@@ -56,6 +60,10 @@ EVENT_EXPLANATIONS = {
     "DECREE_APPLIES_TO_ORGANIZATION": "Se registro una publicacion oficial asociada a una organizacion.",
     "OFFICIAL_PUBLICATION_REFERENCES_ENTITY": "Se registro una publicacion oficial que referencia una entidad.",
     "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION": "Se registro un cargo publico vinculado a una organizacion.",
+    "PERSON_REPRESENTS_COMPANY": "Se registro una relacion de representacion entre una persona y una empresa.",
+    "PERSON_OWNS_COMPANY": "Se registro una relacion de participacion o propiedad sobre una empresa.",
+    "COMPANY_REGISTERED_ON": "Se registro una inscripcion o alta de una empresa.",
+    "COMPANY_MODIFIED_ON": "Se registro una modificacion o actualizacion de una empresa.",
 }
 
 

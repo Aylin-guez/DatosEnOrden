@@ -112,6 +112,8 @@ def _key_findings(comparison: dict[str, object], view) -> tuple[str, ...]:  # no
         findings.append("The organization is connected to public transparency records.")
     if any(getattr(item, "dataset", "") == "Diario Oficial" for item in getattr(view, "role_items", ())):
         findings.append("The organization appears in official publication records.")
+    if "Registro Empresas" in datasets_present:
+        findings.append("The organization appears in company registry records.")
 
     deduped = _dedupe_preserve_order(findings)
     if not deduped:
@@ -121,6 +123,7 @@ def _key_findings(comparison: dict[str, object], view) -> tuple[str, ...]:  # no
 
 def _important_connections(view, comparison: dict[str, object]) -> tuple[str, ...]:  # noqa: ANN001
     connections: list[str] = []
+    datasets_present = [str(dataset) for dataset in comparison.get("datasets_present", ())]
     for item in getattr(view, "procurement_items", ()):
         connections.append(
             f"{item.dataset}: {item.contract_name} is linked to {item.supplier}."
@@ -134,6 +137,8 @@ def _important_connections(view, comparison: dict[str, object]) -> tuple[str, ..
         connections.append(
             f"{item.dataset}: {item.holder} is recorded with {item.role_title} during {item.period}."
         )
+    if "Registro Empresas" in datasets_present:
+        connections.append("Registro Empresas: company registry records describe company, representative, and ownership details.")
 
     if not connections:
         for fact in comparison.get("dataset_facts", ()):
@@ -184,6 +189,8 @@ def _questions_for_citizens(view, comparison: dict[str, object]) -> tuple[str, .
         questions.append("Would you like to inspect transparency records?")
     if any(getattr(item, "dataset", "") == "Diario Oficial" for item in getattr(view, "role_items", ())):
         questions.append("Would you like to review official publication records?")
+    if "Registro Empresas" in datasets_present:
+        questions.append("Would you like to review company registry records?")
     if "contraloria" in normalized:
         questions.append("Would you like to review control reports?")
     if "municipal" in normalized:

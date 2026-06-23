@@ -23,6 +23,7 @@ DATASET_LABELS = {
     "dipres-budget-sample": "DIPRES",
     "lobby-meeting-sample": "LOBBY",
     "transparencia-activa-sample": "TRANSPARENCIA",
+    "registro-empresas-sample": "REGISTRO EMPRESAS",
     "contraloria-control-report-sample": "CONTRALORIA",
     "municipalidades-project-sample": "MUNICIPALIDADES",
 }
@@ -48,6 +49,10 @@ EVENT_LABELS = {
     "DECREE_APPLIES_TO_ORGANIZATION": "Se registro una publicacion oficial asociada a una organizacion.",
     "OFFICIAL_PUBLICATION_REFERENCES_ENTITY": "Se registro una publicacion oficial que referencia una entidad.",
     "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION": "Se registro un cargo publico vinculado a una organizacion.",
+    "PERSON_REPRESENTS_COMPANY": "Se registro una relacion de representacion entre una persona y una empresa.",
+    "PERSON_OWNS_COMPANY": "Se registro una relacion de propiedad o participacion en una empresa.",
+    "COMPANY_REGISTERED_ON": "Se registro la inscripcion de una empresa.",
+    "COMPANY_MODIFIED_ON": "Se registro la modificacion de una empresa.",
 }
 
 
