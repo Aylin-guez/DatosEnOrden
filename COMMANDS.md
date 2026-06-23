@@ -8,6 +8,12 @@ py -3.14 -m pip install -e .
 py -3.14 -m pip show reflex
 ```
 
+## Root Run
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/web/run_reflex_dev.ps1
+```
+
 ## Tests
 
 ```powershell
@@ -22,6 +28,16 @@ py -3.14 -m reflex run
 py -3.14 -m reflex run --frontend-port 3001 --backend-port 8001
 ```
 
+## Investigation
+
+```powershell
+python scripts/source_trace.py "DIVISION LOGISTICA DEL EJERCITO"
+python scripts/investigation_story.py "DIVISION LOGISTICA DEL EJERCITO"
+python scripts/entity_comparison.py "DIVISION LOGISTICA DEL EJERCITO"
+python scripts/export_investigation_markdown.py "DIVISION LOGISTICA DEL EJERCITO" --output reports/investigation_entity.md
+python scripts/export_investigation_report.py "DIVISION LOGISTICA DEL EJERCITO"
+```
+
 ## Streamlit
 
 ```powershell
@@ -33,7 +49,8 @@ py -3.14 -m streamlit run streamlit_app.py
 ```powershell
 git status --short
 git log --oneline -10
-git add ...
+git diff --stat
+git add <files>
 git commit -m "..."
 git push
 ```
@@ -51,11 +68,27 @@ git fsck --full
 git rev-parse HEAD
 ```
 
+## Safe Git Flow
+
+```powershell
+git status --short
+git diff --stat
+git add <only-the-files-you-changed>
+git commit -m "..."
+git push
+```
+
+- Prefer Python 3.14 when available: use `py -3.14` first, and fall back to the direct Python 3.14 executable if the launcher is unavailable.
+- Do not use `git reset --hard` or `git checkout --` for routine work.
+
 ## Project Scripts
 
 ```powershell
 python scripts/load_servel_sample.py
 python scripts/servel_summary.py
+python scripts/source_trace.py "DIVISION LOGISTICA DEL EJERCITO"
+python scripts/export_investigation_markdown.py "DIVISION LOGISTICA DEL EJERCITO" --output reports/investigation_entity.md
+python scripts/export_investigation_report.py "DIVISION LOGISTICA DEL EJERCITO"
 python scripts/load_lobby_sample.py
 python scripts/lobby_summary.py
 python scripts/load_contraloria_sample.py
@@ -76,6 +109,16 @@ python scripts/investigation_story.py
 python scripts/entity_timeline.py
 python scripts/web/check_reflex_environment.py
 powershell -ExecutionPolicy Bypass -File scripts/web/run_reflex_dev.ps1
+python -m reflex compile --dry --no-rich
+python -m reflex run
+```
+
+## Smoke Test
+
+```powershell
+py -3.14 -m py_compile reflex_app/reflex_app.py src/datosenorden/web/app_services.py
+py -3.14 -m pytest -q --basetemp .pytest-tmp
+py -3.14 -m reflex compile --dry --no-rich
 ```
 
 ## Never Commit These

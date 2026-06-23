@@ -7,6 +7,10 @@ from types import SimpleNamespace
 import datosenorden.web.app_services as app_services
 from datosenorden.maintenance.cross_dataset_explorer import CrossDatasetConnection
 from datosenorden.maintenance.cross_dataset_explorer import CrossDatasetOrganizationSummary
+from datosenorden.maintenance.ecosystem_registry import ConceptNode
+from datosenorden.maintenance.ecosystem_registry import EcosystemRegistry
+from datosenorden.maintenance.ecosystem_registry import RoadmapGroup
+from datosenorden.maintenance.ecosystem_registry import SourceCatalogEntry
 from datosenorden.maintenance.dataset_registry import DatasetSummary
 from datosenorden.maintenance.demo_pack import DemoDatasetStatus
 from datosenorden.maintenance.demo_pack import DemoRepair
@@ -131,7 +135,7 @@ def _investigation_view() -> InvestigationView:
         evidence_groups=(
             InvestigationEvidenceGroup(
                 dataset="ChileCompra",
-                links=(InvestigationEvidenceLink("Evidencia compra", "https://example.test/compra", None),),
+                links=(InvestigationEvidenceLink("Evidencia compra", "https://example.test/compra", date(2026, 1, 1)),),
             ),
         ),
         explanation="No afirma causalidad, irregularidad ni intencion.",
@@ -240,7 +244,119 @@ def test_get_investigation_returns_expected_top_level_sections_for_demo_entity(m
     }
     assert "Esto no afirma causalidad" in investigation["narrative_summary"]
     assert investigation["timeline"][0]["event_date"] == "2026-03-15"
+    assert investigation["evidence"][0]["links"][0]["title"] == "Evidencia compra"
+    assert investigation["evidence"][0]["links"][0]["published_at"] == "2026-01-01"
     assert "technical_details" in investigation
+
+
+def test_get_source_trace_passthrough(monkeypatch) -> None:
+    payload = {
+        "entity": {"id": "11111111-1111-1111-1111-111111111111", "name": "Demo entity", "type": "PUBLIC_ORGANIZATION"},
+        "sources": [],
+        "connections": [],
+        "overlap_summary": "Demo trace.",
+        "neutrality_notice": "Neutral.",
+    }
+    monkeypatch.setattr(app_services, "build_source_trace", lambda entity_id: payload)
+
+    result = app_services.get_source_trace("11111111-1111-1111-1111-111111111111")
+
+    assert result == payload
+
+
+def test_get_data_ecosystem_jsonifies_registry(monkeypatch) -> None:
+    _patch_session(monkeypatch)
+    registry = EcosystemRegistry(
+        sources=(
+            SourceCatalogEntry(
+                name="ChileCompra",
+                slug="chilecompra",
+                status="active",
+                category="procurement",
+                description="Compras publicas.",
+                coverage="covered",
+                concepts=("Compra", "Proveedor"),
+                relationships=("ISSUES_PURCHASE_ORDER",),
+                connects_with=("Lobby", "Transparencia"),
+                entities=("Organismo", "Empresa"),
+            ),
+        ),
+        concepts=(
+            ConceptNode(
+                name="Compra",
+                coverage="covered",
+                datasets=("ChileCompra",),
+                description="Compra cubierto por ChileCompra.",
+            ),
+        ),
+        roadmap=(
+            RoadmapGroup(
+                status="planned",
+                title="Fuentes planificadas",
+                sources=("Declaraciones de intereses",),
+            ),
+        ),
+    )
+    monkeypatch.setattr(app_services, "build_ecosystem_registry", lambda session: registry)
+
+    ecosystem = app_services.get_data_ecosystem()
+
+    assert ecosystem["sources"][0]["connects_with"] == ["Lobby", "Transparencia"]
+    assert ecosystem["sources"][0]["concepts"] == ["Compra", "Proveedor"]
+    assert ecosystem["concepts"][0]["datasets"] == ["ChileCompra"]
+    assert ecosystem["roadmap"][0]["sources"] == ["Declaraciones de intereses"]
+
+
+def test_get_investigation_markdown_passthrough(monkeypatch) -> None:
+    monkeypatch.setattr(app_services, "export_investigation_markdown", lambda entity_id: "# Demo\n")
+
+    result = app_services.get_investigation_markdown("11111111-1111-1111-1111-111111111111")
+
+    assert result == "# Demo\n"
+
+
+def test_search_workspace_passthrough(monkeypatch) -> None:
+    payload = {"matches": [{"entity_id": "1", "entity_name": "Demo", "entity_type": "PERSON", "datasets": ["SERVEL"], "evidence_count": 1, "relationship_count": 2}]}
+    monkeypatch.setattr(app_services, "_search_workspace", lambda query: payload)
+
+    result = app_services.search_workspace("demo")
+
+    assert result == payload
+
+
+def test_get_investigation_graph_passthrough(monkeypatch) -> None:
+    payload = {"nodes": [], "edges": [], "summary": "Graph."}
+    monkeypatch.setattr(app_services, "build_investigation_graph", lambda entity_id: payload)
+
+    result = app_services.get_investigation_graph("11111111-1111-1111-1111-111111111111")
+
+    assert result == payload
+
+
+def test_get_investigation_timeline_passthrough(monkeypatch) -> None:
+    payload = {"entity": {"id": "1", "name": "Demo", "type": "PERSON"}, "years": [], "summary": "Timeline."}
+    monkeypatch.setattr(app_services, "build_investigation_timeline", lambda entity_id: payload)
+
+    result = app_services.get_investigation_timeline("11111111-1111-1111-1111-111111111111")
+
+    assert result == payload
+
+
+def test_get_source_contributions_passthrough(monkeypatch) -> None:
+    payload = {"entity": {"id": "1", "name": "Demo", "type": "PERSON"}, "sources": [], "summary": "Sources."}
+    monkeypatch.setattr(app_services, "build_source_contributions", lambda entity_id: payload)
+
+    result = app_services.get_source_contributions("11111111-1111-1111-1111-111111111111")
+
+    assert result == payload
+
+
+def test_export_investigation_report_passthrough(monkeypatch) -> None:
+    monkeypatch.setattr(app_services, "_export_investigation_report", lambda entity_id: "reports/investigation_demo.html")
+
+    result = app_services.export_investigation_report("11111111-1111-1111-1111-111111111111")
+
+    assert result == "reports/investigation_demo.html"
 
 
 def test_dataset_summary_includes_active_datasets(monkeypatch) -> None:
@@ -259,6 +375,23 @@ def test_dataset_summary_includes_active_datasets(monkeypatch) -> None:
     assert summary["totals"]["active_datasets"] == 1
     assert summary["datasets"][0]["name"] == "ChileCompra"
     assert summary["datasets"][0]["health"] == "active"
+
+
+def test_get_data_ecosystem_returns_registry_payload(monkeypatch) -> None:
+    _patch_session(monkeypatch)
+    monkeypatch.setattr(
+        "datosenorden.maintenance.ecosystem_registry.list_datasets",
+        lambda session: (
+            DatasetSummary("chilecompra", "ChileCompra", 1, 2, 3, 4, 5, "active", False),
+        ),
+    )
+
+    ecosystem = app_services.get_data_ecosystem()
+
+    assert ecosystem["sources"][0]["name"] == "ChileCompra"
+    assert ecosystem["sources"][0]["status"] == "active"
+    assert any(node["name"] == "Contrato" for node in ecosystem["concepts"])
+    assert ecosystem["roadmap"][0]["title"] == "Fuentes implementadas"
 
 
 def test_cross_dataset_connections_include_shared_organizations(monkeypatch) -> None:

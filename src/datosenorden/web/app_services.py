@@ -11,13 +11,21 @@ from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
 from datosenorden.maintenance.dataset_registry import list_datasets
 from datosenorden.maintenance.demo_pack import build_demo_status
+from datosenorden.maintenance.ecosystem_registry import build_ecosystem_registry
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
+from datosenorden.maintenance.investigation_export import export_investigation_markdown
 from datosenorden.maintenance.investigation_story import build_investigation_story
 from datosenorden.maintenance.entity_explorer import search_buyers
 from datosenorden.maintenance.entity_explorer import search_suppliers
 from datosenorden.maintenance.explanations import relationship_explanation
+from datosenorden.maintenance.investigation_graph import build_investigation_graph
+from datosenorden.maintenance.investigation_report import export_investigation_report as _export_investigation_report
 from datosenorden.maintenance.investigation_view import build_investigation_view
 from datosenorden.maintenance.investigation_view import investigation_explanation_text
+from datosenorden.maintenance.investigation_timeline import build_investigation_timeline
+from datosenorden.maintenance.search_workspace import search_workspace as _search_workspace
+from datosenorden.maintenance.source_contributions import build_source_contributions
+from datosenorden.maintenance.source_trace import build_source_trace
 
 
 def search_entities(query: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -111,6 +119,11 @@ def get_dataset_summary() -> dict[str, Any]:
     }
 
 
+def get_data_ecosystem() -> dict[str, Any]:
+    with _session_scope() as session:
+        return _jsonify(build_ecosystem_registry(session))
+
+
 def get_cross_dataset_connections() -> list[dict[str, Any]]:
     with _session_scope() as session:
         return [_jsonify(row) for row in list_cross_dataset_organizations(session)]
@@ -122,6 +135,34 @@ def get_entity_comparison(entity_id: str) -> dict[str, Any]:
 
 def get_investigation_story(entity_id: str) -> dict[str, Any]:
     return _jsonify(build_investigation_story(entity_id))
+
+
+def search_workspace(query: str) -> dict[str, Any]:
+    return _jsonify(_search_workspace(query))
+
+
+def get_source_trace(entity_id: str) -> dict[str, Any]:
+    return _jsonify(build_source_trace(entity_id))
+
+
+def get_investigation_markdown(entity_id: str) -> str:
+    return export_investigation_markdown(entity_id)
+
+
+def get_investigation_graph(entity_id: str) -> dict[str, Any]:
+    return _jsonify(build_investigation_graph(entity_id))
+
+
+def get_investigation_timeline(entity_id: str) -> dict[str, Any]:
+    return _jsonify(build_investigation_timeline(entity_id))
+
+
+def get_source_contributions(entity_id: str) -> dict[str, Any]:
+    return _jsonify(build_source_contributions(entity_id))
+
+
+def export_investigation_report(entity_id: str) -> str:
+    return _export_investigation_report(entity_id)
 
 
 def get_demo_status() -> dict[str, Any]:
