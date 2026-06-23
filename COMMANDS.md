@@ -105,6 +105,8 @@ python scripts/registro_empresas_summary.py
 python scripts/load_diario_oficial_sample.py
 python scripts/diario_oficial_summary.py
 python scripts/discovery_cases.py
+python scripts/load_complete_demo_case.py
+python scripts/demo_case_summary.py
 python scripts/dataset_summary.py
 python scripts/dataset_details.py
 python scripts/list_datasets.py

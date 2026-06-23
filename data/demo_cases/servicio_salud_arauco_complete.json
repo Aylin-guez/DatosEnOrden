@@ -1,0 +1,262 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "case_name": "servicio_salud_arauco_complete",
+  "main_entity": {
+    "type": "PUBLIC_ORGANIZATION",
+    "name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+  },
+  "datasets": {
+    "dipres": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "dataset_name": "dipres-budget-sample",
+      "source_name": "DatosEnOrden DIPRES Sample",
+      "records": [
+        {
+          "external_id": "dipres-2026-servicio-salud-arauco-atencion-hospitalaria",
+          "ministry_name": "MINISTERIO DE SALUD",
+          "service_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "fiscal_year": 2026,
+          "program_name": "Atencion Hospitalaria y Apoyo Clinico",
+          "approved_budget": 1540000000,
+          "executed_budget": 1485000000,
+          "currency": "CLP",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA budget sample aligned to the complete demo case.",
+          "match_hint": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+        },
+        {
+          "external_id": "dipres-2026-servicio-salud-arauco-logistica",
+          "ministry_name": "MINISTERIO DE SALUD",
+          "service_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "fiscal_year": 2026,
+          "program_name": "Logistica, Abastecimiento y Soporte",
+          "approved_budget": 320000000,
+          "executed_budget": 298000000,
+          "currency": "CLP",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA budget sample aligned to the complete demo case.",
+          "match_hint": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+        }
+      ]
+    },
+    "registro_empresas": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "dataset_name": "registro-empresas-sample",
+      "source_name": "DatosEnOrden Registro Empresas Sample",
+      "records": [
+        {
+          "external_id": "registro-empresas:acme-tecnologias",
+          "source_url": "local://demo-case/registro-empresas/acme-tecnologias",
+          "publication_date": "2026-04-12",
+          "publication_number": "RE-001",
+          "publication_title": "Inscripcion y actualizacion societaria",
+          "company_rut": "76.123.456-7",
+          "company_name": "ACME TECNOLOGIAS SPA",
+          "company_constitution_date": "2021-06-01",
+          "company_modified_date": "2026-04-12",
+          "company_status": "Vigente",
+          "representative_name": "ANA PEREZ",
+          "owners": [
+            {
+              "name": "ANA PEREZ",
+              "percentage": 100
+            }
+          ]
+        },
+        {
+          "external_id": "registro-empresas:servicios-norte",
+          "source_url": "local://demo-case/registro-empresas/servicios-norte",
+          "publication_date": "2026-04-15",
+          "publication_number": "RE-002",
+          "publication_title": "Modificacion de sociedad",
+          "company_rut": "77.234.567-8",
+          "company_name": "SERVICIOS NORTE LTDA",
+          "company_constitution_date": "2019-11-18",
+          "company_modified_date": "2026-04-15",
+          "company_status": "Modificada",
+          "representative_name": "MARIA GOMEZ",
+          "owners": [
+            {
+              "name": "MARIA GOMEZ",
+              "percentage": 60
+            },
+            {
+              "name": "JUAN DIAZ",
+              "percentage": 40
+            }
+          ]
+        },
+        {
+          "external_id": "registro-empresas:consultora-publica",
+          "source_url": "local://demo-case/registro-empresas/consultora-publica",
+          "publication_date": "2026-04-20",
+          "publication_number": "RE-003",
+          "publication_title": "Actualizacion de socios",
+          "company_rut": "78.345.678-9",
+          "company_name": "CONSULTORA PUBLICA SPA",
+          "company_constitution_date": "2020-02-03",
+          "company_modified_date": "2026-04-20",
+          "company_status": "Vigente",
+          "representative_name": "PEDRO ROJAS",
+          "owners": [
+            {
+              "name": "PEDRO ROJAS",
+              "percentage": 50
+            },
+            {
+              "name": "LAURA SOTO",
+              "percentage": 50
+            }
+          ]
+        }
+      ]
+    },
+    "chilecompra": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "dataset_name": "chilecompra-demo-case-sample",
+      "source_name": "DatosEnOrden ChileCompra Demo Case",
+      "source_url": "local://demo-case/chilecompra",
+      "api_version": "local-demo",
+      "created_at": "2026-05-01",
+      "request_params": {
+        "source": "demo_case"
+      },
+      "records": [
+        {
+          "Codigo": "OC-2026-0001",
+          "Nombre": "Compra de insumos clinicos basicos",
+          "FechaCreacion": "2026-04-05",
+          "FechaEnvio": "2026-04-05",
+          "MontoTotal": 18500000,
+          "Estado": "Aceptada",
+          "Comprador": {
+            "CodigoOrganismo": "SSAAH-001",
+            "NombreOrganismo": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+          },
+          "Proveedor": {
+            "RutProveedor": "76.123.456-7",
+            "NombreProveedor": "ACME TECNOLOGIAS SPA"
+          },
+          "source_url": "local://demo-case/chilecompra/oc-2026-0001",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA purchase order sample aligned to the complete demo case."
+        },
+        {
+          "Codigo": "OC-2026-0002",
+          "Nombre": "Servicio de mantenimiento preventivo",
+          "FechaCreacion": "2026-04-18",
+          "FechaEnvio": "2026-04-18",
+          "MontoTotal": 9240000,
+          "Estado": "Aceptada",
+          "Comprador": {
+            "CodigoOrganismo": "SSAAH-001",
+            "NombreOrganismo": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+          },
+          "Proveedor": {
+            "RutProveedor": "77.234.567-8",
+            "NombreProveedor": "SERVICIOS NORTE LTDA"
+          },
+          "source_url": "local://demo-case/chilecompra/oc-2026-0002",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA purchase order sample aligned to the complete demo case."
+        },
+        {
+          "Codigo": "OC-2026-0003",
+          "Nombre": "Asesoria de apoyo operativo",
+          "FechaCreacion": "2026-05-02",
+          "FechaEnvio": "2026-05-02",
+          "MontoTotal": 12600000,
+          "Estado": "Aceptada",
+          "Comprador": {
+            "CodigoOrganismo": "SSAAH-001",
+            "NombreOrganismo": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+          },
+          "Proveedor": {
+            "RutProveedor": "78.345.678-9",
+            "NombreProveedor": "CONSULTORA PUBLICA SPA"
+          },
+          "source_url": "local://demo-case/chilecompra/oc-2026-0003",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA purchase order sample aligned to the complete demo case."
+        }
+      ]
+    },
+    "diario_oficial": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "records": [
+        {
+          "external_id": "diario-2026-0001",
+          "publication_date": "2026-03-24",
+          "publication_number": "N 12.801",
+          "publication_title": "Nombramiento de muestra para SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "document_kind": "Decreto exento",
+          "event_kind": "appointment",
+          "person_name": "SOFIA RAMOS",
+          "office_name": "Directora del Hospital de Arauco",
+          "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "decree_number": "DE-2026-14",
+          "publication_section": "Nombramientos",
+          "source_url": "local://demo-case/diario-oficial/2026-03-24/12801",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. Neutral appointment record for the complete demo case."
+        }
+      ]
+    },
+    "transparencia": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "records": [
+        {
+          "external_id": "transparencia-activa-demo-2026-sofia-ramos",
+          "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "person_name": "SOFIA RAMOS",
+          "role_title": "Directora del Hospital de Arauco",
+          "unit_name": "Direccion Hospitalaria",
+          "period": "2026-04",
+          "source_url": "local://demo-case/transparencia-activa/transparencia-activa-demo-2026-sofia-ramos",
+          "source_dataset_name": "transparencia-activa-sample",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. Neutral role record for the complete demo case."
+        }
+      ]
+    },
+    "lobby": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "dataset_name": "lobby-meeting-sample",
+      "source_name": "DatosEnOrden Lobby Sample",
+      "records": [
+        {
+          "external_id": "lobby-demo-2026-servicio-salud-arauco-sofia-ramos",
+          "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "counterparty_name": "SOFIA RAMOS",
+          "counterparty_type": "PERSON",
+          "meeting_subject": "Coordinacion de adquisiciones y continuidad operativa de muestra",
+          "meeting_date": "2026-05-15",
+          "meeting_location": "Arauco, Chile",
+          "source_url": "local://demo-case/lobby-meeting/lobby-demo-2026-servicio-salud-arauco-sofia-ramos",
+          "source_dataset_name": "lobby-meeting-sample",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. Neutral lobby meeting record for the complete demo case."
+        }
+      ]
+    },
+    "contraloria": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "dataset_name": "contraloria-control-report-sample",
+      "source_name": "DatosEnOrden Contraloria Sample",
+      "records": [
+        {
+          "external_id": "contraloria-2026-servicio-salud-arauco-report-01",
+          "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "report_number": "24-2026",
+          "report_title": "Revision de control administrativo de muestra",
+          "observation_text": "Se registran observaciones de muestra sobre respaldos documentales y seguimiento de compras.",
+          "report_date": "2026-05-20",
+          "observation_date": "2026-05-21",
+          "source_url": "local://demo-case/contraloria/contraloria-2026-servicio-salud-arauco-report-01",
+          "source_dataset_name": "contraloria-control-report-sample",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. Neutral control report for the complete demo case."
+        }
+      ]
+    }
+  }
+}
