@@ -44,7 +44,7 @@ def build_institution_profile(entity_name: str) -> dict[str, object]:
             "id": str(entity.id),
             "nombre": entity.name,
             "tipo": entity.entity_type,
-            "fuentes": list(comparison.get("datasets_present", [])),
+            "fuentes": list(_field(comparison, "datasets_present", [])),
         },
         "presupuesto": {
             "total": sum(row["executed_budget"] or row["approved_budget"] for row in budget_rows),
@@ -58,9 +58,9 @@ def build_institution_profile(entity_name: str) -> dict[str, object]:
         "publicaciones": _publications_section(timeline),
         "evidencia": _evidence_section(view),
         "relaciones": _relations_section(trace, view),
-        "resumen": story.get("summary", ""),
-        "hallazgos": list(story.get("key_findings", [])),
-        "fuentes_consultadas": list(story.get("sources_consulted", [])),
+        "resumen": _field(story, "summary", ""),
+        "hallazgos": list(_field(story, "key_findings", [])),
+        "fuentes_consultadas": list(_field(story, "sources_consulted", [])),
     }
 
 
@@ -119,58 +119,58 @@ def _budget_summary_text(rows: list[dict[str, object]], entity_name: str) -> str
 def _procurement_section(view) -> list[dict[str, object]]:  # noqa: ANN001
     return [
         {
-            "dataset": item.dataset,
-            "contract_name": item.contract_name,
-            "supplier": item.supplier,
-            "evidence_count": item.evidence_count,
-            "evidence_links": [_jsonify(link) for link in item.evidence_links],
+            "dataset": _field(item, "dataset", ""),
+            "contract_name": _field(item, "contract_name", ""),
+            "supplier": _field(item, "supplier", ""),
+            "evidence_count": _field(item, "evidence_count", 0),
+            "evidence_links": [_jsonify(link) for link in _field(item, "evidence_links", ())],
         }
-        for item in getattr(view, "procurement_items", ())
+        for item in _field(view, "procurement_items", ())
     ]
 
 
 def _lobby_section(view) -> list[dict[str, object]]:  # noqa: ANN001
     return [
         {
-            "dataset": item.dataset,
-            "date": item.date.isoformat() if isinstance(item.date, date) else "",
-            "organization": item.organization,
-            "counterparty": item.counterparty,
-            "subject": item.subject,
-            "evidence_count": item.evidence_count,
-            "evidence_links": [_jsonify(link) for link in item.evidence_links],
+            "dataset": _field(item, "dataset", ""),
+            "date": _field(item, "date", "").isoformat() if isinstance(_field(item, "date", None), date) else "",
+            "organization": _field(item, "organization", ""),
+            "counterparty": _field(item, "counterparty", ""),
+            "subject": _field(item, "subject", ""),
+            "evidence_count": _field(item, "evidence_count", 0),
+            "evidence_links": [_jsonify(link) for link in _field(item, "evidence_links", ())],
         }
-        for item in getattr(view, "lobby_items", ())
+        for item in _field(view, "lobby_items", ())
     ]
 
 
 def _authorities_section(view) -> list[dict[str, object]]:  # noqa: ANN001
     return [
         {
-            "dataset": item.dataset,
-            "holder": item.holder,
-            "role_title": item.role_title,
-            "period": item.period,
-            "evidence_count": item.evidence_count,
-            "evidence_links": [_jsonify(link) for link in item.evidence_links],
+            "dataset": _field(item, "dataset", ""),
+            "holder": _field(item, "holder", ""),
+            "role_title": _field(item, "role_title", ""),
+            "period": _field(item, "period", ""),
+            "evidence_count": _field(item, "evidence_count", 0),
+            "evidence_links": [_jsonify(link) for link in _field(item, "evidence_links", ())],
         }
-        for item in getattr(view, "role_items", ())
+        for item in _field(view, "role_items", ())
     ]
 
 
 def _publications_section(timeline) -> list[dict[str, object]]:  # noqa: ANN001
-    events = getattr(timeline, "events", ())
+    events = _field(timeline, "events", ())
     rows: list[dict[str, object]] = []
     for event in events:
-        if "official" not in str(event.dataset_name).lower() and "public" not in str(event.predicate).lower() and "decree" not in str(event.predicate).lower():
+        if "official" not in str(_field(event, "dataset_name", "")).lower() and "public" not in str(_field(event, "predicate", "")).lower() and "decree" not in str(_field(event, "predicate", "")).lower():
             continue
         rows.append(
             {
-                "date": event.event_date.isoformat(),
-                "dataset": event.dataset,
-                "label": event.title,
-                "explanation": event.explanation,
-                "predicate": event.predicate,
+                "date": _field(event, "event_date", "").isoformat() if isinstance(_field(event, "event_date", None), date) else "",
+                "dataset": _field(event, "dataset", ""),
+                "label": _field(event, "title", ""),
+                "explanation": _field(event, "explanation", ""),
+                "predicate": _field(event, "predicate", ""),
             }
         )
     return rows
@@ -178,14 +178,14 @@ def _publications_section(timeline) -> list[dict[str, object]]:  # noqa: ANN001
 
 def _evidence_section(view) -> list[dict[str, object]]:  # noqa: ANN001
     rows: list[dict[str, object]] = []
-    for group in getattr(view, "evidence_groups", ()):
-        for link in getattr(group, "links", ()):
+    for group in _field(view, "evidence_groups", ()):
+        for link in _field(group, "links", ()):
             rows.append(
                 {
-                    "dataset": group.dataset,
-                    "title": link.title,
-                    "url": link.url,
-                    "published_at": link.published_at.isoformat() if isinstance(link.published_at, date) else "",
+                    "dataset": _field(group, "dataset", ""),
+                    "title": _field(link, "title", ""),
+                    "url": _field(link, "url", ""),
+                    "published_at": _field(link, "published_at", "").isoformat() if isinstance(_field(link, "published_at", None), date) else "",
                 }
             )
     return rows
@@ -193,19 +193,19 @@ def _evidence_section(view) -> list[dict[str, object]]:  # noqa: ANN001
 
 def _relations_section(trace: dict[str, object], view) -> list[dict[str, object]]:  # noqa: ANN001
     rows: list[dict[str, object]] = []
-    for connection in trace.get("connections", []):
+    for connection in _field(trace, "connections", []):
         rows.append(
             {
-                "dataset": connection.get("from_source", ""),
-                "entity": connection.get("to_entity", ""),
-                "meaning": connection.get("meaning", ""),
-                "evidence_count": connection.get("evidence_count", 0),
+                "dataset": _field(connection, "from_source", ""),
+                "entity": _field(connection, "to_entity", ""),
+                "meaning": _field(connection, "meaning", ""),
+                "evidence_count": _field(connection, "evidence_count", 0),
             }
         )
     if rows:
         return rows
     fallback_rows: list[dict[str, object]] = []
-    for neighbor in getattr(view.profile, "direct_neighbors", ()):
+    for neighbor in _field(_field(view, "profile", {}), "direct_neighbors", ()):
         item = _jsonify(neighbor)
         if not isinstance(item, dict):
             continue
@@ -246,3 +246,22 @@ def _jsonify(value: object) -> object:
     if isinstance(value, date | datetime):
         return value.isoformat()
     return value
+
+
+def _field(obj: object, name: str, fallback: object = "") -> object:
+    if obj is None:
+        return fallback
+    if isinstance(obj, dict):
+        return obj.get(name, fallback)
+    if hasattr(obj, name):
+        return getattr(obj, name, fallback)
+    for method_name in ("model_dump", "dict"):
+        method = getattr(obj, method_name, None)
+        if callable(method):
+            try:
+                dumped = method()
+            except TypeError:
+                continue
+            if isinstance(dumped, dict):
+                return dumped.get(name, fallback)
+    return fallback
