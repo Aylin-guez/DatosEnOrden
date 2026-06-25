@@ -11,6 +11,9 @@ from datosenorden.maintenance.dataset_metadata import source_contribution_bullet
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.investigation_view import build_investigation_view
 from datosenorden.maintenance.safe_access import _field
+from datosenorden.maintenance.source_plugins import get_source_plugin
+from datosenorden.maintenance.source_plugins import plugin_concept_names
+from datosenorden.maintenance.source_plugins import plugin_status_value
 
 
 @dataclass(frozen=True)
@@ -68,6 +71,12 @@ def build_source_contributions(entity_id: str) -> dict[str, object]:
                 "evidence_count": row.evidence_count,
                 "relationship_count": row.relationship_count,
                 "overlap_note": row.overlap_note,
+                "status": _plugin_field(row.dataset, "status"),
+                "concepts": _plugin_field(row.dataset, "concepts"),
+                "concepts_text": " | ".join(_plugin_field(row.dataset, "concepts")),
+                "evidence_types": _plugin_field(row.dataset, "evidence_types"),
+                "evidence_types_text": " | ".join(_plugin_field(row.dataset, "evidence_types")),
+                "timeline_contribution": _plugin_field(row.dataset, "timeline_contribution_text"),
             }
             for row in source_rows
         ],
@@ -115,3 +124,18 @@ def _dataset_names_for_map(comparison: dict[str, object], entity_name: str) -> l
         if dataset not in dataset_names:
             dataset_names.append(dataset)
     return dataset_names
+
+
+def _plugin_field(dataset_name: str, field: str):
+    plugin = get_source_plugin(dataset_name)
+    if plugin is None:
+        return [] if field in {"concepts", "evidence_types"} else ""
+    if field == "status":
+        return plugin_status_value(plugin)
+    if field == "concepts":
+        return list(plugin_concept_names(plugin))
+    if field == "evidence_types":
+        return list(plugin.evidence_types)
+    if field == "timeline_contribution_text":
+        return plugin.timeline_contribution
+    return ""
