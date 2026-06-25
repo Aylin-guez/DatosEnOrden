@@ -1,0 +1,44 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "records": [
+    {
+      "external_id": "declaraciones-intereses:sofia-ramos:2026",
+      "source_url": "local://sample/declaraciones-intereses/sofia-ramos-2026",
+      "declaration_date": "2026-03-20",
+      "declaration_period": "2026",
+      "person_name": "SOFIA RAMOS",
+      "role_name": "Directora de administracion de muestra",
+      "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "declared_companies": [
+        {
+          "company_name": "ACME TECNOLOGIAS SPA",
+          "interest_label": "Participacion declarada en sample local"
+        }
+      ],
+      "declared_organizations": [
+        {
+          "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "interest_label": "Cargo publico declarado en sample local"
+        }
+      ]
+    },
+    {
+      "external_id": "declaraciones-intereses:ana-perez:2026",
+      "source_url": "local://sample/declaraciones-intereses/ana-perez-2026",
+      "declaration_date": "2026-04-05",
+      "declaration_period": "2026",
+      "person_name": "ANA PEREZ",
+      "role_name": "Representante legal de muestra",
+      "organization_name": "ACME TECNOLOGIAS SPA",
+      "declared_companies": [
+        {
+          "company_name": "ACME TECNOLOGIAS SPA",
+          "interest_label": "Representacion declarada en sample local"
+        }
+      ],
+      "declared_organizations": []
+    }
+  ]
+}
+

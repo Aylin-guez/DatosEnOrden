@@ -26,7 +26,8 @@ def test_ecosystem_registry_groups_sources_concepts_and_roadmap(monkeypatch) -> 
     assert any(source.name == "Lobby" for source in prototype)
     assert any(source.name == "Diario Oficial" for source in prototype)
     assert any(source.name == "Registro Empresas" for source in prototype)
-    assert any(source.name == "Declaraciones de intereses" for source in planned)
+    assert any(source.name == "Declaraciones de Intereses" for source in prototype)
+    assert any(source.slug == "sanciones_procedimientos" for source in planned)
     assert any(concept.name == "Contrato" for concept in coverage["covered"])
     assert any(concept.name == "Reunion" for concept in coverage["partial"])
     assert registry.roadmap[0].title == "Fuentes implementadas"
