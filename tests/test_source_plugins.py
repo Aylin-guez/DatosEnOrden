@@ -48,7 +48,8 @@ def test_registry_lookup_helpers() -> None:
 def test_planned_sources_are_not_active() -> None:
     planned_ids = {plugin.id for plugin in list_planned_sources()}
 
-    assert {"declaraciones_intereses", "sanciones_procedimientos"} <= planned_ids
+    assert {"sanciones_procedimientos"} <= planned_ids
+    assert "declaraciones_intereses" not in planned_ids
     assert all(plugin.status == SourceStatus.PLANNED for plugin in list_planned_sources())
 
 
@@ -66,7 +67,7 @@ def test_ecosystem_registry_can_be_built_from_plugins(monkeypatch) -> None:
 
     assert len(registry.sources) == len(get_source_plugins())
     assert any(source.slug == "chilecompra" and source.status == "active" for source in registry.sources)
-    assert any(source.slug == "declaraciones_intereses" and source.status == "planned" for source in registry.sources)
+    assert any(source.slug == "declaraciones_intereses" and source.status == "prototype" for source in registry.sources)
 
 
 def test_guided_questions_map_to_source_plugins() -> None:

@@ -45,24 +45,31 @@ Each `PublicSourcePlugin` declares:
 - `servel`: SERVEL
 - `diario_oficial`: Diario Oficial
 - `registro_empresas`: Registro Empresas
+- `declaraciones_intereses`: Declaraciones de Intereses
 
 ## Planned Sources
 
-- `declaraciones_intereses`: Declaraciones de intereses
 - `sanciones_procedimientos`: Sanciones y procedimientos
 
 ## How To Add A Source
 
-1. Add one `PublicSourcePlugin` entry in `source_plugins.py`.
-2. Pick a stable lowercase `id` using underscores.
-3. Add concepts and relationships in neutral descriptive language.
-4. Add compatible source ids for cross-source navigation.
-5. Add local commands only if scripts already exist.
-6. Add `search_hints` and `discovery_hints`.
-7. Add tests for the source metadata.
-8. Run:
+1. Scaffold local files:
 
 ```powershell
+python scripts/create_source_plugin.py <source_id> --display-name "<Display Name>" --status prototype
+```
+
+2. Add or update one `PublicSourcePlugin` entry in `source_plugins.py`.
+3. Pick a stable lowercase `id` using underscores.
+4. Add concepts and relationships in neutral descriptive language.
+5. Add compatible source ids for cross-source navigation.
+6. Add local commands only if scripts already exist.
+7. Add `search_hints` and `discovery_hints`.
+8. Add tests for the source metadata/prototype.
+9. Validate:
+
+```powershell
+python scripts/validate_source_plugin.py <source_id>
 python scripts/source_readiness_report.py
 python -m pytest -q --basetemp .pytest-tmp
 python -m reflex compile --dry --no-rich
@@ -99,3 +106,14 @@ python scripts/source_readiness_report.py
 ```
 
 The report lists source status, concepts, commands, script availability, sample/demo data availability, tests, and missing items.
+
+## Operational Index
+
+Use `docs/sources/README.md` for the operational source index and `docs/sources/<source_id>.md` for per-source notes.
+
+## Next Recommended Sources
+
+1. `sanciones_procedimientos`
+2. `cmf`
+3. `poder_judicial`
+4. `mercado_publico_avanzado`
