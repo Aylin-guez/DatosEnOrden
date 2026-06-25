@@ -360,10 +360,25 @@ def test_get_investigation_markdown_passthrough(monkeypatch) -> None:
 def test_search_workspace_passthrough(monkeypatch) -> None:
     payload = {"matches": [{"entity_id": "1", "entity_name": "Demo", "entity_type": "PERSON", "datasets": ["SERVEL"], "evidence_count": 1, "relationship_count": 2}]}
     monkeypatch.setattr(app_services, "_search_workspace", lambda query: payload)
+    monkeypatch.setattr(
+        app_services,
+        "_resolve_canonical_expediente_target",
+        lambda value: {
+            "found": True,
+            "canonical_entity_id": "1",
+            "canonical_entity_name": "Demo",
+            "canonical_entity_type": "PERSON",
+            "is_record": False,
+            "record_label": "Persona",
+            "relation_to_original": "self",
+        },
+    )
+    monkeypatch.setattr(app_services, "_get_record_context", lambda value: {"related_label": ""})
 
     result = app_services.search_workspace("demo")
 
-    assert result == payload
+    assert result["matches"][0]["canonical_entity_id"] == "1"
+    assert result["matches"][0]["canonical_entity_name"] == "Demo"
 
 
 def test_get_investigation_graph_passthrough(monkeypatch) -> None:

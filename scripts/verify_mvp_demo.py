@@ -11,11 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.complete_demo_case import load_complete_demo_case_payload
 from datosenorden.web.app_services import get_entity_comparison
+from datosenorden.web.app_services import get_guided_discovery_options
 from datosenorden.web.app_services import get_investigation
 from datosenorden.web.app_services import get_investigation_story
 from datosenorden.web.app_services import get_investigation_timeline
+from datosenorden.web.app_services import get_record_context
 from datosenorden.web.app_services import get_source_trace
 from datosenorden.web.app_services import resolve_investigation_target
+from datosenorden.web.app_services import resolve_canonical_expediente_target
 from datosenorden.web.app_services import search_workspace
 
 
@@ -32,6 +35,10 @@ def main() -> int:
     resolved = resolve_investigation_target(MAIN_ENTITY)
     entity_id = str(resolved.get("entity_id", ""))
     checks.append(("main entity found", bool(resolved.get("found")) and bool(entity_id), entity_id or str(resolved.get("warning", ""))))
+    uuid_resolved = resolve_canonical_expediente_target(entity_id)
+    name_resolved = resolve_canonical_expediente_target(MAIN_ENTITY)
+    checks.append(("main organization resolves by UUID", str(uuid_resolved.get("canonical_entity_id", "")) == entity_id, str(uuid_resolved)))
+    checks.append(("main organization resolves by name", str(name_resolved.get("canonical_entity_id", "")) == entity_id, str(name_resolved)))
 
     investigation = get_investigation(entity_id or MAIN_ENTITY)
     metrics = _field(investigation, "compact_metrics", {})
@@ -60,6 +67,22 @@ def main() -> int:
     search = search_workspace("Servicio de Salud Arauco")
     search_found = any(str(_field(match, "entity_id", "")) == entity_id for match in _field(search, "matches", []))
     checks.append(("search can find main entity", search_found, entity_id))
+    canonical_search = all(str(_field(match, "canonical_entity_id", "")).strip() for match in _field(search, "matches", []))
+    checks.append(("search result buttons have canonical ids", canonical_search, str(len(_field(search, "matches", [])))))
+
+    for category in ("public_organizations", "suppliers", "authorities", "budgets", "procurement", "meetings", "which_official_publications_exist"):
+        options = get_guided_discovery_options(category)
+        checks.append((f"guided category has options: {category}", len(options) > 0, str(len(options))))
+
+    budget_options = get_guided_discovery_options("budgets")
+    budget_context = get_record_context(str(_field(budget_options[0], "entity_id", ""))) if budget_options else {}
+    checks.append(
+        (
+            "budget record resolves to main organization",
+            str(_field(budget_context, "canonical_entity_id", "")) == entity_id and bool(_field(budget_context, "is_record", False)),
+            str(budget_context),
+        )
+    )
 
     checks.append(_check_reflex_import())
 

@@ -3,13 +3,8 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime
-import re
-from types import SimpleNamespace
 from typing import Any, Iterator
-import unicodedata
-from uuid import UUID
 
-from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from datosenorden.db.session import SessionLocal
@@ -32,10 +27,13 @@ from datosenorden.maintenance.investigation_view import investigation_explanatio
 from datosenorden.maintenance.investigation_timeline import build_investigation_timeline
 from datosenorden.maintenance.guided_questions import get_guided_questions as _get_guided_questions
 from datosenorden.maintenance.institution_profile import build_institution_profile
+from datosenorden.maintenance.product_navigation import get_guided_discovery_options as _get_guided_discovery_options
+from datosenorden.maintenance.product_navigation import get_home_navigation_examples as _get_home_navigation_examples
+from datosenorden.maintenance.product_navigation import get_record_context as _get_record_context
+from datosenorden.maintenance.product_navigation import resolve_canonical_expediente_target as _resolve_canonical_expediente_target
 from datosenorden.maintenance.search_workspace import search_workspace as _search_workspace
 from datosenorden.maintenance.source_contributions import build_source_contributions
 from datosenorden.maintenance.source_trace import build_source_trace
-from datosenorden.models import Entity
 
 
 def search_entities(query: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -72,40 +70,39 @@ def search_entities(query: str, limit: int = 10) -> list[dict[str, Any]]:
 
 
 def resolve_investigation_target(value: str) -> dict[str, Any]:
-    cleaned = str(value or "").strip()
-    if not cleaned:
+    canonical = _resolve_canonical_expediente_target(value)
+    if not canonical.get("found", False):
         return {
             "found": False,
             "entity_id": "",
-            "entity_name": "",
+            "entity_name": str(canonical.get("original_entity_name", value)),
             "matched_by": "",
-            "warning": "No se recibio un identificador de entidad.",
+            "warning": str(canonical.get("warning", "")),
+            "canonical": canonical,
         }
-
-    with _session_scope() as session:
-        match = _resolve_entity(session, cleaned)
-    if match is None:
-        return {
-            "found": False,
-            "entity_id": "",
-            "entity_name": cleaned,
-            "matched_by": "",
-            "warning": "No se encontro una entidad local para ese identificador o nombre.",
-        }
-    entity, matched_by, warning = match
+    entity_id = str(canonical.get("canonical_entity_id", ""))
+    entity_name = str(canonical.get("canonical_entity_name", ""))
     return {
         "found": True,
-        "entity_id": str(entity.id),
-        "entity_name": entity.name,
-        "matched_by": matched_by,
-        "warning": warning,
+        "entity_id": entity_id,
+        "entity_name": entity_name,
+        "matched_by": str(canonical.get("matched_by", "")),
+        "warning": str(canonical.get("warning", "")),
+        "canonical": canonical,
     }
 
 
 def get_investigation(entity_id: str) -> dict[str, Any]:
     resolved = resolve_investigation_target(entity_id)
     if not resolved.get("found", False):
-        return {"found": False, "entity_id": entity_id, "resolution": resolved}
+        resolved = {
+            "found": True,
+            "entity_id": entity_id,
+            "entity_name": entity_id,
+            "matched_by": "input",
+            "warning": str(resolved.get("warning", "")),
+            "canonical": resolved.get("canonical", {}),
+        }
 
     resolved_id = str(resolved["entity_id"])
     with _session_scope() as session:
@@ -149,56 +146,6 @@ def get_investigation(entity_id: str) -> dict[str, Any]:
     }
 
 
-def _resolve_entity(session: Session, value: str) -> tuple[Entity, str, str] | None:
-    try:
-        entity_uuid = UUID(value)
-    except ValueError:
-        entity_uuid = None
-    if entity_uuid is not None:
-        if not hasattr(session, "get"):
-            return SimpleNamespace(id=entity_uuid, name=value), "entity_id", ""  # type: ignore[return-value]
-        entity = session.get(Entity, entity_uuid)
-        if entity is not None:
-            return entity, "entity_id", ""
-        return None
-
-    exact = session.scalars(
-        select(Entity).where(Entity.name == value).order_by(Entity.entity_type.asc(), Entity.name.asc(), Entity.id.asc())
-    ).all()
-    if exact:
-        return exact[0], "exact_name", _ambiguity_warning(exact, "nombre exacto")
-
-    lowered = value.lower()
-    insensitive = session.scalars(
-        select(Entity)
-        .where(func.lower(Entity.name) == lowered)
-        .order_by(Entity.entity_type.asc(), Entity.name.asc(), Entity.id.asc())
-    ).all()
-    if insensitive:
-        return insensitive[0], "case_insensitive_name", _ambiguity_warning(insensitive, "nombre sin distinguir mayusculas")
-
-    normalized = _normalize_lookup(value)
-    if not normalized:
-        return None
-    candidates = session.scalars(select(Entity).order_by(Entity.entity_type.asc(), Entity.name.asc(), Entity.id.asc())).all()
-    normalized_matches = [entity for entity in candidates if _normalize_lookup(entity.name) == normalized]
-    if normalized_matches:
-        return normalized_matches[0], "normalized_name", _ambiguity_warning(normalized_matches, "nombre normalizado")
-    return None
-
-
-def _normalize_lookup(value: str) -> str:
-    text = unicodedata.normalize("NFKD", value.strip().lower())
-    text = "".join(character for character in text if not unicodedata.combining(character))
-    text = re.sub(r"[^a-z0-9]+", " ", text)
-    return " ".join(text.split())
-
-
-def _ambiguity_warning(matches: list[Entity], matched_by: str) -> str:
-    if len(matches) <= 1:
-        return ""
-    return f"Se encontraron {len(matches)} entidades por {matched_by}; se abrio la primera por orden estable."
-
 
 def get_dataset_summary() -> dict[str, Any]:
     with _session_scope() as session:
@@ -231,6 +178,22 @@ def get_guided_questions() -> dict[str, Any]:
     return _jsonify(_get_guided_questions())
 
 
+def get_guided_discovery_options(category: str) -> list[dict[str, Any]]:
+    return _jsonify(_get_guided_discovery_options(category))
+
+
+def get_home_navigation_examples() -> list[dict[str, Any]]:
+    return _jsonify(_get_home_navigation_examples())
+
+
+def resolve_canonical_expediente_target(value: str) -> dict[str, Any]:
+    return _jsonify(_resolve_canonical_expediente_target(value))
+
+
+def get_record_context(value: str) -> dict[str, Any]:
+    return _jsonify(_get_record_context(value))
+
+
 def get_institution_profile(entity_name: str) -> dict[str, Any]:
     return _jsonify(build_institution_profile(entity_name))
 
@@ -249,7 +212,25 @@ def get_investigation_story(entity_id: str) -> dict[str, Any]:
 
 
 def search_workspace(query: str) -> dict[str, Any]:
-    return _jsonify(_search_workspace(query))
+    workspace = _jsonify(_search_workspace(query))
+    matches = []
+    for row in workspace.get("matches", []):
+        canonical = resolve_canonical_expediente_target(str(row.get("entity_id", "")))
+        record_context = get_record_context(str(row.get("entity_id", "")))
+        matches.append(
+            {
+                **row,
+                "canonical_entity_id": canonical.get("canonical_entity_id", row.get("entity_id", "")),
+                "canonical_entity_name": canonical.get("canonical_entity_name", row.get("entity_name", "")),
+                "canonical_entity_type": canonical.get("canonical_entity_type", row.get("entity_type", "")),
+                "is_record": bool(canonical.get("is_record", False)),
+                "record_label": canonical.get("record_label", ""),
+                "relation_to_original": canonical.get("relation_to_original", ""),
+                "related_label": record_context.get("related_label", ""),
+            }
+        )
+    workspace["matches"] = matches
+    return workspace
 
 
 def get_source_trace(entity_id: str) -> dict[str, Any]:

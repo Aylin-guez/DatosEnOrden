@@ -164,6 +164,32 @@ If the verifier reports a concrete UUID, prefer:
 http://localhost:3000/investigation?id=<entity_id>
 ```
 
+## Canonical Navigation Checks
+
+```powershell
+python scripts/verify_mvp_demo.py
+```
+
+## Source Plugins
+
+```powershell
+python scripts/source_readiness_report.py
+python -m py_compile src/datosenorden/maintenance/source_plugins.py src/datosenorden/maintenance/ecosystem_registry.py src/datosenorden/web/app_services.py scripts/source_readiness_report.py
+```
+
+The report should include:
+
+- `main organization resolves by UUID`
+- `main organization resolves by name`
+- `search result buttons have canonical ids`
+- `budget record resolves to main organization`
+
+## Expediente vs Registro
+
+`Abrir expediente` opens a canonical organization, company, or person.
+
+`Ver registro` is a placeholder for future budget, contract, meeting, publication, role, report, or evidence pages.
+
 ## Never Commit These
 
 - `.pytest-tmp/`

@@ -79,6 +79,53 @@ Direct Expediente URLs:
 
 The backend investigation builders expect an entity UUID. The web service resolver accepts UUID, exact name, case-insensitive name, and normalized name.
 
+Canonical product routing accepts names too:
+
+```text
+/investigation?id=SERVICIO%20DE%20SALUD%20ARAUCO%20HOSPITAL%20DE%20ARAUCO
+```
+
+If a search result is a record such as a budget, contract, meeting, role, or report, `Abrir expediente` should route to the related canonical organization, company, or person.
+
+Check:
+
+```powershell
+python scripts/verify_mvp_demo.py
+```
+
+Look for:
+
+- `main organization resolves by name`
+- `search result buttons have canonical ids`
+- `budget record resolves to main organization`
+
+## Expediente vs Registro Looks Wrong
+
+Expected behavior:
+
+- `Abrir expediente` opens the canonical main entity.
+- `Ver registro` is currently a placeholder.
+
+If `Abrir expediente` opens a budget or meeting as the main page, inspect `src/datosenorden/maintenance/product_navigation.py`.
+
+Repeated non-destructive demo loads may create duplicate names. The resolver should choose the duplicate with more claims, relationships, and evidence.
+
+## Source Missing From Ecosistema Or Descubre
+
+Check the source plugin registry:
+
+```powershell
+python scripts/source_readiness_report.py
+```
+
+Then inspect:
+
+```text
+src/datosenorden/maintenance/source_plugins.py
+```
+
+Every current or planned source should have a `PublicSourcePlugin` entry. Ecosistema is built from that registry, so missing plugin metadata usually means the source will not appear consistently across the product.
+
 ## Typed Object Has No `.get`
 
 This means a view/export layer is treating a dataclass or typed object as a dict.

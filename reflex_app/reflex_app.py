@@ -9,6 +9,7 @@ from datosenorden.web.app_services import get_citizen_dashboard
 from datosenorden.web.app_services import get_dataset_summary
 from datosenorden.web.app_services import get_demo_status
 from datosenorden.web.app_services import get_discovery_cases
+from datosenorden.web.app_services import get_guided_discovery_options
 from datosenorden.web.app_services import get_guided_questions
 from datosenorden.web.app_services import get_investigation
 from datosenorden.web.app_services import get_entity_comparison
@@ -21,6 +22,7 @@ from datosenorden.web.app_services import get_source_contributions
 from datosenorden.web.app_services import get_investigation_story
 from datosenorden.web.app_services import export_investigation_report
 from datosenorden.web.app_services import get_data_ecosystem
+from datosenorden.web.app_services import resolve_canonical_expediente_target
 from datosenorden.web.app_services import resolve_investigation_target
 from datosenorden.web.app_services import search_workspace
 from datosenorden.web.app_services import search_entities
@@ -401,6 +403,24 @@ def _build_story_cards(
     return cards
 
 
+def _format_guided_options(rows: list[dict]) -> list[dict]:
+    return [
+        {
+            **row,
+            "sources_text": str(row.get("sources_text") or " | ".join(str(item) for item in row.get("sources", [])) or "Fuentes locales"),
+            "canonical_entity_id": str(row.get("canonical_entity_id", row.get("entity_id", ""))),
+            "canonical_entity_name": str(row.get("canonical_entity_name", row.get("title", ""))),
+            "record_badge": "Registro especifico" if bool(row.get("is_record", False)) else str(row.get("type_label", row.get("type", ""))),
+            "related_text": (
+                f"Relacionado con: {row.get('canonical_entity_name')}"
+                if bool(row.get("is_record", False)) and row.get("canonical_entity_name")
+                else ""
+            ),
+        }
+        for row in rows
+    ]
+
+
 class AppState(rx.State):
     query: str = ""
     results: list[dict] = []
@@ -436,6 +456,7 @@ class AppState(rx.State):
     selected_guided_category_query: str = ""
     selected_guided_category_cta: str = ""
     selected_guided_category_href: str = "/search"
+    guided_option_rows: list[dict] = []
     demo_missing: list[str] = []
     total_datasets: int = 0
     active_datasets: int = 0
@@ -508,6 +529,8 @@ class AppState(rx.State):
 
     def load_home(self) -> None:
         self.error_message = ""
+        if not hasattr(self, "guided_option_rows"):
+            self.guided_option_rows = []
         try:
             summary = get_dataset_summary()
             totals = summary.get("totals", {})
@@ -551,6 +574,9 @@ class AppState(rx.State):
                 }
                 for row in guided_questions.get("categories", [])
             ]
+            if not self.guided_option_rows and self.guided_category_rows:
+                first_category = str(self.guided_category_rows[0].get("id", ""))
+                self.guided_option_rows = _format_guided_options(get_guided_discovery_options(first_category))
             demo_status = get_demo_status()
             self.demo_missing = [item.get("label", "") for item in demo_status.get("missing", [])]
             self.total_datasets = int(totals.get("datasets", 0))
@@ -562,6 +588,18 @@ class AppState(rx.State):
 
     def load_discover(self) -> None:
         self.load_home()
+        if self.guided_category_rows and not self.selected_guided_category_id:
+            first = self.guided_category_rows[0]
+            first_id = str(first.get("id", ""))
+            self.selected_guided_category_id = first_id
+            self.selected_guided_category_title = str(first.get("title", ""))
+            self.selected_guided_category_description = str(first.get("description", ""))
+            self.selected_guided_category_examples = [str(item) for item in first.get("examples", [])]
+            self.selected_guided_category_sources = [str(item) for item in first.get("suggested_sources", [])]
+            self.selected_guided_category_query = str(first.get("search_query", ""))
+            self.selected_guided_category_cta = str(first.get("cta", ""))
+            self.selected_guided_category_href = _search_href(self.selected_guided_category_query)
+            self.guided_option_rows = _format_guided_options(get_guided_discovery_options(first_id))
 
     def load_search(self) -> None:
         self.load_home()
@@ -576,6 +614,7 @@ class AppState(rx.State):
         self.selected_guided_category_query = ""
         self.selected_guided_category_cta = ""
         self.selected_guided_category_href = "/search"
+        self.guided_option_rows = []
         query_value = str(self.router.url.query_parameters.get("q", "")).strip()
         if query_value:
             self.query = query_value
@@ -636,11 +675,17 @@ class AppState(rx.State):
                 {
                     **row,
                     "source_hint": (
-                        "Registros publicos vinculados"
+                        "Registro especifico"
+                        if bool(row.get("is_record", False))
+                        else "Registros publicos vinculados"
                         if int(row.get("relationship_count", 0)) or int(row.get("evidence_count", 0))
                         else "Entidad encontrada en la base local"
                     ),
                     "datasets_text": " | ".join(row.get("datasets", [])) if row.get("datasets") else "Fuentes disponibles",
+                    "canonical_entity_id": str(row.get("canonical_entity_id", row.get("entity_id", ""))),
+                    "canonical_entity_name": str(row.get("canonical_entity_name", row.get("entity_name", ""))),
+                    "related_label": str(row.get("related_label", "")),
+                    "is_record": bool(row.get("is_record", False)),
                 }
                 for row in workspace.get("matches", [])
             ]
@@ -656,6 +701,19 @@ class AppState(rx.State):
         self.guided_search_title = f"Alternativas para explorar: {title}" if title else "Alternativas para explorar"
         return rx.redirect(_search_href(query))
 
+    def explore_guided_question(self, question_id: str, title: str, description: str, query: str) -> None:
+        self.selected_guided_category_id = question_id
+        self.selected_guided_category_title = title
+        self.selected_guided_category_description = description
+        self.selected_guided_category_examples = [query] if query else []
+        self.selected_guided_category_sources = []
+        self.selected_guided_category_query = query
+        self.selected_guided_category_cta = "Buscar"
+        self.selected_guided_category_href = _search_href(query)
+        self.guided_option_rows = _format_guided_options(get_guided_discovery_options(question_id))
+        if query:
+            self.query = query
+
     def select_guided_category(self, category_id: str) -> None:
         self.selected_guided_category_id = category_id
         match = next((row for row in self.guided_category_rows if row.get("id") == category_id), {})
@@ -666,6 +724,7 @@ class AppState(rx.State):
         self.selected_guided_category_query = str(match.get("search_query", ""))
         self.selected_guided_category_cta = str(match.get("cta", ""))
         self.selected_guided_category_href = _search_href(self.selected_guided_category_query)
+        self.guided_option_rows = _format_guided_options(get_guided_discovery_options(category_id))
         if self.selected_guided_category_query:
             self.query = self.selected_guided_category_query
             self.guided_search_title = (
@@ -722,9 +781,10 @@ class AppState(rx.State):
         return rx.redirect(f"/investigation?id={entity_id}")
 
     def open_investigation(self, entity_id: str, entity_name: str):
-        self.selected_entity_id = entity_id
-        self.selected_entity_name = entity_name
-        return rx.redirect(f"/investigation?id={entity_id}")
+        canonical = resolve_canonical_expediente_target(entity_id or entity_name)
+        self.selected_entity_id = str(canonical.get("canonical_entity_id", entity_id))
+        self.selected_entity_name = str(canonical.get("canonical_entity_name", entity_name))
+        return rx.redirect(f"/investigation?id={self.selected_entity_id}")
 
     def load_investigation(self) -> None:
         self.error_message = ""
@@ -884,6 +944,10 @@ class AppState(rx.State):
                 "contributes_text": " | ".join(str(value) for value in _field(item, "contributes", [])),
                 "overlap_note": str(_field(item, "overlap_note", "")),
                 "category": str(_field(item, "category", "")),
+                "status": str(_field(item, "status", "")),
+                "concepts_text": str(_field(item, "concepts_text", "")),
+                "evidence_types_text": str(_field(item, "evidence_types_text", "")),
+                "timeline_contribution": str(_field(item, "timeline_contribution", "")),
             }
             for item in _field(contributions, "sources", [])
         ]
@@ -1159,11 +1223,14 @@ def source_contribution_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
             rx.text(row["dataset"], class_name="badge"),
-            rx.text(row["category"], class_name="mini-pill"),
+            rx.text(row["status"], class_name="mini-pill"),
             justify="between",
             align="center",
         ),
         rx.text(row["summary"], class_name="muted small"),
+        rx.text(row["concepts_text"], class_name="source-fact"),
+        rx.text(row["evidence_types_text"], class_name="muted small"),
+        rx.text(row["timeline_contribution"], class_name="muted small"),
         rx.text(row["contributes_text"], class_name="source-fact"),
         rx.text(row["overlap_note"], class_name="muted small"),
         class_name="card source-card",
@@ -1235,6 +1302,14 @@ def workspace_match_card(row: dict) -> rx.Component:
             align="center",
         ),
         rx.text(row["entity_name"], class_name="card-title"),
+        rx.cond(
+            row.get("is_record", False),
+            rx.text("Registro específico", class_name="badge badge-amber"),
+        ),
+        rx.cond(
+            row.get("related_label", "") != "",
+            rx.text(row.get("related_label", ""), class_name="muted small"),
+        ),
         rx.text(row["datasets_text"], class_name="muted small"),
         rx.hstack(
             rx.text(f"Evidencia: {row['evidence_count']}", class_name="mini-pill"),
@@ -1242,7 +1317,15 @@ def workspace_match_card(row: dict) -> rx.Component:
             spacing="2",
             wrap="wrap",
         ),
-        rx.button("Abrir expediente", on_click=AppState.open_investigation(row["entity_id"], row["entity_name"]), class_name="button button-secondary"),
+        rx.hstack(
+            rx.button("Abrir expediente", on_click=AppState.open_investigation(row["canonical_entity_id"], row["canonical_entity_name"]), class_name="button button-secondary"),
+            rx.cond(
+                row.get("is_record", False),
+                rx.text("Ver registro: pendiente", class_name="mini-pill"),
+            ),
+            spacing="2",
+            wrap="wrap",
+        ),
         class_name="card example-card search-result-card",
     )
 
@@ -1299,7 +1382,12 @@ def guided_question_card(row: dict) -> rx.Component:
         rx.text(f"Ejemplo: {row['example_query']}", class_name="source-fact"),
         rx.button(
             row.get("cta", "Explorar"),
-            on_click=rx.redirect(row.get("search_href", "/search")),
+            on_click=AppState.explore_guided_question(
+                row["id"],
+                row["title"],
+                row["description"],
+                row.get("search_query", row.get("example_query", "")),
+            ),
             class_name="button button-secondary",
         ),
         class_name="card example-card discovery-card",
@@ -1319,6 +1407,29 @@ def guided_category_button(row: dict) -> rx.Component:
             on_click=AppState.select_guided_category(row["id"]),
             class_name="search-chip explorer-category-button",
         ),
+    )
+
+
+def guided_option_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["record_badge"], class_name="badge badge-teal"),
+            rx.text(row["sources_text"], class_name="muted small"),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["why_it_appears"], class_name="muted small"),
+        rx.cond(
+            row.get("related_text", "") != "",
+            rx.text(row["related_text"], class_name="source-fact"),
+        ),
+        rx.button(
+            "Abrir expediente",
+            on_click=AppState.open_investigation(row["canonical_entity_id"], row["canonical_entity_name"]),
+            class_name="button button-secondary",
+        ),
+        class_name="card example-card discovery-card",
     )
 
 
@@ -1342,6 +1453,16 @@ def guided_category_panel() -> rx.Component:
                 rx.foreach(AppState.selected_guided_category_sources, lambda item: rx.text(item, class_name="mini-pill mini-pill-purple")),
                 spacing="2",
                 wrap="wrap",
+            ),
+            rx.cond(
+                AppState.guided_option_rows,
+                rx.grid(
+                    rx.foreach(AppState.guided_option_rows, guided_option_card),
+                    columns="2",
+                    spacing="2",
+                    class_name="responsive-grid",
+                ),
+                rx.text("No hay opciones locales cargadas para esta categoria.", class_name="muted small"),
             ),
             rx.hstack(
                 rx.button(
@@ -2530,16 +2651,18 @@ style = {
     ".hero-actions": {"margin_top": "18px"},
     ".investigation-layout": {
         "display": "grid",
-        "grid_template_columns": "minmax(320px, 1fr) minmax(0, 1.6fr) minmax(320px, 1.05fr)",
+        "grid_template_columns": "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(280px, 0.8fr)",
         "gap": "16px",
         "align_items": "start",
+        "width": "100%",
+        "overflow": "visible",
     },
     ".investigation-shell": {"display": "grid", "gap": "14px"},
     ".story-main": {"min_width": "0"},
-    ".investigation-left": {"display": "grid", "gap": "12px"},
-    ".investigation-center": {"display": "grid", "gap": "12px"},
-    ".investigation-sidebar": {"max_height": "none", "overflow_y": "visible"},
-    ".context-panel": {"position": "static", "top": "auto", "display": "grid", "gap": "12px"},
+    ".investigation-left": {"display": "grid", "gap": "12px", "min_width": "0"},
+    ".investigation-center": {"display": "grid", "gap": "12px", "min_width": "0"},
+    ".investigation-sidebar": {"max_height": "none", "overflow_y": "visible", "min_width": "0"},
+    ".context-panel": {"position": "static", "top": "auto", "display": "grid", "gap": "12px", "min_width": "0", "align_self": "start"},
     ".investigation-card": {"padding": "12px", "gap": "8px"},
     ".investigation-section-title": {"margin_bottom": "4px", "font_size": "18px"},
     ".investigation-subtitle": {"margin_bottom": "4px", "font_size": "13px"},
@@ -2598,6 +2721,8 @@ style = {
         "display": "grid",
         "gap": "8px",
         "background": "#1f1f24",
+        "overflow_x": "auto",
+        "max_width": "100%",
     },
     ".shell.theme-light .relationship-map": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
     ".map-node": {

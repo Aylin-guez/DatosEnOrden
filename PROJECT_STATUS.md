@@ -14,6 +14,8 @@ Main layers:
 - SQLAlchemy models: `src/datosenorden/models.py`
 - Demo loaders/prototypes: `src/datosenorden/maintenance/*_prototype.py` and `src/datosenorden/maintenance/complete_demo_case.py`
 - Investigation builders: `src/datosenorden/maintenance/investigation_view.py`, `investigation_story.py`, `source_trace.py`, `source_contributions.py`, `investigation_graph.py`, `investigation_timeline.py`
+- Product navigation: `src/datosenorden/maintenance/product_navigation.py`
+- Source plugin registry: `src/datosenorden/maintenance/source_plugins.py`
 - Web service facade: `src/datosenorden/web/app_services.py`
 - Reflex UI: `reflex_app/reflex_app.py`
 
@@ -37,6 +39,8 @@ The complete MVP demo uses these local prototype datasets:
 - Transparencia Activa
 - Lobby
 - Contraloria
+
+Source plugins now centralize source metadata for Ecosistema, Descubre, Expediente, CLI docs, and readiness checks. See `SOURCES.md`.
 
 Other prototypes also exist in the repository, including SERVEL and municipal data, but they are not required for the complete Arauco MVP case.
 
@@ -62,6 +66,36 @@ Loader:
 
 ```powershell
 python scripts/load_complete_demo_case.py
+```
+
+## Expediente vs Registro
+
+- Expediente: the canonical profile for a main public entity such as an organization, company, or person.
+- Registro: a specific local record such as a budget item, contract, lobby meeting, role, publication, report, or evidence item.
+
+Product rule:
+
+- `Abrir expediente` opens the canonical main entity.
+- `Ver registro` is reserved for a future specific-record page. It can appear as a placeholder today.
+
+## Canonical Routing
+
+Canonical routing is handled by `resolve_canonical_expediente_target(value)`.
+
+It accepts UUIDs or names. If the target is already a main entity, it opens itself. If the target is record-like, it follows stored claims/relationships to find a related organization, company, or person, prioritizing public organizations when available.
+
+This means users can click cards by name and do not need to know UUIDs.
+
+Open the demo without UUID:
+
+```text
+/investigation?id=SERVICIO%20DE%20SALUD%20ARAUCO%20HOSPITAL%20DE%20ARAUCO
+```
+
+The current enriched canonical UUID in this local database is:
+
+```text
+338d160c-8d5d-47e1-9c37-038ed5043ba1
 ```
 
 ## Commands To Run Tests
@@ -97,6 +131,14 @@ python scripts/load_complete_demo_case.py
 python scripts/verify_mvp_demo.py
 ```
 
+## Source Readiness
+
+```powershell
+python scripts/source_readiness_report.py
+```
+
+The report checks plugin metadata, commands, sample/demo data, summary scripts, loader scripts, tests, and missing items.
+
 For the final MVP helper:
 
 ```powershell
@@ -113,6 +155,13 @@ python scripts/reset_and_load_mvp_demo.py
 - `Buscar` and `Descubre` overlap; `Descubre` should guide, while `Buscar` should be direct search.
 - Local git status before this phase already included modified and untracked files. Do not assume a clean worktree.
 - `git status --short` warned that `.pytest-tmp/` could not be opened due to permission denied.
+
+## Known UX Limitations
+
+- `Ver registro` is a placeholder; full record pages are not implemented yet.
+- The top metrics count sources directly attached to the canonical entity. The source map can show all 7 complete demo sources, including related-record sources.
+- Repeated non-destructive demo loads can create duplicate names. Canonical routing chooses the entity with the richest navigable data.
+- Visual polish is still secondary to local demo correctness and traceability.
 
 ## Git Checkpoint
 

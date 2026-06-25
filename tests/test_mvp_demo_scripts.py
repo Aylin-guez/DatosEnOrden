@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -26,6 +25,16 @@ def test_verify_mvp_demo_passes_with_nonzero_service_data(monkeypatch, capsys) -
             "entity_name": verify_mvp_demo.MAIN_ENTITY,
             "matched_by": "exact_name",
             "warning": "",
+        },
+    )
+    monkeypatch.setattr(
+        verify_mvp_demo,
+        "resolve_canonical_expediente_target",
+        lambda value: {
+            "found": True,
+            "canonical_entity_id": "11111111-1111-1111-1111-111111111111",
+            "canonical_entity_name": verify_mvp_demo.MAIN_ENTITY,
+            "is_record": False,
         },
     )
     monkeypatch.setattr(
@@ -60,7 +69,17 @@ def test_verify_mvp_demo_passes_with_nonzero_service_data(monkeypatch, capsys) -
     monkeypatch.setattr(
         verify_mvp_demo,
         "search_workspace",
-        lambda query: {"matches": [{"entity_id": "11111111-1111-1111-1111-111111111111"}]},
+        lambda query: {"matches": [{"entity_id": "11111111-1111-1111-1111-111111111111", "canonical_entity_id": "11111111-1111-1111-1111-111111111111"}]},
+    )
+    monkeypatch.setattr(
+        verify_mvp_demo,
+        "get_guided_discovery_options",
+        lambda category: [{"entity_id": "budget-1" if category == "budgets" else "option-1"}],
+    )
+    monkeypatch.setattr(
+        verify_mvp_demo,
+        "get_record_context",
+        lambda value: {"canonical_entity_id": "11111111-1111-1111-1111-111111111111", "is_record": True},
     )
 
     exit_code = verify_mvp_demo.main()
@@ -84,12 +103,15 @@ def test_verify_mvp_demo_fails_when_main_entity_is_missing(monkeypatch) -> None:
         "resolve_investigation_target",
         lambda value: {"found": False, "entity_id": "", "warning": "missing"},
     )
+    monkeypatch.setattr(verify_mvp_demo, "resolve_canonical_expediente_target", lambda value: {"found": False, "canonical_entity_id": ""})
     monkeypatch.setattr(verify_mvp_demo, "get_investigation", lambda entity_id: {"found": False, "compact_metrics": {}})
     monkeypatch.setattr(verify_mvp_demo, "get_entity_comparison", lambda entity_id: {"coverage_summary": ""})
     monkeypatch.setattr(verify_mvp_demo, "get_source_trace", lambda entity_id: {"sources": []})
     monkeypatch.setattr(verify_mvp_demo, "get_investigation_timeline", lambda entity_id: {"years": []})
     monkeypatch.setattr(verify_mvp_demo, "get_investigation_story", lambda entity_id: {"summary": ""})
     monkeypatch.setattr(verify_mvp_demo, "search_workspace", lambda query: {"matches": []})
+    monkeypatch.setattr(verify_mvp_demo, "get_guided_discovery_options", lambda category: [])
+    monkeypatch.setattr(verify_mvp_demo, "get_record_context", lambda value: {})
 
     exit_code = verify_mvp_demo.main()
 
