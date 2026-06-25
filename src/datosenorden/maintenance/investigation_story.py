@@ -7,6 +7,7 @@ from datetime import date
 from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.investigation_view import build_investigation_view
+from datosenorden.maintenance.safe_access import _field
 
 
 @dataclass(frozen=True)
@@ -45,7 +46,7 @@ def build_investigation_story(entity_id: str) -> dict[str, object]:
 def _build_story_context(view, comparison: dict[str, object]) -> _StoryContext:  # noqa: ANN001
     entity_name = str(view.profile.entity.name)
     entity_type = str(view.profile.entity.entity_type)
-    datasets_present = tuple(str(dataset) for dataset in comparison.get("datasets_present", ()))
+    datasets_present = tuple(str(dataset) for dataset in _field(comparison, "datasets_present", ()))
     summary = _summary_text(entity_name, datasets_present, view.summary)
     key_findings = _key_findings(comparison, view)
     important_connections = _important_connections(view, comparison)
@@ -94,14 +95,14 @@ def _summary_text(entity_name: str, datasets_present: tuple[str, ...], fallback_
 
 def _key_findings(comparison: dict[str, object], view) -> tuple[str, ...]:  # noqa: ANN001
     findings: list[str] = []
-    datasets_present = [str(dataset) for dataset in comparison.get("datasets_present", ())]
+    datasets_present = [str(dataset) for dataset in _field(comparison, "datasets_present", ())]
     if datasets_present:
         if len(datasets_present) == 1:
             findings.append(f"The organization appears in {datasets_present[0]} records.")
         else:
             findings.append("The organization appears in multiple public datasets.")
 
-    observations = [str(item) for item in comparison.get("consistency_observations", ())]
+    observations = [str(item) for item in _field(comparison, "consistency_observations", ())]
     findings.extend(observations[:3])
 
     if getattr(view, "procurement_items", ()):
@@ -123,7 +124,7 @@ def _key_findings(comparison: dict[str, object], view) -> tuple[str, ...]:  # no
 
 def _important_connections(view, comparison: dict[str, object]) -> tuple[str, ...]:  # noqa: ANN001
     connections: list[str] = []
-    datasets_present = [str(dataset) for dataset in comparison.get("datasets_present", ())]
+    datasets_present = [str(dataset) for dataset in _field(comparison, "datasets_present", ())]
     for item in getattr(view, "procurement_items", ()):
         connections.append(
             f"{item.dataset}: {item.contract_name} is linked to {item.supplier}."
@@ -141,9 +142,9 @@ def _important_connections(view, comparison: dict[str, object]) -> tuple[str, ..
         connections.append("Registro Empresas: company registry records describe company, representative, and ownership details.")
 
     if not connections:
-        for fact in comparison.get("dataset_facts", ()):
-            dataset = str(fact.get("dataset", ""))
-            facts = [str(entry) for entry in fact.get("facts", ())]
+        for fact in _field(comparison, "dataset_facts", ()):
+            dataset = str(_field(fact, "dataset", ""))
+            facts = [str(entry) for entry in _field(fact, "facts", ())]
             if not facts:
                 continue
             connections.append(f"{dataset}: {facts[0]}.")
@@ -170,13 +171,13 @@ def _timeline_highlights(view) -> tuple[str, ...]:  # noqa: ANN001
 
 
 def _sources_consulted(comparison: dict[str, object]) -> tuple[str, ...]:
-    datasets_present = [str(dataset) for dataset in comparison.get("datasets_present", ())]
+    datasets_present = [str(dataset) for dataset in _field(comparison, "datasets_present", ())]
     return tuple(datasets_present)
 
 
 def _questions_for_citizens(view, comparison: dict[str, object]) -> tuple[str, ...]:  # noqa: ANN001
     questions: list[str] = []
-    datasets_present = [str(dataset) for dataset in comparison.get("datasets_present", ())]
+    datasets_present = [str(dataset) for dataset in _field(comparison, "datasets_present", ())]
     normalized = " ".join(datasets_present).lower()
 
     if len(datasets_present) > 1:

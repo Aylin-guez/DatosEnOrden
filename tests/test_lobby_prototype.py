@@ -48,10 +48,10 @@ def _existing_entities():
         SimpleNamespace(
             id=UUID("11111111-1111-1111-1111-111111111111"),
             entity_type="PUBLIC_ORGANIZATION",
-            name="DIVISION LOGISTICA DEL EJERCITO",
-            external_id="chilecompra:buyer:division-logistica-ejercito",
+            name="SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+            external_id="chilecompra:buyer:servicio-de-salud-arauco-hospital-de-arauco",
             description="existing org aligned for local demo",
-            normalized_key="division-logistica-ejercito",
+            normalized_key="servicio-de-salud-arauco-hospital-de-arauco",
             status="active",
             entity_metadata={"source": "chilecompra"},
         ),
@@ -88,7 +88,7 @@ def test_build_lobby_sample_batch_matches_existing_entities_and_creates_claims()
     assert batch.raw_count == 1
     assert len(batch.entities) == 3
     assert batch.entities[0].entity_type == EntityType.LOBBY_MEETING
-    assert batch.entities[1].external_id == "chilecompra:buyer:division-logistica-ejercito"
+    assert batch.entities[1].external_id == "chilecompra:buyer:servicio-de-salud-arauco-hospital-de-arauco"
     assert batch.entities[2].external_id == "chilecompra:supplier:marlene-flores"
     assert len(batch.evidence) == 3
     assert len(batch.claims) == 3

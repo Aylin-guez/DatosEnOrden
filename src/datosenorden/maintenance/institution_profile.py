@@ -13,6 +13,7 @@ from datosenorden.maintenance.dipres_prototype import read_budget_summary
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.investigation_story import build_investigation_story
 from datosenorden.maintenance.investigation_view import build_investigation_view
+from datosenorden.maintenance.safe_access import _field
 from datosenorden.maintenance.source_trace import build_source_trace
 from datosenorden.maintenance.timeline_explorer import build_entity_timeline
 from datosenorden.models import Claim, Entity
@@ -247,21 +248,3 @@ def _jsonify(value: object) -> object:
         return value.isoformat()
     return value
 
-
-def _field(obj: object, name: str, fallback: object = "") -> object:
-    if obj is None:
-        return fallback
-    if isinstance(obj, dict):
-        return obj.get(name, fallback)
-    if hasattr(obj, name):
-        return getattr(obj, name, fallback)
-    for method_name in ("model_dump", "dict"):
-        method = getattr(obj, method_name, None)
-        if callable(method):
-            try:
-                dumped = method()
-            except TypeError:
-                continue
-            if isinstance(dumped, dict):
-                return dumped.get(name, fallback)
-    return fallback

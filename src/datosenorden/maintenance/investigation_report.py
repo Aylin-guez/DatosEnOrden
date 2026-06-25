@@ -10,6 +10,7 @@ from datosenorden.maintenance.investigation_graph import build_investigation_gra
 from datosenorden.maintenance.investigation_story import build_investigation_story
 from datosenorden.maintenance.investigation_timeline import build_investigation_timeline
 from datosenorden.maintenance.investigation_view import build_investigation_view
+from datosenorden.maintenance.safe_access import _field
 from datosenorden.maintenance.source_contributions import build_source_contributions
 from datosenorden.maintenance.source_trace import build_source_trace
 
@@ -220,21 +221,3 @@ def _slugify(value: str) -> str:
     text = re.sub(r"_+", "_", text).strip("_")
     return text or "entity"
 
-
-def _field(obj: object, name: str, fallback: object = "") -> object:
-    if obj is None:
-        return fallback
-    if isinstance(obj, dict):
-        return obj.get(name, fallback)
-    if hasattr(obj, name):
-        return getattr(obj, name, fallback)
-    for method_name in ("model_dump", "dict"):
-        method = getattr(obj, method_name, None)
-        if callable(method):
-            try:
-                dumped = method()
-            except TypeError:
-                continue
-            if isinstance(dumped, dict):
-                return dumped.get(name, fallback)
-    return fallback

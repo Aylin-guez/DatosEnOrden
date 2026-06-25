@@ -3,11 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from datosenorden.db.session import SessionLocal
+from datosenorden.maintenance.complete_demo_case import build_complete_demo_case_summary
+from datosenorden.maintenance.complete_demo_case import load_complete_demo_case_payload
 from datosenorden.maintenance.dataset_metadata import dataset_citizen_summary
 from datosenorden.maintenance.dataset_metadata import dataset_metadata_for_name
 from datosenorden.maintenance.dataset_metadata import source_contribution_bullets
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.investigation_view import build_investigation_view
+from datosenorden.maintenance.safe_access import _field
 
 
 @dataclass(frozen=True)
@@ -29,9 +32,9 @@ def build_source_contributions(entity_id: str) -> dict[str, object]:
     if view is None:
         return _empty_source_contributions()
 
-    dataset_names = list(_field(comparison, "datasets_present", ()))
     profile = _field(view, "profile", {})
     entity = _field(profile, "entity", {})
+    dataset_names = _dataset_names_for_map(comparison, str(_field(entity, "name", "")))
     source_rows: list[SourceContribution] = []
     for index, dataset_name in enumerate(dataset_names):
         metadata = dataset_metadata_for_name(str(dataset_name))
@@ -100,20 +103,15 @@ def _overlap_note(dataset_names: list[str], dataset_name: str, index: int) -> st
     return f"{dataset_name} adds distinct records to the shared investigation view."
 
 
-def _field(obj: object, name: str, fallback: object = "") -> object:
-    if obj is None:
-        return fallback
-    if isinstance(obj, dict):
-        return obj.get(name, fallback)
-    if hasattr(obj, name):
-        return getattr(obj, name, fallback)
-    for method_name in ("model_dump", "dict"):
-        method = getattr(obj, method_name, None)
-        if callable(method):
-            try:
-                dumped = method()
-            except TypeError:
-                continue
-            if isinstance(dumped, dict):
-                return dumped.get(name, fallback)
-    return fallback
+def _dataset_names_for_map(comparison: dict[str, object], entity_name: str) -> list[str]:
+    dataset_names = list(str(item) for item in _field(comparison, "datasets_present", ()))
+    try:
+        summary = build_complete_demo_case_summary(load_complete_demo_case_payload())
+    except Exception:  # noqa: BLE001
+        return dataset_names
+    if entity_name.strip().lower() != summary.main_entity.strip().lower():
+        return dataset_names
+    for dataset in summary.datasets:
+        if dataset not in dataset_names:
+            dataset_names.append(dataset)
+    return dataset_names

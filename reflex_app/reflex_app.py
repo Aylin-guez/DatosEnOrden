@@ -21,8 +21,12 @@ from datosenorden.web.app_services import get_source_contributions
 from datosenorden.web.app_services import get_investigation_story
 from datosenorden.web.app_services import export_investigation_report
 from datosenorden.web.app_services import get_data_ecosystem
+from datosenorden.web.app_services import resolve_investigation_target
 from datosenorden.web.app_services import search_workspace
 from datosenorden.web.app_services import search_entities
+from datosenorden.maintenance.safe_access import _as_list
+from datosenorden.maintenance.safe_access import _as_text
+from datosenorden.maintenance.safe_access import _field as _safe_field
 
 
 GRAPH_EXPLANATION = (
@@ -59,15 +63,15 @@ def _human_label(value: object) -> str:
 def _format_procurement_rows(rows: list[dict]) -> list[dict]:
     return [
         {
-            "title": _clean(row.get("contract_name"), "Orden de compra"),
-            "dataset": _clean(row.get("dataset"), "ChileCompra"),
+            "title": _clean(_field(row, "contract_name"), "Orden de compra"),
+            "dataset": _clean(_field(row, "dataset"), "ChileCompra"),
             "date": "Sin fecha",
             "explanation": "Registro de compra publica asociado a esta entidad.",
-            "evidence": int(row.get("evidence_count", 0)),
+            "evidence": int(_field(row, "evidence_count", 0) or 0),
             "relationship_type": "Compra publica",
-            "facts_text": f"Proveedor: {_clean(row.get('supplier'))}",
-            "technical_text": f"dataset={_clean(row.get('dataset'), 'ChileCompra')}",
-            "detail_text": f"dataset={_clean(row.get('dataset'), 'ChileCompra')}",
+            "facts_text": f"Proveedor: {_clean(_field(row, 'supplier'))}",
+            "technical_text": f"dataset={_clean(_field(row, 'dataset'), 'ChileCompra')}",
+            "detail_text": f"dataset={_clean(_field(row, 'dataset'), 'ChileCompra')}",
         }
         for row in rows
     ]
@@ -77,18 +81,18 @@ def _format_lobby_rows(rows: list[dict]) -> list[dict]:
     return [
         {
             "title": "Reunion de lobby registrada",
-            "dataset": _clean(row.get("dataset"), "Lobby"),
-            "date": _clean(row.get("date"), "Sin fecha"),
+            "dataset": _clean(_field(row, "dataset"), "Lobby"),
+            "date": _clean(_field(row, "date"), "Sin fecha"),
             "explanation": "Registro de lobby asociado a esta entidad y una contraparte.",
-            "evidence": int(row.get("evidence_count", 0)),
+            "evidence": int(_field(row, "evidence_count", 0) or 0),
             "relationship_type": "Lobby",
             "facts_text": " | ".join([
-                f"Organismo: {_clean(row.get('organization'))}",
-                f"Contraparte: {_clean(row.get('counterparty'))}",
-                f"Materia: {_clean(row.get('subject'))}",
+                f"Organismo: {_clean(_field(row, 'organization'))}",
+                f"Contraparte: {_clean(_field(row, 'counterparty'))}",
+                f"Materia: {_clean(_field(row, 'subject'))}",
             ]),
-            "technical_text": f"dataset={_clean(row.get('dataset'), 'Lobby')}",
-            "detail_text": f"dataset={_clean(row.get('dataset'), 'Lobby')}",
+            "technical_text": f"dataset={_clean(_field(row, 'dataset'), 'Lobby')}",
+            "detail_text": f"dataset={_clean(_field(row, 'dataset'), 'Lobby')}",
         }
         for row in rows
     ]
@@ -98,18 +102,18 @@ def _format_transparency_rows(rows: list[dict]) -> list[dict]:
     return [
         {
             "title": "Cargo publico registrado",
-            "dataset": _clean(row.get("dataset"), "Transparencia"),
-            "date": _clean(row.get("period"), "Sin periodo"),
+            "dataset": _clean(_field(row, "dataset"), "Transparencia"),
+            "date": _clean(_field(row, "period"), "Sin periodo"),
             "explanation": "Registro administrativo de cargo o periodo publico.",
-            "evidence": int(row.get("evidence_count", 0)),
+            "evidence": int(_field(row, "evidence_count", 0) or 0),
             "relationship_type": "Rol publico",
             "facts_text": " | ".join([
-                f"Titular: {_clean(row.get('holder'))}",
-                f"Rol: {_clean(row.get('role_title'))}",
-                f"Periodo: {_clean(row.get('period'))}",
+                f"Titular: {_clean(_field(row, 'holder'))}",
+                f"Rol: {_clean(_field(row, 'role_title'))}",
+                f"Periodo: {_clean(_field(row, 'period'))}",
             ]),
-            "technical_text": f"dataset={_clean(row.get('dataset'), 'Transparencia')}",
-            "detail_text": f"dataset={_clean(row.get('dataset'), 'Transparencia')}",
+            "technical_text": f"dataset={_clean(_field(row, 'dataset'), 'Transparencia')}",
+            "detail_text": f"dataset={_clean(_field(row, 'dataset'), 'Transparencia')}",
         }
         for row in rows
     ]
@@ -166,66 +170,51 @@ def _format_registry_rows(rows: list[dict]) -> list[dict]:
 def _format_relationship_rows(rows: list[dict]) -> list[dict]:
     formatted: list[dict] = []
     for row in rows:
-        if "who" in row:
-            technical = row.get("technical_details", {})
+        if _field(row, "who", None) is not None:
+            technical = _field(row, "technical_details", {})
             formatted.append(
                 {
-                    "title": _clean(row.get("who"), "Entidad conectada"),
-                    "dataset": _clean(row.get("source_dataset"), "Grafo publico local"),
+                    "title": _clean(_field(row, "who"), "Entidad conectada"),
+                    "dataset": _clean(_field(row, "source_dataset"), "Grafo publico local"),
                     "date": "Sin fecha",
-                    "explanation": _clean(row.get("relationship_meaning"), "Relacion publica almacenada."),
+                    "explanation": _clean(_field(row, "relationship_meaning"), "Relacion publica almacenada."),
                     "evidence": 0,
-                    "relationship_type": _clean(row.get("entity_type"), "Entidad conectada"),
-                    "facts_text": f"Quien: {_clean(row.get('who'))}",
+                    "relationship_type": _clean(_field(row, "entity_type"), "Entidad conectada"),
+                    "facts_text": f"Quien: {_clean(_field(row, 'who'))}",
                     "technical_text": "\n".join([
-                        f"relationship_id={_clean(technical.get('relationship_id'))}",
-                        f"relationship_type={_clean(technical.get('relationship_type'))}",
-                        f"direction={_clean(technical.get('direction'))}",
-                        f"neighbor_id={_clean(technical.get('neighbor_id'))}",
+                        f"relationship_id={_clean(_field(technical, 'relationship_id'))}",
+                        f"relationship_type={_clean(_field(technical, 'relationship_type'))}",
+                        f"direction={_clean(_field(technical, 'direction'))}",
+                        f"neighbor_id={_clean(_field(technical, 'neighbor_id'))}",
                     ]),
                     "detail_text": "\n".join([
-                        f"relationship_id={_clean(technical.get('relationship_id'))}",
-                        f"relationship_type={_clean(technical.get('relationship_type'))}",
-                        f"direction={_clean(technical.get('direction'))}",
-                        f"neighbor_id={_clean(technical.get('neighbor_id'))}",
+                        f"relationship_id={_clean(_field(technical, 'relationship_id'))}",
+                        f"relationship_type={_clean(_field(technical, 'relationship_type'))}",
+                        f"direction={_clean(_field(technical, 'direction'))}",
+                        f"neighbor_id={_clean(_field(technical, 'neighbor_id'))}",
                     ]),
                 }
             )
             continue
-        neighbor = row.get("neighbor", {})
+        neighbor = _field(row, "neighbor", {})
         formatted.append(
             {
-                "title": _clean(neighbor.get("name"), "Entidad conectada"),
+                "title": _clean(_field(neighbor, "name"), "Entidad conectada"),
                 "dataset": "Grafo local",
                 "date": "Sin fecha",
                 "explanation": "Entidad conectada por una relacion publica almacenada.",
                 "evidence": 0,
-                "relationship_type": _human_label(row.get("relationship_type")),
+                "relationship_type": _human_label(_field(row, "relationship_type")),
                 "detail_text": "\n".join([
-                    f"Tipo de entidad: {_human_label(neighbor.get('entity_type'))}",
-                    f"Dirección: {_human_label(row.get('direction'))}",
+                    f"Tipo de entidad: {_human_label(_field(neighbor, 'entity_type'))}",
+                    f"Dirección: {_human_label(_field(row, 'direction'))}",
                 ]),
             }
         )
     return formatted
 
 def _field(obj: object, name: str, fallback: object = None) -> object:
-    if obj is None:
-        return fallback
-    if isinstance(obj, dict):
-        return obj.get(name, fallback)
-    if hasattr(obj, name):
-        return getattr(obj, name, fallback)
-    for attribute in ("model_dump", "dict"):
-        method = getattr(obj, attribute, None)
-        if callable(method):
-            try:
-                dumped = method()
-            except TypeError:
-                continue
-            if isinstance(dumped, dict):
-                return dumped.get(name, fallback)
-    return fallback
+    return _safe_field(obj, name, fallback)
 
 
 def _accent_badge_class(status: str) -> str:
@@ -340,6 +329,7 @@ def _clear_investigation_state(self) -> None:
     self.timeline_older_year_rows = []
     self.source_contribution_rows = []
     self.report_path = ""
+    self.investigation_status_message = ""
 
 
 def _format_evidence_rows(rows: list[dict]) -> list[dict]:
@@ -367,24 +357,24 @@ def _format_evidence_rows(rows: list[dict]) -> list[dict]:
 def _format_timeline_rows(rows: list[dict]) -> list[dict]:
     formatted: list[dict] = []
     for row in rows:
-        technical = row.get("technical_details", {})
-        predicate = _clean(row.get("predicate"), "Evento")
+        technical = _field(row, "technical_details", {})
+        predicate = _clean(_field(row, "predicate"), "Evento")
         formatted.append(
             {
-                "title": _clean(row.get("title"), "Evento de la linea de tiempo"),
-                "dataset": _clean(row.get("dataset"), "Fuente"),
-                "date": _clean(row.get("date"), "Sin fecha"),
-                "explanation": _clean(row.get("explanation"), "Hecho publico registrado en la cronologia."),
-                "evidence": int(row.get("evidence_count", 0)),
+                "title": _clean(_field(row, "title"), "Evento de la linea de tiempo"),
+                "dataset": _clean(_field(row, "dataset"), "Fuente"),
+                "date": _clean(_field(row, "date"), "Sin fecha"),
+                "explanation": _clean(_field(row, "explanation"), "Hecho publico registrado en la cronologia."),
+                "evidence": int(_field(row, "evidence_count", 0) or 0),
                 "relationship_type": _human_label(predicate),
                 "facts_text": " | ".join([
-                    f"Fuente: {_clean(row.get('dataset_name'), _clean(row.get('dataset'), 'Fuente'))}",
-                    f"Evidencia: {int(row.get('evidence_count', 0))}",
+                    f"Fuente: {_clean(_field(row, 'dataset_name'), _clean(_field(row, 'dataset'), 'Fuente'))}",
+                    f"Evidencia: {int(_field(row, 'evidence_count', 0) or 0)}",
                 ]),
                 "detail_text": "\n".join([
-                    f"claim_id={_clean(row.get('claim_id'))}",
+                    f"claim_id={_clean(_field(row, 'claim_id'))}",
                     f"predicate={predicate}",
-                    f"source_record_id={_clean(row.get('source_record_id'))}",
+                    f"source_record_id={_clean(_field(row, 'source_record_id'))}",
                     f"technical={_clean(technical)}",
                 ]),
             }
@@ -511,6 +501,7 @@ class AppState(rx.State):
     timeline_older_year_rows: list[dict] = []
     source_contribution_rows: list[dict] = []
     report_path: str = ""
+    investigation_status_message: str = ""
 
     def toggle_theme(self) -> None:
         self.theme_dark = not self.theme_dark
@@ -742,8 +733,18 @@ class AppState(rx.State):
             self.load_home()
             _clear_investigation_state(self)
             return
-        self.selected_entity_id = query_id
         try:
+            resolved = resolve_investigation_target(query_id)
+            if not bool(_field(resolved, "found", False)):
+                self.load_home()
+                _clear_investigation_state(self)
+                self.investigation_status_message = str(
+                    _field(resolved, "warning", "No se encontro una entidad local para abrir el expediente.")
+                )
+                self.error_message = self.investigation_status_message
+                return
+            self.selected_entity_id = str(_field(resolved, "entity_id", query_id))
+            self.selected_entity_name = str(_field(resolved, "entity_name", ""))
             data = get_investigation(self.selected_entity_id)
             comparison = get_entity_comparison(self.selected_entity_id)
             trace = get_source_trace(self.selected_entity_id)
@@ -760,6 +761,8 @@ class AppState(rx.State):
         if not data.get("found", False):
             self.load_home()
             _clear_investigation_state(self)
+            self.investigation_status_message = "No se encontraron registros locales para ese expediente."
+            self.error_message = self.investigation_status_message
             return
 
         metrics = data.get("key_metrics", {})
@@ -1475,6 +1478,10 @@ def investigation_empty_state() -> rx.Component:
         rx.box(
             rx.text("Abre un expediente", class_name="title"),
             rx.text("Un expediente reúne las fuentes públicas disponibles para una entidad.", class_name="subtitle"),
+            rx.cond(
+                AppState.investigation_status_message != "",
+                rx.text(AppState.investigation_status_message, class_name="muted"),
+            ),
             class_name="hero",
         ),
         rx.grid(
@@ -2191,6 +2198,16 @@ def investigation() -> rx.Component:
             investigation_empty_state(),
             rx.box(
                 rx.vstack(
+                    rx.box(
+                        rx.text(AppState.entity_name, class_name="title"),
+                        rx.text(AppState.entity_summary, class_name="subtitle"),
+                        rx.hstack(
+                            rx.foreach(AppState.dataset_badges, lambda item: rx.text(item, class_name="badge badge-teal")),
+                            spacing="2",
+                            wrap="wrap",
+                        ),
+                        class_name="hero",
+                    ),
                     rx.hstack(
                         summary_metric_card("Fuentes", AppState.datasets_involved),
                         summary_metric_card("Evidencia", AppState.evidence_count),

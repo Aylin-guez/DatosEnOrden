@@ -33,6 +33,8 @@ py -3.14 -m reflex run --frontend-port 3001 --backend-port 8001
 ## Investigation
 
 ```powershell
+python scripts/verify_mvp_demo.py
+python scripts/reset_and_load_mvp_demo.py
 python scripts/source_trace.py "DIVISION LOGISTICA DEL EJERCITO"
 python scripts/investigation_story.py "DIVISION LOGISTICA DEL EJERCITO"
 python scripts/entity_comparison.py "DIVISION LOGISTICA DEL EJERCITO"
@@ -106,6 +108,8 @@ python scripts/load_diario_oficial_sample.py
 python scripts/diario_oficial_summary.py
 python scripts/discovery_cases.py
 python scripts/load_complete_demo_case.py
+python scripts/verify_mvp_demo.py
+python scripts/reset_and_load_mvp_demo.py
 python scripts/demo_case_summary.py
 python scripts/dataset_summary.py
 python scripts/dataset_details.py
@@ -126,8 +130,38 @@ python -m reflex run
 
 ```powershell
 py -3.14 -m py_compile reflex_app/reflex_app.py src/datosenorden/web/app_services.py src/datosenorden/maintenance/registro_empresas_prototype.py src/datosenorden/maintenance/guided_questions.py src/datosenorden/maintenance/institution_profile.py src/datosenorden/maintenance/citizen_dashboard.py
+py -3.14 -m py_compile scripts/verify_mvp_demo.py scripts/reset_and_load_mvp_demo.py
 py -3.14 -m pytest -q --basetemp .pytest-tmp
 py -3.14 -m reflex compile --dry --no-rich
+```
+
+## MVP Demo From Scratch
+
+Non-destructive load and verification:
+
+```powershell
+python scripts/reset_and_load_mvp_demo.py
+```
+
+Manual load and verify:
+
+```powershell
+python scripts/load_complete_demo_case.py
+python scripts/verify_mvp_demo.py
+python -m reflex compile --dry --no-rich
+python -m reflex run
+```
+
+Open the expediente directly after the app starts:
+
+```text
+http://localhost:3000/investigation?id=SERVICIO%20DE%20SALUD%20ARAUCO%20HOSPITAL%20DE%20ARAUCO
+```
+
+If the verifier reports a concrete UUID, prefer:
+
+```text
+http://localhost:3000/investigation?id=<entity_id>
 ```
 
 ## Never Commit These

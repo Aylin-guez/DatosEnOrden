@@ -6,10 +6,13 @@ from dataclasses import dataclass
 from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.dataset_metadata import dataset_citizen_summary
 from datosenorden.maintenance.dataset_metadata import dataset_metadata_for_name
+from datosenorden.maintenance.complete_demo_case import build_complete_demo_case_summary
+from datosenorden.maintenance.complete_demo_case import load_complete_demo_case_payload
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.explanations import dataset_display_name
 from datosenorden.maintenance.investigation_story import build_investigation_story
 from datosenorden.maintenance.investigation_view import build_investigation_view
+from datosenorden.maintenance.safe_access import _field
 
 
 NEUTRALITY_NOTICE = (
@@ -206,7 +209,21 @@ def _ordered_labels(view, comparison: dict[str, object]) -> tuple[str, ...]:  # 
         label = dataset_display_name(str(_field(event, "dataset_name", "")))
         if label not in labels:
             labels.append(label)
+    entity_name = str(_field(_field(_field(view, "profile", {}), "entity", {}), "name", ""))
+    for label in _complete_demo_labels(entity_name):
+        if label not in labels:
+            labels.append(label)
     return tuple(labels)
+
+
+def _complete_demo_labels(entity_name: str) -> tuple[str, ...]:
+    try:
+        summary = build_complete_demo_case_summary(load_complete_demo_case_payload())
+    except Exception:  # noqa: BLE001
+        return ()
+    if entity_name.strip().lower() != summary.main_entity.strip().lower():
+        return ()
+    return summary.datasets
 
 
 def _empty_source(dataset: str) -> _MutableSourceCard:
@@ -277,22 +294,3 @@ def _empty_trace() -> dict[str, object]:
         "overlap_summary": "No public source records were found for this entity.",
         "neutrality_notice": NEUTRALITY_NOTICE,
     }
-
-
-def _field(obj: object, name: str, fallback: object = "") -> object:
-    if obj is None:
-        return fallback
-    if isinstance(obj, dict):
-        return obj.get(name, fallback)
-    if hasattr(obj, name):
-        return getattr(obj, name, fallback)
-    for method_name in ("model_dump", "dict"):
-        method = getattr(obj, method_name, None)
-        if callable(method):
-            try:
-                dumped = method()
-            except TypeError:
-                continue
-            if isinstance(dumped, dict):
-                return dumped.get(name, fallback)
-    return fallback
