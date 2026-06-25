@@ -174,6 +174,12 @@ python scripts/verify_mvp_demo.py
 
 ```powershell
 python scripts/source_readiness_report.py
+python scripts/validate_source_plugin.py --all
+python scripts/validate_source_plugin.py registro_empresas
+python scripts/create_source_plugin.py sanciones_procedimientos --display-name "Sanciones y Procedimientos" --status prototype --dry-run
+python scripts/load_all_prototype_sources.py --dry-run
+python scripts/load_all_prototype_sources.py --keep-going
+python scripts/prototype_sources_summary.py
 python -m py_compile src/datosenorden/maintenance/source_plugins.py src/datosenorden/maintenance/ecosystem_registry.py src/datosenorden/web/app_services.py scripts/source_readiness_report.py
 ```
 
@@ -189,6 +195,44 @@ The report should include:
 `Abrir expediente` opens a canonical organization, company, or person.
 
 `Ver registro` is a placeholder for future budget, contract, meeting, publication, role, report, or evidence pages.
+
+## Source Factory
+
+Scaffold a new source safely:
+
+```powershell
+python scripts/create_source_plugin.py sanciones_procedimientos --display-name "Sanciones y Procedimientos" --status prototype
+```
+
+Validate one source:
+
+```powershell
+python scripts/validate_source_plugin.py declaraciones_intereses
+```
+
+Validate all sources:
+
+```powershell
+python scripts/validate_source_plugin.py --all
+```
+
+Load all prototype source samples:
+
+```powershell
+python scripts/load_all_prototype_sources.py --keep-going
+```
+
+Summarize prototype source readiness:
+
+```powershell
+python scripts/prototype_sources_summary.py
+```
+
+Status rule:
+
+- `planned`: documented source, no local sample/loader requirement.
+- `prototype`: local sample, loader, summary, docs, and tests exist.
+- `active`: stable MVP path with local data and maintained tests.
 
 ## Never Commit These
 

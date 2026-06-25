@@ -20,6 +20,10 @@ from datosenorden.web.app_services import get_source_trace
 from datosenorden.web.app_services import resolve_investigation_target
 from datosenorden.web.app_services import resolve_canonical_expediente_target
 from datosenorden.web.app_services import search_workspace
+from datosenorden.maintenance.source_plugins import SourceStatus
+from datosenorden.maintenance.source_plugins import get_source_plugin
+from datosenorden.maintenance.source_plugins import get_source_plugins
+from validate_source_plugin import validate_all
 
 
 MAIN_ENTITY = "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
@@ -29,6 +33,24 @@ def main() -> int:
     checks: list[tuple[str, bool, str]] = []
 
     checks.append(_check_database())
+    plugins = get_source_plugins()
+    checks.append(("source plugin registry loads", len(plugins) > 0, str(len(plugins))))
+    checks.append(("source plugin count", len(plugins) == 11, str(len(plugins))))
+    declaraciones_plugin = get_source_plugin("declaraciones_intereses")
+    checks.append(
+        (
+            "declaraciones_intereses is prototype",
+            declaraciones_plugin is not None and declaraciones_plugin.status == SourceStatus.PROTOTYPE,
+            str(declaraciones_plugin.status.value if declaraciones_plugin is not None else "missing"),
+        )
+    )
+    readiness = validate_all()
+    readiness_failures = [
+        result.source_id
+        for result in readiness
+        if result.status in {"active", "prototype"} and result.critical_failures
+    ]
+    checks.append(("source readiness critical failures", not readiness_failures, ", ".join(readiness_failures) or "none"))
     payload = load_complete_demo_case_payload()
     checks.append(("demo payload", payload["main_entity"]["name"] == MAIN_ENTITY, payload["main_entity"]["name"]))
 

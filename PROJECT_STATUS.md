@@ -135,9 +135,19 @@ python scripts/verify_mvp_demo.py
 
 ```powershell
 python scripts/source_readiness_report.py
+python scripts/validate_source_plugin.py --all
 ```
 
 The report checks plugin metadata, commands, sample/demo data, summary scripts, loader scripts, tests, and missing items.
+
+Source factory scripts now exist:
+
+- `scripts/create_source_plugin.py`
+- `scripts/validate_source_plugin.py`
+- `scripts/load_all_prototype_sources.py`
+- `scripts/prototype_sources_summary.py`
+
+`Declaraciones de Intereses` is now a scaffolded local prototype. It remains local `LOCAL_TEST_DATA` / `NOT_OFFICIAL_DATA` and does not add schema or external fetching.
 
 For the final MVP helper:
 

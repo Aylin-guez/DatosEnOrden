@@ -126,6 +126,30 @@ src/datosenorden/maintenance/source_plugins.py
 
 Every current or planned source should have a `PublicSourcePlugin` entry. Ecosistema is built from that registry, so missing plugin metadata usually means the source will not appear consistently across the product.
 
+## Source Factory Validation Fails
+
+Validate one source:
+
+```powershell
+python scripts/validate_source_plugin.py declaraciones_intereses
+```
+
+Validate all:
+
+```powershell
+python scripts/validate_source_plugin.py --all
+```
+
+For `active` and `prototype` sources, critical readiness requires metadata, sample/demo data, loader command, summary command, docs, tests, and neutral wording. For `planned` sources, missing sample/loader/summary/test files are warnings.
+
+If a new source is missing files, scaffold them:
+
+```powershell
+python scripts/create_source_plugin.py <source_id> --display-name "<Display Name>" --status prototype
+```
+
+If validation reports forbidden wording, remove accusation/risk/wrongdoing language from plugin descriptions and hints.
+
 ## Typed Object Has No `.get`
 
 This means a view/export layer is treating a dataclass or typed object as a dict.

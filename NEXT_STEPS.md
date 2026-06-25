@@ -12,6 +12,8 @@
 - Search and guided discovery expose canonical expediente targets.
 - Source plugin registry exists: `src/datosenorden/maintenance/source_plugins.py`.
 - Source readiness report exists: `python scripts/source_readiness_report.py`.
+- Source factory scripts exist for scaffolding, validating, loading, and summarizing prototype sources.
+- `Declaraciones de Intereses` is scaffolded as a local prototype.
 
 ## Missing
 
@@ -70,11 +72,22 @@ UUIDs are only diagnostic output from scripts.
 
 ## Adding Sources
 
-1. Add plugin metadata in `source_plugins.py`.
-2. Run `python scripts/source_readiness_report.py`.
-3. Add or verify local loader and summary scripts only after metadata is coherent.
-4. Add tests.
-5. Then expose the source in discovery or expediente flows.
+1. Run `python scripts/create_source_plugin.py <source_id> --display-name "<Display Name>" --status prototype --dry-run`.
+2. Run it again without `--dry-run` when the file list is correct.
+3. Add or refine plugin metadata in `source_plugins.py`.
+4. Add neutral sample records marked `LOCAL_TEST_DATA` and `NOT_OFFICIAL_DATA`.
+5. Implement or refine local loader/summary behavior.
+6. Run `python scripts/validate_source_plugin.py <source_id>`.
+7. Run `python scripts/source_readiness_report.py`.
+8. Add source-specific tests.
+9. Then expose the source in discovery or expediente flows.
+
+## Recommended Next Sources
+
+1. Sanciones y Procedimientos
+2. CMF
+3. Poder Judicial
+4. Mercado Publico avanzado
 
 ## Demo Rule
 
