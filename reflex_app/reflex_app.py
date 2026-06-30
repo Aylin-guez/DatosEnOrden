@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from urllib.parse import quote_plus
+from dataclasses import fields, is_dataclass
+from datetime import date, datetime
+from types import MappingProxyType
+from uuid import UUID
+from urllib.parse import parse_qs, quote_plus, urlparse
 
 import reflex as rx
 
@@ -43,6 +47,35 @@ PAGE_DISCOVER = "discover"
 PAGE_SEARCH = "search"
 PAGE_INVESTIGATION = "investigation"
 PAGE_DASHBOARD = "dashboard"
+PAGE_DEMO = "demo"
+DEMO_INVESTIGATION_TARGET = "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+DEMO_INVESTIGATION_URL = f"http://localhost:3000/investigation?id={quote_plus(DEMO_INVESTIGATION_TARGET)}"
+SOURCE_COVERAGE_TEMPLATE = [
+    {"source": "ChileCompra", "status": "activo con datos", "contribution": "Compras publicas, proveedores, contratos y evidencia de adquisiciones."},
+    {"source": "DIPRES", "status": "prototipo con datos", "contribution": "Presupuestos, anos fiscales y contexto de gasto publico."},
+    {"source": "Lobby", "status": "prototipo con datos", "contribution": "Reuniones, contrapartes, materias declaradas y fechas."},
+    {"source": "Transparencia Activa", "status": "prototipo con datos", "contribution": "Cargos, roles administrativos y periodos asociados."},
+    {"source": "Contraloria", "status": "prototipo con datos", "contribution": "Informes y observaciones para trazabilidad documental."},
+    {"source": "Diario Oficial", "status": "prototipo con datos", "contribution": "Publicaciones oficiales y actos administrativos publicados."},
+    {"source": "Registro Empresas", "status": "prototipo con datos", "contribution": "Empresas, representantes y relaciones societarias locales."},
+    {"source": "Declaraciones de Intereses", "status": "prototipo con datos", "contribution": "Declaraciones, intereses declarados y posibles entidades mencionadas."},
+    {"source": "SERVEL", "status": "prototipo con datos", "contribution": "Autoridades electas y periodos electorales de muestra."},
+    {"source": "Municipalidades", "status": "prototipo con datos", "contribution": "Contexto municipal y proyectos locales de muestra."},
+    {"source": "Sanciones y Procedimientos", "status": "prototipo sin datos", "contribution": "Procedimientos y resoluciones administrativas de prueba cuando exista carga local."},
+]
+INVESTIGATION_TOPICS = [
+    {"label": "Organismos publicos", "example": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"},
+    {"label": "Empresas proveedoras", "example": "Consultora Publica SpA"},
+    {"label": "Personas", "example": "Autoridades y representantes en registros locales"},
+    {"label": "Autoridades", "example": "Cargos publicos y periodos declarados"},
+    {"label": "Presupuestos", "example": "DIPRES budget 2026 Servicio de Salud Arauco"},
+    {"label": "Contratos", "example": "Ordenes de compra y contratos ChileCompra"},
+    {"label": "Reuniones de Lobby", "example": "Reuniones registradas con contraparte y materia"},
+    {"label": "Informes de Contraloria", "example": "Informes y observaciones de muestra"},
+    {"label": "Publicaciones del Diario Oficial", "example": "Publicaciones oficiales del caso demo"},
+    {"label": "Declaraciones de intereses", "example": "Declaraciones locales de ejemplo"},
+    {"label": "Sanciones y procedimientos", "example": "Procedimientos y resoluciones administrativas de prueba"},
+]
 
 
 def _clean(value: object, fallback: str = "Sin dato") -> str:
@@ -74,6 +107,7 @@ def _format_procurement_rows(rows: list[dict]) -> list[dict]:
             "facts_text": f"Proveedor: {_clean(_field(row, 'supplier'))}",
             "technical_text": f"dataset={_clean(_field(row, 'dataset'), 'ChileCompra')}",
             "detail_text": f"dataset={_clean(_field(row, 'dataset'), 'ChileCompra')}",
+            "trust_label": _evidence_trust_label(_clean(_field(row, "dataset"), "ChileCompra")),
         }
         for row in rows
     ]
@@ -95,6 +129,7 @@ def _format_lobby_rows(rows: list[dict]) -> list[dict]:
             ]),
             "technical_text": f"dataset={_clean(_field(row, 'dataset'), 'Lobby')}",
             "detail_text": f"dataset={_clean(_field(row, 'dataset'), 'Lobby')}",
+            "trust_label": _evidence_trust_label(_clean(_field(row, "dataset"), "Lobby")),
         }
         for row in rows
     ]
@@ -116,6 +151,7 @@ def _format_transparency_rows(rows: list[dict]) -> list[dict]:
             ]),
             "technical_text": f"dataset={_clean(_field(row, 'dataset'), 'Transparencia')}",
             "detail_text": f"dataset={_clean(_field(row, 'dataset'), 'Transparencia')}",
+            "trust_label": _evidence_trust_label(_clean(_field(row, "dataset"), "Transparencia")),
         }
         for row in rows
     ]
@@ -164,6 +200,7 @@ def _format_registry_rows(rows: list[dict]) -> list[dict]:
                         f"evidence_links={len(evidence_links)}",
                     ]
                 ),
+                "trust_label": _evidence_trust_label(_clean(_field(row, "dataset"), "Registro Empresas")),
             }
         )
     return formatted
@@ -195,6 +232,7 @@ def _format_relationship_rows(rows: list[dict]) -> list[dict]:
                         f"direction={_clean(_field(technical, 'direction'))}",
                         f"neighbor_id={_clean(_field(technical, 'neighbor_id'))}",
                     ]),
+                    "trust_label": "Registro local de demo",
                 }
             )
             continue
@@ -207,16 +245,110 @@ def _format_relationship_rows(rows: list[dict]) -> list[dict]:
                 "explanation": "Entidad conectada por una relacion publica almacenada.",
                 "evidence": 0,
                 "relationship_type": _human_label(_field(row, "relationship_type")),
+                "facts_text": f"Entidad: {_clean(_field(neighbor, 'name'), 'Entidad conectada')}",
+                "technical_text": f"relationship_type={_clean(_field(row, 'relationship_type'))}",
                 "detail_text": "\n".join([
                     f"Tipo de entidad: {_human_label(_field(neighbor, 'entity_type'))}",
                     f"Dirección: {_human_label(_field(row, 'direction'))}",
                 ]),
+                "trust_label": "Registro local de demo",
             }
         )
     return formatted
 
 def _field(obj: object, name: str, fallback: object = None) -> object:
     return _safe_field(obj, name, fallback)
+
+
+def to_json_safe(value: object) -> object:
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    if isinstance(value, UUID | date | datetime):
+        return str(value)
+    if is_dataclass(value) and not isinstance(value, type):
+        return {
+            field.name: to_json_safe(getattr(value, field.name, None))
+            for field in fields(value)
+        }
+    if isinstance(value, MappingProxyType):
+        return to_json_safe(dict(value))
+    if hasattr(value, "model_dump"):
+        try:
+            return to_json_safe(value.model_dump())
+        except Exception:  # noqa: BLE001
+            return str(value)
+    if isinstance(value, dict):
+        return {str(to_json_safe(key)): to_json_safe(item) for key, item in value.items()}
+    if isinstance(value, tuple | list | set | frozenset):
+        return [to_json_safe(item) for item in value]
+    if hasattr(value, "__dict__"):
+        safe_fields = {
+            key: item
+            for key, item in vars(value).items()
+            if not key.startswith("_") and not callable(item)
+        }
+        if safe_fields:
+            return to_json_safe(safe_fields)
+    return str(value)
+
+
+def _json_dict(value: object) -> dict:
+    safe = to_json_safe(value)
+    return safe if isinstance(safe, dict) else {}
+
+
+def _json_list(value: object) -> list:
+    safe = to_json_safe(value)
+    return safe if isinstance(safe, list) else []
+
+
+def _display_label(value: object) -> str:
+    labels = {
+        "PUBLIC_ORGANIZATION": "Organismo publico",
+        "MUNICIPALITY": "Municipalidad",
+        "PERSON": "Persona",
+        "ROLE": "Cargo publico",
+        "COMPANY": "Empresa",
+        "SUPPLIER": "Proveedor",
+        "CONTRACT": "Compra publica",
+        "TENDER": "Licitacion",
+        "BUDGET": "Presupuesto",
+        "LOBBY_MEETING": "Reunion registrada",
+        "CONTROL_REPORT": "Informe de control",
+        "PUBLIC_OBSERVATION": "Observacion publica",
+        "PUBLIC_PROJECT": "Proyecto publico",
+        "SPENDING_ITEM": "Gasto publico",
+        "ELECTORAL_PERIOD": "Periodo electoral",
+        "ADMINISTRATIVE_PROCEDURE": "Procedimiento administrativo",
+        "ADMINISTRATIVE_RESOLUTION": "Resolucion administrativa",
+        "ISSUES_PURCHASE_ORDER": "Compra publica emitida",
+        "ORGANIZATION_HELD_LOBBY_MEETING": "Reunion registrada",
+        "ORGANIZATION_HAS_PUBLIC_ROLE": "Autoridad publica registrada",
+        "ROLE_BELONGS_TO_ORGANIZATION": "Cargo asociado al organismo",
+        "PERSON_HOLDS_PUBLIC_ROLE": "Persona con cargo publico",
+        "PERSON_REPRESENTS_COMPANY": "Representacion de empresa",
+        "PERSON_OWNS_COMPANY": "Participacion en empresa",
+        "BUDGET_ALLOCATED_TO": "Presupuesto asignado",
+        "AWARDS_CONTRACT": "Contrato adjudicado",
+        "RECEIVES_CONTRACT": "Contrato recibido",
+    }
+    return labels.get(_clean(value), _human_label(value))
+
+
+def _source_sentence(source: str) -> str:
+    source_name = _clean(source, "Fuente local")
+    return f"Fuente: {source_name}."
+
+
+def _why_sentence(kind: str) -> str:
+    mapping = {
+        "Compra publica": "Ayuda a ver como se conectan compras, organismos y proveedores.",
+        "Lobby": "Ayuda a ubicar reuniones registradas junto a otras fuentes del expediente.",
+        "Rol publico": "Ayuda a entender que personas o cargos aparecen asociados.",
+        "Evidencia": "Permite revisar el respaldo local de los registros mostrados.",
+        "Registro": "Conecta empresas, representantes y antecedentes societarios de muestra.",
+    }
+    return mapping.get(kind, "Ayuda a entender por que esta entidad aparece en el expediente.")
 
 
 def _accent_badge_class(status: str) -> str:
@@ -227,6 +359,10 @@ def _accent_badge_class(status: str) -> str:
         "covered": "badge badge-teal",
         "partial": "badge badge-purple",
         "future": "badge badge-amber",
+        "activo con datos": "badge badge-teal",
+        "prototipo con datos": "badge badge-purple",
+        "prototipo sin datos": "badge badge-amber",
+        "planificado": "badge badge-amber",
     }
     return accents.get(status, "badge")
 
@@ -258,6 +394,8 @@ def _entity_badge_class(entity_type: str) -> str:
         "BUDGET": "badge badge-amber",
         "CONTROL_REPORT": "badge badge-amber",
         "PUBLIC_OBSERVATION": "badge badge-amber",
+        "ADMINISTRATIVE_PROCEDURE": "badge badge-amber",
+        "ADMINISTRATIVE_RESOLUTION": "badge badge-amber",
         "PUBLIC_PROJECT": "badge badge-teal",
         "SPENDING_ITEM": "badge badge-amber",
         "ELECTORAL_PERIOD": "badge badge-purple",
@@ -270,6 +408,93 @@ def _search_href(query: str) -> str:
     if not cleaned:
         return "/search"
     return f"/search?q={quote_plus(cleaned)}"
+
+
+def _investigation_href(target: str) -> str:
+    cleaned = str(target or "").strip()
+    if not cleaned:
+        return "/investigation"
+    return f"/investigation?id={quote_plus(cleaned)}"
+
+
+def _router_query_value(router: object, key: str) -> str:
+    url = _shallow_getattr(router, "url", None)
+    page = _shallow_getattr(router, "page", None)
+    session = _shallow_getattr(router, "session", None)
+    candidates = [router, url, page, session]
+
+    for candidate in candidates:
+        for attr in ("query_parameters", "query_params", "params", "query"):
+            value = _query_value_from_mapping(_shallow_getattr(candidate, attr, {}), key)
+            if value:
+                return value
+
+    for candidate in candidates:
+        for attr in ("full_path", "raw_path", "path", "as_path", "url", "href", "route", "pathname", "search", "query_string"):
+            value = _query_value_from_text(_shallow_getattr(candidate, attr, ""), key)
+            if value:
+                return value
+
+    for candidate in candidates:
+        for value in _safe_public_values(candidate):
+            mapped = _query_value_from_mapping(value, key)
+            if mapped:
+                return mapped
+            parsed = _query_value_from_text(value, key)
+            if parsed:
+                return parsed
+    return ""
+
+
+def _shallow_getattr(obj: object, key: str, fallback: object = None) -> object:
+    if obj is None:
+        return fallback
+    if isinstance(obj, dict):
+        return obj.get(key, fallback)
+    try:
+        return getattr(obj, key, fallback)
+    except Exception:  # noqa: BLE001
+        return fallback
+
+
+def _query_value_from_mapping(value: object, key: str) -> str:
+    if not hasattr(value, "get"):
+        return ""
+    try:
+        raw = value.get(key, "")
+    except Exception:  # noqa: BLE001
+        return ""
+    if isinstance(raw, list | tuple):
+        raw = raw[0] if raw else ""
+    return str(raw).strip() if raw else ""
+
+
+def _query_value_from_text(raw: object, key: str) -> str:
+    if not isinstance(raw, str) or key not in raw:
+        return ""
+    query = raw[1:] if raw.startswith("?") else raw
+    parsed = urlparse(query)
+    query = parsed.query or (query.split("?", 1)[1] if "?" in query else query)
+    values = parse_qs(query)
+    if values.get(key):
+        return str(values[key][0]).strip()
+    return ""
+
+
+def _safe_public_values(obj: object) -> list[object]:
+    if obj is None:
+        return []
+    if isinstance(obj, dict):
+        return list(obj.values())
+    try:
+        fields = vars(obj)
+    except Exception:  # noqa: BLE001
+        return []
+    return [
+        value
+        for name, value in fields.items()
+        if not str(name).startswith("_") and isinstance(value, str | dict | list | tuple)
+    ]
 
 
 def page_section(title: str, *children, subtitle: str | None = None) -> rx.Component:
@@ -330,8 +555,17 @@ def _clear_investigation_state(self) -> None:
     self.timeline_year_rows = []
     self.timeline_older_year_rows = []
     self.source_contribution_rows = []
+    self.source_coverage_rows = []
+    self.relationship_journey_rows = []
+    self.related_entity_group_rows = []
     self.report_path = ""
+    self.citizen_summary = ""
+    self.canonical_investigation_link = ""
     self.investigation_status_message = ""
+    self.last_loaded_investigation_target = ""
+    self.last_valid_investigation_target = ""
+    self.investigation_loaded = False
+    self.investigation_loading = False
 
 
 def _format_evidence_rows(rows: list[dict]) -> list[dict]:
@@ -351,6 +585,7 @@ def _format_evidence_rows(rows: list[dict]) -> list[dict]:
                     "facts_text": f"Publicado: {_clean(_field(link, 'published_at'), 'Sin fecha')}",
                     "technical_text": f"url={_clean(_field(link, 'url'))}",
                     "detail_text": f"url={_clean(_field(link, 'url'))}",
+                    "trust_label": _evidence_trust_label(dataset),
                 }
             )
     return formatted
@@ -379,6 +614,8 @@ def _format_timeline_rows(rows: list[dict]) -> list[dict]:
                     f"source_record_id={_clean(_field(row, 'source_record_id'))}",
                     f"technical={_clean(technical)}",
                 ]),
+                "technical_text": f"claim_id={_clean(_field(row, 'claim_id'))}",
+                "trust_label": _evidence_trust_label(_clean(_field(row, "dataset"), "Fuente")),
             }
         )
     return formatted
@@ -403,6 +640,159 @@ def _build_story_cards(
     return cards
 
 
+def _build_relationship_journey_rows(
+    *,
+    entity_name: str,
+    procurement: list[dict],
+    registry: list[dict],
+    lobby: list[dict],
+    transparency: list[dict],
+    timeline: list[dict],
+    evidence: list[dict],
+) -> list[dict]:
+    candidates = [
+        *procurement[:2],
+        *registry[:2],
+        *lobby[:2],
+        *transparency[:2],
+        *timeline[:2],
+        *evidence[:2],
+    ]
+    rows: list[dict] = []
+    for index, row in enumerate(candidates, start=1):
+        kind = _clean(_field(row, "relationship_type"), "Registro publico")
+        source = _clean(_field(row, "dataset"), "Fuente local")
+        title = _clean(_field(row, "title"), f"Paso {index}")
+        explanation = _clean(_field(row, "explanation"), "Registro local asociado al expediente.")
+        rows.append(
+            {
+                "step": str(index),
+                "title": title,
+                "source": source,
+                "kind": kind,
+                "body": explanation,
+                "why": _why_sentence(kind),
+                "entity": entity_name,
+                "source_sentence": _source_sentence(source),
+                "evidence_label": _evidence_trust_label(source),
+            }
+        )
+    return rows
+
+
+def _evidence_trust_label(source: str) -> str:
+    normalized = _clean(source, "").lower()
+    if "demo" in normalized or "local" in normalized:
+        return "Registro local de demo"
+    if any(token in normalized for token in ("chilecompra", "dipres", "lobby", "contraloria", "diario", "transparencia")):
+        return "Fuente publica"
+    if normalized:
+        return "Prototipo local"
+    return "No oficial / dato de prueba"
+
+
+def _build_source_coverage_rows(source_rows: list[dict]) -> list[dict]:
+    by_name = {str(_field(row, "dataset", "")).lower(): row for row in source_rows}
+    coverage: list[dict] = []
+    for template in SOURCE_COVERAGE_TEMPLATE:
+        source_name = template["source"]
+        loaded = next((row for key, row in by_name.items() if source_name.lower() in key or key in source_name.lower()), {})
+        evidence = int(_field(loaded, "evidence_count", 0) or 0)
+        relationships = int(_field(loaded, "relationship_count", 0) or 0)
+        status = template["status"]
+        if evidence or relationships:
+            status = "activo con datos" if source_name == "ChileCompra" else "prototipo con datos"
+        coverage.append(
+            {
+                "source": source_name,
+                "status": status,
+                "contribution": str(_field(loaded, "summary", "") or template["contribution"]),
+                "evidence_count": evidence,
+                "relationship_count": relationships,
+                "trust_label": _evidence_trust_label(source_name),
+            }
+        )
+    return coverage
+
+
+def _citizen_summary_text(entity_name: str, sources: int, evidence: int, relationships: int, connected: int, dataset_badges: list[str]) -> str:
+    source_text = ", ".join(dataset_badges[:6]) if dataset_badges else "fuentes locales de demostracion"
+    return (
+        f"Este expediente reune {sources} fuentes publicas, {evidence} evidencias, "
+        f"{relationships} relaciones y {connected} entidades conectadas sobre {entity_name}. "
+        f"Las fuentes visibles incluyen {source_text}. Aportan registros de compras, presupuesto, roles, "
+        "reuniones, publicaciones y documentos de respaldo segun la carga local disponible. "
+        "Los cruces muestran coincidencias y relaciones documentadas entre entidades y registros; "
+        "no implican causalidad, irregularidad ni responsabilidad."
+    )
+
+
+def _debug_investigation(message: str, **values: object) -> None:
+    detail = " ".join(f"{key}={value!r}" for key, value in values.items())
+    print(f"[DatosEnOrden investigation] {message} {detail}".rstrip(), flush=True)
+
+
+def _build_related_entity_group_rows(relationships: list[dict], registry: list[dict], lobby: list[dict], procurement: list[dict]) -> list[dict]:
+    groups: dict[str, list[dict]] = {
+        "Organismos": [],
+        "Empresas y proveedores": [],
+        "Personas y autoridades": [],
+        "Reuniones y registros": [],
+        "Compras y presupuestos": [],
+    }
+    for row in relationships:
+        entity_type = _clean(_field(row, "relationship_type"), "Entidad")
+        item = {
+            "title": _clean(_field(row, "title"), "Entidad relacionada"),
+            "type": _display_label(entity_type),
+            "why": _clean(_field(row, "explanation"), "Aparece por una relacion publica registrada."),
+            "source": _clean(_field(row, "dataset"), "Grafo local"),
+        }
+        label = item["type"].lower()
+        if "empresa" in label or "proveedor" in label:
+            groups["Empresas y proveedores"].append(item)
+        elif "persona" in label or "cargo" in label or "autoridad" in label:
+            groups["Personas y autoridades"].append(item)
+        elif "compra" in label or "presupuesto" in label or "contrato" in label:
+            groups["Compras y presupuestos"].append(item)
+        elif "reunion" in label:
+            groups["Reuniones y registros"].append(item)
+        else:
+            groups["Organismos"].append(item)
+    for row in registry[:4]:
+        groups["Empresas y proveedores"].append(
+            {
+                "title": _clean(_field(row, "title"), "Empresa relacionada"),
+                "type": "Registro de empresa",
+                "why": _clean(_field(row, "facts_text"), "Aparece en registros societarios locales."),
+                "source": _clean(_field(row, "dataset"), "Registro Empresas"),
+            }
+        )
+    for row in lobby[:3]:
+        groups["Reuniones y registros"].append(
+            {
+                "title": _clean(_field(row, "title"), "Reunion registrada"),
+                "type": "Lobby",
+                "why": _clean(_field(row, "facts_text"), "Aparece por una reunion registrada localmente."),
+                "source": _clean(_field(row, "dataset"), "Lobby"),
+            }
+        )
+    for row in procurement[:3]:
+        groups["Compras y presupuestos"].append(
+            {
+                "title": _clean(_field(row, "title"), "Compra publica"),
+                "type": "Compra publica",
+                "why": _clean(_field(row, "facts_text"), "Aparece por una compra publica local."),
+                "source": _clean(_field(row, "dataset"), "ChileCompra"),
+            }
+        )
+    flattened: list[dict] = []
+    for group, items in groups.items():
+        for item in items[:4]:
+            flattened.append({**item, "group": group})
+    return flattened
+
+
 def _format_guided_options(rows: list[dict]) -> list[dict]:
     return [
         {
@@ -419,6 +809,29 @@ def _format_guided_options(rows: list[dict]) -> list[dict]:
         }
         for row in rows
     ]
+
+
+def _state_has_investigation_data(state: object) -> bool:
+    return bool(str(_field(state, "entity_name", "")).strip()) or any(
+        int(_field(state, key, 0) or 0) > 0
+        for key in ("datasets_involved", "evidence_count", "relationship_count", "connected_entities")
+    )
+
+
+def _investigation_response_has_data(data: dict) -> bool:
+    if not bool(data.get("found", False)):
+        return False
+    metrics = data.get("key_metrics", {})
+    compact_metrics = data.get("compact_metrics", {})
+    entity_name = str(_field(_field(data, "entity", {}), "name", "")).strip()
+    numeric_values = (
+        int(_field(compact_metrics, "datasets_involved", 0) or 0),
+        int(_field(compact_metrics, "evidence_count", 0) or 0),
+        int(_field(compact_metrics, "relationship_count", 0) or 0),
+        int(_field(metrics, "evidence", 0) or 0),
+        int(_field(metrics, "relationships", 0) or 0),
+    )
+    return bool(entity_name) or any(value > 0 for value in numeric_values)
 
 
 class AppState(rx.State):
@@ -456,6 +869,7 @@ class AppState(rx.State):
     selected_guided_category_query: str = ""
     selected_guided_category_cta: str = ""
     selected_guided_category_href: str = "/search"
+    selected_guided_category_path: str = ""
     guided_option_rows: list[dict] = []
     demo_missing: list[str] = []
     total_datasets: int = 0
@@ -521,8 +935,21 @@ class AppState(rx.State):
     timeline_year_rows: list[dict] = []
     timeline_older_year_rows: list[dict] = []
     source_contribution_rows: list[dict] = []
+    source_coverage_rows: list[dict] = []
+    relationship_journey_rows: list[dict] = []
+    related_entity_group_rows: list[dict] = []
     report_path: str = ""
+    citizen_summary: str = ""
+    canonical_investigation_link: str = DEMO_INVESTIGATION_URL
+    demo_sources_ready: bool = False
+    demo_investigation_ready: bool = False
+    demo_report_ready: bool = False
+    demo_report_path: str = ""
     investigation_status_message: str = ""
+    last_loaded_investigation_target: str = ""
+    last_valid_investigation_target: str = ""
+    investigation_loaded: bool = False
+    investigation_loading: bool = False
 
     def toggle_theme(self) -> None:
         self.theme_dark = not self.theme_dark
@@ -561,6 +988,8 @@ class AppState(rx.State):
                     **row,
                     "concepts_text": " | ".join(str(item) for item in row.get("concepts", [])),
                     "sources_text": " | ".join(str(item) for item in row.get("suggested_sources", [])),
+                    "path_text": "Este recorrido conectara: "
+                    + " -> ".join(str(item) for item in row.get("concepts", [])[:6]),
                     "search_href": _search_href(str(row.get("search_query", row.get("example_query", "")))),
                 }
                 for row in guided_questions.get("questions", [])
@@ -570,6 +999,8 @@ class AppState(rx.State):
                     **row,
                     "examples_text": " | ".join(str(item) for item in row.get("examples", [])),
                     "sources_text": " | ".join(str(item) for item in row.get("suggested_sources", [])),
+                    "path_text": "Fuentes sugeridas: "
+                    + " | ".join(str(item) for item in row.get("suggested_sources", [])),
                     "search_href": _search_href(str(row.get("search_query", ""))),
                 }
                 for row in guided_questions.get("categories", [])
@@ -599,6 +1030,7 @@ class AppState(rx.State):
             self.selected_guided_category_query = str(first.get("search_query", ""))
             self.selected_guided_category_cta = str(first.get("cta", ""))
             self.selected_guided_category_href = _search_href(self.selected_guided_category_query)
+            self.selected_guided_category_path = str(first.get("path_text", ""))
             self.guided_option_rows = _format_guided_options(get_guided_discovery_options(first_id))
 
     def load_search(self) -> None:
@@ -614,6 +1046,7 @@ class AppState(rx.State):
         self.selected_guided_category_query = ""
         self.selected_guided_category_cta = ""
         self.selected_guided_category_href = "/search"
+        self.selected_guided_category_path = ""
         self.guided_option_rows = []
         query_value = str(self.router.url.query_parameters.get("q", "")).strip()
         if query_value:
@@ -710,6 +1143,7 @@ class AppState(rx.State):
         self.selected_guided_category_query = query
         self.selected_guided_category_cta = "Buscar"
         self.selected_guided_category_href = _search_href(query)
+        self.selected_guided_category_path = "Este recorrido mostrara opciones locales antes de abrir el expediente."
         self.guided_option_rows = _format_guided_options(get_guided_discovery_options(question_id))
         if query:
             self.query = query
@@ -724,6 +1158,7 @@ class AppState(rx.State):
         self.selected_guided_category_query = str(match.get("search_query", ""))
         self.selected_guided_category_cta = str(match.get("cta", ""))
         self.selected_guided_category_href = _search_href(self.selected_guided_category_query)
+        self.selected_guided_category_path = str(match.get("path_text", ""))
         self.guided_option_rows = _format_guided_options(get_guided_discovery_options(category_id))
         if self.selected_guided_category_query:
             self.query = self.selected_guided_category_query
@@ -773,64 +1208,131 @@ class AppState(rx.State):
         except Exception as exc:  # noqa: BLE001
             self.error_message = f"{type(exc).__name__}: {exc}"
 
+    def load_demo(self) -> None:
+        self.error_message = ""
+        self.demo_sources_ready = False
+        self.demo_investigation_ready = False
+        self.demo_report_ready = False
+        self.demo_report_path = ""
+        try:
+            summary = get_dataset_summary()
+            totals = _field(summary, "totals", {})
+            self.demo_sources_ready = int(_field(totals, "datasets", 0) or 0) > 0 and int(_field(totals, "source_records", 0) or 0) > 0
+            investigation = _json_dict(get_investigation(DEMO_INVESTIGATION_TARGET))
+            metrics = _field(investigation, "compact_metrics", {})
+            self.demo_investigation_ready = bool(_field(investigation, "found", False)) and int(_field(metrics, "evidence_count", 0) or 0) > 0
+            resolved = _json_dict(resolve_investigation_target(DEMO_INVESTIGATION_TARGET))
+            entity_id = str(_field(resolved, "entity_id", ""))
+            if entity_id:
+                self.demo_report_path = export_investigation_report(entity_id)
+                self.demo_report_ready = bool(self.demo_report_path)
+        except Exception as exc:  # noqa: BLE001
+            self.error_message = f"{type(exc).__name__}: {exc}"
+
 
     def select_result(self, entity_id: str):
-        self.selected_entity_id = entity_id
         match = next((row for row in self.results if row.get("id") == entity_id), {})
-        self.selected_entity_name = str(match.get("name", ""))
-        return rx.redirect(f"/investigation?id={entity_id}")
+        target = str(match.get("canonical_entity_id", entity_id))
+        name = str(match.get("canonical_entity_name", match.get("name", "")))
+        return self.open_canonical_investigation(target or name)
 
     def open_investigation(self, entity_id: str, entity_name: str):
-        canonical = resolve_canonical_expediente_target(entity_id or entity_name)
-        self.selected_entity_id = str(canonical.get("canonical_entity_id", entity_id))
-        self.selected_entity_name = str(canonical.get("canonical_entity_name", entity_name))
-        return rx.redirect(f"/investigation?id={self.selected_entity_id}")
+        return self.open_canonical_investigation(entity_id or entity_name)
+
+    def open_canonical_investigation(self, target: str):
+        canonical = _json_dict(resolve_canonical_expediente_target(target))
+        self.selected_entity_id = str(canonical.get("canonical_entity_id", target))
+        self.selected_entity_name = str(canonical.get("canonical_entity_name", target))
+        stable_target = self.selected_entity_id or self.selected_entity_name or target
+        self.last_valid_investigation_target = stable_target
+        _debug_investigation("open canonical", received=target, resolved=stable_target)
+        return rx.redirect(_investigation_href(stable_target))
 
     def load_investigation(self) -> None:
         self.error_message = ""
-        query_id = str(self.router.url.query_parameters.get("id", "")).strip()
-        if not query_id:
+        query_id = _router_query_value(self.router, "id")
+        target = query_id or str(_field(self, "last_valid_investigation_target", "")).strip()
+        had_valid_state = bool(_field(self, "investigation_loaded", False)) or _state_has_investigation_data(self)
+        _debug_investigation(
+            "load start",
+            received=query_id,
+            fallback=str(_field(self, "last_valid_investigation_target", "")).strip(),
+            chosen=target,
+            had_valid_state=had_valid_state,
+        )
+        if query_id:
+            self.last_valid_investigation_target = query_id
+        if not target:
+            self.investigation_loading = False
+            if had_valid_state:
+                _debug_investigation("preserved previous state", reason="missing target")
+                return
             self.load_home()
             _clear_investigation_state(self)
+            _debug_investigation("empty state", reason="missing target and no previous state")
             return
+        self.investigation_loading = True
         try:
-            resolved = resolve_investigation_target(query_id)
+            resolved = _json_dict(resolve_investigation_target(target))
             if not bool(_field(resolved, "found", False)):
-                self.load_home()
-                _clear_investigation_state(self)
                 self.investigation_status_message = str(
                     _field(resolved, "warning", "No se encontro una entidad local para abrir el expediente.")
                 )
                 self.error_message = self.investigation_status_message
+                if had_valid_state:
+                    _debug_investigation("preserved previous state", received=target, resolved="", reason="target not found")
+                    return
+                self.load_home()
+                _clear_investigation_state(self)
+                _debug_investigation("empty state", received=target, reason="target not found")
                 return
-            self.selected_entity_id = str(_field(resolved, "entity_id", query_id))
-            self.selected_entity_name = str(_field(resolved, "entity_name", ""))
-            data = get_investigation(self.selected_entity_id)
-            comparison = get_entity_comparison(self.selected_entity_id)
-            trace = get_source_trace(self.selected_entity_id)
-            story = get_investigation_story(self.selected_entity_id)
-            graph = get_investigation_graph(self.selected_entity_id)
-            timeline = get_investigation_timeline(self.selected_entity_id)
-            contributions = get_source_contributions(self.selected_entity_id)
-            self.report_path = export_investigation_report(self.selected_entity_id)
+            resolved_entity_id = str(_field(resolved, "entity_id", target))
+            resolved_entity_name = str(_field(resolved, "entity_name", ""))
+            _debug_investigation("target resolved", received=target, resolved=resolved_entity_id, name=resolved_entity_name)
+            if (
+                self.last_loaded_investigation_target == resolved_entity_id
+                and bool(_field(self, "investigation_loaded", False))
+                and _state_has_investigation_data(self)
+            ):
+                _debug_investigation("preserved previous state", received=target, resolved=resolved_entity_id, reason="already loaded")
+                return
+            data = _json_dict(get_investigation(resolved_entity_id))
+            if not _investigation_response_has_data(data):
+                self.investigation_status_message = "La respuesta local no trajo datos suficientes; se conserva el expediente cargado."
+                self.error_message = self.investigation_status_message
+                _debug_investigation("rejected empty response", received=target, resolved=resolved_entity_id, preserved=had_valid_state)
+                if had_valid_state:
+                    return
+                self.load_home()
+                _clear_investigation_state(self)
+                return
+            comparison = _json_dict(get_entity_comparison(resolved_entity_id))
+            trace = _json_dict(get_source_trace(resolved_entity_id))
+            story = _json_dict(get_investigation_story(resolved_entity_id))
+            graph = _json_dict(get_investigation_graph(resolved_entity_id))
+            timeline = _json_dict(get_investigation_timeline(resolved_entity_id))
+            contributions = _json_dict(get_source_contributions(resolved_entity_id))
+            report_path = export_investigation_report(resolved_entity_id)
         except Exception as exc:  # noqa: BLE001
-            self.load_home()
-            _clear_investigation_state(self)
             self.error_message = f"{type(exc).__name__}: {exc}"
-            return
-        if not data.get("found", False):
+            if had_valid_state:
+                _debug_investigation("preserved previous state", received=target, reason=self.error_message)
+                return
             self.load_home()
             _clear_investigation_state(self)
-            self.investigation_status_message = "No se encontraron registros locales para ese expediente."
-            self.error_message = self.investigation_status_message
             return
+        finally:
+            self.investigation_loading = False
 
         metrics = data.get("key_metrics", {})
         compact_metrics = data.get("compact_metrics", {})
+        self.selected_entity_id = resolved_entity_id
+        self.selected_entity_name = resolved_entity_name
+        self.report_path = report_path
         self.entity_name = str(_field(_field(data, "entity", {}), "name", ""))
         self.selected_entity_name = self.entity_name
-        self.entity_summary = data.get("narrative_summary") or data.get("summary", "")
-        self.dataset_badges = data.get("dataset_badges", [])
+        self.entity_summary = str(data.get("narrative_summary") or data.get("summary", ""))
+        self.dataset_badges = [str(item) for item in _json_list(data.get("dataset_badges", []))]
         self.contracts = int(metrics.get("contracts", 0))
         self.suppliers = int(metrics.get("suppliers", 0))
         self.lobby_meetings = int(metrics.get("lobby_meetings", 0))
@@ -858,6 +1360,21 @@ class AppState(rx.State):
             registry=self.registry_rows,
             relationships=self.relationship_rows,
             evidence=self.evidence_rows,
+        )
+        self.relationship_journey_rows = _build_relationship_journey_rows(
+            entity_name=self.entity_name,
+            procurement=self.procurement_rows,
+            registry=self.registry_rows,
+            lobby=self.lobby_rows,
+            transparency=self.transparencia_rows,
+            timeline=timeline_rows,
+            evidence=self.evidence_rows,
+        )
+        self.related_entity_group_rows = _build_related_entity_group_rows(
+            self.relationship_rows,
+            self.registry_rows,
+            self.lobby_rows,
+            self.procurement_rows,
         )
         self.technical_details = [
             *self.procurement_rows,
@@ -933,10 +1450,14 @@ class AppState(rx.State):
                 "items_text": " | ".join(item_texts[:3]),
                 "items_overflow_text": " | ".join(item_texts[3:]),
             }
-            if index < 2:
-                self.timeline_year_rows.append(row)
-            else:
-                self.timeline_older_year_rows.append(row)
+            self.timeline_year_rows.append(row)
+        source_counts = {
+            str(_field(item, "dataset", "")): {
+                "evidence_count": int(_field(item, "evidence_count", 0) or 0),
+                "relationship_count": int(_field(item, "relationship_count", 0) or 0),
+            }
+            for item in self.source_trace_sources
+        }
         self.source_contribution_rows = [
             {
                 "dataset": str(_field(item, "dataset", "")),
@@ -948,9 +1469,33 @@ class AppState(rx.State):
                 "concepts_text": str(_field(item, "concepts_text", "")),
                 "evidence_types_text": str(_field(item, "evidence_types_text", "")),
                 "timeline_contribution": str(_field(item, "timeline_contribution", "")),
+                "evidence_count": int(source_counts.get(str(_field(item, "dataset", "")), {}).get("evidence_count", 0)),
+                "relationship_count": int(source_counts.get(str(_field(item, "dataset", "")), {}).get("relationship_count", 0)),
+                "commands_text": str(_field(item, "commands_text", "")),
             }
             for item in _field(contributions, "sources", [])
         ]
+        self.source_coverage_rows = _build_source_coverage_rows(self.source_contribution_rows)
+        self.citizen_summary = _citizen_summary_text(
+            self.entity_name,
+            self.datasets_involved,
+            self.evidence_count,
+            self.relationship_count,
+            self.connected_entities,
+            self.dataset_badges,
+        )
+        self.canonical_investigation_link = f"http://localhost:3000{_investigation_href(self.entity_name or target)}"
+        self.last_loaded_investigation_target = self.selected_entity_id
+        self.last_valid_investigation_target = target
+        self.investigation_loaded = True
+        _debug_investigation(
+            "load complete",
+            received=target,
+            resolved=self.selected_entity_id,
+            evidence=self.evidence_count,
+            relationships=self.relationship_count,
+            sources=self.datasets_involved,
+        )
 
 
 def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
@@ -960,6 +1505,7 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
         rx.link("Descubre", href="/discover", class_name=_nav_class(active_page == PAGE_DISCOVER)),
         rx.link("Buscar", href="/search", class_name=_nav_class(active_page == PAGE_SEARCH)),
         rx.link("Expediente", href="/investigation", class_name=_nav_class(active_page == PAGE_INVESTIGATION)),
+        rx.link("Demo", href="/demo", class_name=_nav_class(active_page == PAGE_DEMO)),
         spacing="2",
         align="center",
         class_name="nav-links",
@@ -998,6 +1544,15 @@ def metric(label: str, value) -> rx.Component:  # noqa: ANN001
         rx.text(value, class_name="metric-value"),
         rx.text(label, class_name="muted"),
         class_name="metric-card",
+    )
+
+
+def metric_card(label: str, value, helper: str = "") -> rx.Component:  # noqa: ANN001
+    return rx.box(
+        rx.text(value, class_name="summary-value"),
+        rx.text(label, class_name="summary-label"),
+        rx.cond(helper != "", rx.text(helper, class_name="muted small")),
+        class_name="summary-card product-metric-card",
     )
 
 
@@ -1079,7 +1634,7 @@ def connection_card(row: dict) -> rx.Component:
         rx.text(f"Evidencia: {row['evidence']} | relaciones: {row['relationships']}", class_name="muted"),
         rx.button(
             "Abrir expediente",
-            on_click=AppState.open_investigation(row["organization_id"], row["organization_name"]),
+            on_click=AppState.open_canonical_investigation(row["organization_id"]),
             class_name="button button-secondary",
         ),
         class_name="card example-card",
@@ -1100,6 +1655,7 @@ def story_card(row: dict) -> rx.Component:
         rx.hstack(
             rx.text(f"Evidencia: {row['evidence']}", class_name="mini-pill"),
             rx.text(row["relationship_type"], class_name="mini-pill mini-pill-purple"),
+            rx.text(row.get("trust_label", "Registro local de demo"), class_name="mini-pill evidence-trust"),
             spacing="2",
             wrap="wrap",
         ),
@@ -1110,6 +1666,86 @@ def story_card(row: dict) -> rx.Component:
         ),
         class_name="story-card",
     )
+
+
+def evidence_card(row: dict) -> rx.Component:
+    return story_card(row)
+
+
+def relationship_badge(label: str) -> rx.Component:
+    return rx.text(label, class_name="mini-pill mini-pill-purple")
+
+
+def journey_node(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["step"], class_name="journey-step"),
+            rx.text(row["source"], class_name="badge badge-teal"),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["body"], class_name="muted"),
+        rx.text(row["why"], class_name="source-fact"),
+        rx.hstack(
+            relationship_badge(row["kind"]),
+            rx.text(row["source_sentence"], class_name="mini-pill"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        class_name="card journey-node",
+    )
+
+
+def citizen_summary_panel() -> rx.Component:
+    return investigation_panel(
+        "Resumen ciudadano",
+        rx.text(AppState.citizen_summary, class_name="story-summary story-summary-dominant"),
+        rx.grid(
+            summary_metric_card("Fuentes publicas", AppState.datasets_involved),
+            summary_metric_card("Evidencias", AppState.evidence_count),
+            summary_metric_card("Relaciones", AppState.relationship_count),
+            summary_metric_card("Entidades conectadas", AppState.connected_entities),
+            columns="4",
+            spacing="2",
+            class_name="responsive-grid",
+        ),
+        rx.hstack(
+            rx.link("Exportar expediente", href=AppState.report_path, class_name="button"),
+            rx.text("Registro local de demo", class_name="mini-pill evidence-trust"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.box(
+            rx.text("Enlace canonico", class_name="muted small"),
+            rx.text(AppState.canonical_investigation_link, class_name="mono id-line"),
+            class_name="canonical-link-box",
+        ),
+        subtitle="Lectura breve para explicar que contiene el expediente sin afirmar causalidad, irregularidad ni responsabilidad.",
+    )
+
+
+def journey_connection() -> rx.Component:
+    return rx.text("↓", class_name="journey-connection")
+
+
+def related_entity_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["group"], class_name="badge badge-teal"),
+            rx.text(row["source"], class_name="muted small"),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["type"], class_name="mini-pill mini-pill-purple"),
+        rx.text(row["title"], class_name="context-title"),
+        rx.text(row["why"], class_name="muted small"),
+        class_name="context-item related-entity-card",
+    )
+
+
+def related_entity_group(row: dict) -> rx.Component:
+    return related_entity_card(row)
 
 
 def context_entity_card(row: dict) -> rx.Component:
@@ -1219,7 +1855,7 @@ def comparison_panel() -> rx.Component:
     )
 
 
-def source_contribution_card(row: dict) -> rx.Component:
+def source_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
             rx.text(row["dataset"], class_name="badge"),
@@ -1228,12 +1864,53 @@ def source_contribution_card(row: dict) -> rx.Component:
             align="center",
         ),
         rx.text(row["summary"], class_name="muted small"),
-        rx.text(row["concepts_text"], class_name="source-fact"),
-        rx.text(row["evidence_types_text"], class_name="muted small"),
+        rx.hstack(
+            rx.text(f"Evidencia: {row['evidence_count']}", class_name="mini-pill"),
+            rx.text(f"Relaciones: {row['relationship_count']}", class_name="mini-pill mini-pill-purple"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.text(f"Conceptos: {row['concepts_text']}", class_name="source-fact"),
+        rx.text(f"Aporta: {row['contributes_text']}", class_name="source-fact"),
         rx.text(row["timeline_contribution"], class_name="muted small"),
-        rx.text(row["contributes_text"], class_name="source-fact"),
-        rx.text(row["overlap_note"], class_name="muted small"),
         class_name="card source-card",
+    )
+
+
+def source_coverage_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["source"], class_name="card-title"),
+            rx.text(row["status"], class_name=_accent_badge_class(str(row.get("status", "")))),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["contribution"], class_name="muted small"),
+        rx.hstack(
+            rx.text(f"Evidencia: {row['evidence_count']}", class_name="mini-pill"),
+            rx.text(f"Relaciones: {row['relationship_count']}", class_name="mini-pill mini-pill-purple"),
+            rx.text(row["trust_label"], class_name="mini-pill evidence-trust"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        class_name="card source-card source-coverage-card",
+    )
+
+
+def source_contribution_card(row: dict) -> rx.Component:
+    return source_card(row)
+
+
+def technical_source_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text(row["dataset"], class_name="context-title"),
+        rx.text(f"Estado: {row['status']}", class_name="technical-line"),
+        rx.text(f"Evidencia: {row['evidence_count']} | Relaciones: {row['relationship_count']}", class_name="technical-line"),
+        rx.text(f"Conceptos: {row['concepts_text']}", class_name="technical-line"),
+        rx.text(f"Tipos de evidencia: {row['evidence_types_text']}", class_name="technical-line"),
+        rx.text(f"Comandos: {row['commands_text']}", class_name="technical-line"),
+        rx.text(row["overlap_note"], class_name="muted small"),
+        class_name="context-item technical-item",
     )
 
 
@@ -1318,7 +1995,7 @@ def workspace_match_card(row: dict) -> rx.Component:
             wrap="wrap",
         ),
         rx.hstack(
-            rx.button("Abrir expediente", on_click=AppState.open_investigation(row["canonical_entity_id"], row["canonical_entity_name"]), class_name="button button-secondary"),
+            rx.button("Abrir expediente", on_click=AppState.open_canonical_investigation(row["canonical_entity_id"]), class_name="button button-secondary"),
             rx.cond(
                 row.get("is_record", False),
                 rx.text("Ver registro: pendiente", class_name="mini-pill"),
@@ -1364,15 +2041,37 @@ def search_chip(label: str) -> rx.Component:
     return rx.box(rx.text(label, class_name="search-chip-text"), class_name="search-chip")
 
 
+def investigation_topic_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text(row["label"], class_name="card-title"),
+        rx.text(row["example"], class_name="muted small"),
+        class_name="card topic-card",
+    )
+
+
+def what_to_investigate_panel() -> rx.Component:
+    return page_section(
+        "Que puedes investigar",
+        rx.grid(
+            rx.foreach(INVESTIGATION_TOPICS, investigation_topic_card),
+            columns="5",
+            spacing="3",
+            class_name="responsive-grid topic-grid",
+        ),
+        subtitle="Categorias del expediente ciudadano con ejemplos disponibles o prototipos locales.",
+    )
+
+
 def guided_question_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
             rx.text(row["title"], class_name="card-title"),
-            rx.text(row["id"], class_name="badge badge-purple"),
+            rx.text("Pregunta guiada", class_name="badge badge-purple"),
             justify="between",
             align="center",
         ),
         rx.text(row["description"], class_name="muted small"),
+        rx.text(row.get("path_text", "Este recorrido conectara fuentes locales relacionadas."), class_name="source-fact"),
         rx.hstack(
             rx.text(row.get("concepts_text", ""), class_name="search-chip"),
             rx.text(row.get("sources_text", ""), class_name="mini-pill mini-pill-purple"),
@@ -1381,7 +2080,7 @@ def guided_question_card(row: dict) -> rx.Component:
         ),
         rx.text(f"Ejemplo: {row['example_query']}", class_name="source-fact"),
         rx.button(
-            row.get("cta", "Explorar"),
+            "Ver recorrido sugerido",
             on_click=AppState.explore_guided_question(
                 row["id"],
                 row["title"],
@@ -1426,7 +2125,7 @@ def guided_option_card(row: dict) -> rx.Component:
         ),
         rx.button(
             "Abrir expediente",
-            on_click=AppState.open_investigation(row["canonical_entity_id"], row["canonical_entity_name"]),
+            on_click=AppState.open_canonical_investigation(row["canonical_entity_id"]),
             class_name="button button-secondary",
         ),
         class_name="card example-card discovery-card",
@@ -1443,7 +2142,11 @@ def guided_category_panel() -> rx.Component:
                 justify="between",
                 align="center",
             ),
-            rx.text(AppState.selected_guided_category_description, class_name="muted"),
+        rx.text(AppState.selected_guided_category_description, class_name="muted"),
+            rx.cond(
+                AppState.selected_guided_category_path != "",
+                rx.text(AppState.selected_guided_category_path, class_name="source-fact"),
+            ),
             rx.hstack(
                 rx.foreach(AppState.selected_guided_category_examples, search_chip),
                 spacing="2",
@@ -1524,7 +2227,7 @@ def search_example_card(row: dict) -> rx.Component:
         rx.text(f"Evidencia: {row['evidence']} | relaciones: {row['relationships']}", class_name="muted small"),
         rx.button(
             "Abrir expediente",
-            on_click=AppState.open_investigation(row["organization_id"], row["organization_name"]),
+            on_click=AppState.open_canonical_investigation(row["organization_id"]),
             class_name="button button-secondary",
         ),
         class_name="card example-card",
@@ -1585,6 +2288,16 @@ def start_from_ecosystem_card() -> rx.Component:
     )
 
 
+def demo_check_item(label: str, ready) -> rx.Component:  # noqa: ANN001
+    return rx.hstack(
+        rx.text(rx.cond(ready, "Listo", "Pendiente"), class_name=rx.cond(ready, "badge badge-teal", "badge badge-amber")),
+        rx.text(label, class_name="context-title"),
+        spacing="2",
+        align="center",
+        class_name="demo-check-row",
+    )
+
+
 def investigation_entry_card(title: str, body: str, button_label: str, href: str, accent_class: str = "button") -> rx.Component:
     return rx.box(
         rx.text(title, class_name="card-title"),
@@ -1601,7 +2314,12 @@ def investigation_empty_state() -> rx.Component:
             rx.text("Un expediente reúne las fuentes públicas disponibles para una entidad.", class_name="subtitle"),
             rx.cond(
                 AppState.investigation_status_message != "",
-                rx.text(AppState.investigation_status_message, class_name="muted"),
+                rx.vstack(
+                    rx.text(AppState.investigation_status_message, class_name="muted"),
+                    rx.button("Reintentar", on_click=AppState.load_investigation, class_name="button button-secondary"),
+                    spacing="2",
+                    align="start",
+                ),
             ),
             class_name="hero",
         ),
@@ -1642,6 +2360,15 @@ def investigation_empty_state() -> rx.Component:
         align="stretch",
     )
 
+
+def investigation_loading_state() -> rx.Component:
+    return rx.box(
+        rx.text("Cargando expediente...", class_name="title"),
+        rx.text("Leyendo el identificador de la URL y reconstruyendo la vista desde la base local.", class_name="subtitle"),
+        class_name="hero",
+    )
+
+
 def search_empty_state() -> rx.Component:
     return rx.vstack(
         page_section(
@@ -1658,6 +2385,7 @@ def search_empty_state() -> rx.Component:
             ),
             subtitle="Casos guiados antes de buscar.",
         ),
+        what_to_investigate_panel(),
         page_section(
             "¿Qué puedes buscar?",
             rx.hstack(
@@ -1745,7 +2473,7 @@ def timeline_highlights_panel() -> rx.Component:
                 rx.text("No hay cronología disponible.", class_name="muted small"),
             ),
         ),
-        subtitle="Los años recientes quedan visibles. Las entradas anteriores permanecen colapsadas.",
+        subtitle="Eventos agrupados cronologicamente desde todas las fuentes disponibles.",
     )
 
 
@@ -2013,6 +2741,252 @@ def investigation_center_column() -> rx.Component:
     )
 
 
+def narrative_panel(title: str, body: str, items: list[str] | None = None) -> rx.Component:
+    return investigation_panel(
+        title,
+        rx.text(body, class_name="story-summary story-summary-dominant"),
+        rx.cond(
+            items or [],
+            rx.vstack(
+                rx.foreach(items or [], narrative_item),
+                spacing="2",
+                align="stretch",
+            ),
+        ),
+    )
+
+
+def history_panel() -> rx.Component:
+    return investigation_panel(
+        "Historia",
+        rx.text(AppState.story_headline, class_name="story-headline"),
+        rx.text(AppState.story_summary, class_name="story-summary"),
+        rx.cond(
+            AppState.story_key_findings,
+            rx.hstack(
+                rx.foreach(AppState.story_key_findings, lambda item: rx.text(item, class_name="story-chip")),
+                spacing="2",
+                wrap="wrap",
+            ),
+            rx.text("No hay puntos destacados disponibles para este expediente.", class_name="muted small"),
+        ),
+        subtitle="Una lectura unica del expediente, independiente del punto de entrada.",
+    )
+
+
+def citizen_narrative_panel() -> rx.Component:
+    return investigation_panel(
+        "Narrativa ciudadana",
+        rx.text(AppState.citizen_narrative, class_name="story-summary story-summary-dominant"),
+        rx.cond(
+            AppState.story_important_connections,
+            rx.vstack(
+                rx.foreach(AppState.story_important_connections, narrative_item),
+                spacing="2",
+                align="stretch",
+            ),
+            rx.text("No hay conexiones destacadas disponibles.", class_name="muted small"),
+        ),
+        rx.cond(
+            AppState.story_questions,
+            rx.hstack(
+                rx.foreach(AppState.story_questions, lambda item: rx.text(item, class_name="prompt-chip")),
+                spacing="2",
+                wrap="wrap",
+            ),
+        ),
+        subtitle="Lenguaje descriptivo para entender que muestran los datos locales.",
+    )
+
+
+def relationship_journey_panel() -> rx.Component:
+    return investigation_panel(
+        "Como se conectan los datos",
+        rx.cond(
+            AppState.relationship_journey_rows,
+            rx.vstack(
+                rx.foreach(AppState.relationship_journey_rows, journey_node),
+                spacing="2",
+                align="stretch",
+                class_name="journey-list",
+            ),
+            rx.text("No hay recorrido de relaciones disponible.", class_name="muted small"),
+        ),
+        subtitle="Una ruta legible reemplaza el grafo denso. Cada paso indica fuente y motivo.",
+    )
+
+
+def evidence_journey_panel() -> rx.Component:
+    return investigation_panel(
+        "Recorrido de evidencia",
+        rx.tabs.root(
+            rx.tabs.list(
+                rx.tabs.trigger("Compras", value="procurement"),
+                rx.tabs.trigger("Lobby", value="lobby"),
+                rx.tabs.trigger("Transparencia", value="transparency"),
+                rx.tabs.trigger("Empresas", value="registry"),
+                rx.tabs.trigger("Evidencia", value="evidence"),
+                class_name="tabs-list",
+            ),
+            rx.tabs.content(
+                rx.cond(
+                    AppState.procurement_rows,
+                    rx.grid(rx.foreach(AppState.procurement_rows, evidence_card), columns="2", spacing="2", class_name="tab-grid"),
+                    rx.text("No hay compras asociadas en los datos locales.", class_name="muted small"),
+                ),
+                value="procurement",
+                class_name="tab-content",
+            ),
+            rx.tabs.content(
+                rx.cond(
+                    AppState.lobby_rows,
+                    rx.grid(rx.foreach(AppState.lobby_rows, evidence_card), columns="2", spacing="2", class_name="tab-grid"),
+                    rx.text("No hay reuniones asociadas en los datos locales.", class_name="muted small"),
+                ),
+                value="lobby",
+                class_name="tab-content",
+            ),
+            rx.tabs.content(
+                rx.cond(
+                    AppState.transparencia_rows,
+                    rx.grid(rx.foreach(AppState.transparencia_rows, evidence_card), columns="2", spacing="2", class_name="tab-grid"),
+                    rx.text("No hay registros de transparencia asociados.", class_name="muted small"),
+                ),
+                value="transparency",
+                class_name="tab-content",
+            ),
+            rx.tabs.content(
+                rx.cond(
+                    AppState.registry_rows,
+                    rx.grid(rx.foreach(AppState.registry_rows, evidence_card), columns="2", spacing="2", class_name="tab-grid"),
+                    rx.text("No hay registros societarios asociados.", class_name="muted small"),
+                ),
+                value="registry",
+                class_name="tab-content",
+            ),
+            rx.tabs.content(
+                rx.cond(
+                    AppState.evidence_rows,
+                    rx.grid(rx.foreach(AppState.evidence_rows, evidence_card), columns="2", spacing="2", class_name="tab-grid"),
+                    rx.text("No hay evidencia asociada.", class_name="muted small"),
+                ),
+                value="evidence",
+                class_name="tab-content",
+            ),
+            default_value="procurement",
+            class_name="tabs-root",
+        ),
+        subtitle="Registros organizados por tema, no por estructura tecnica.",
+    )
+
+
+def related_entities_panel() -> rx.Component:
+    return investigation_panel(
+        "Entidades relacionadas",
+        rx.cond(
+            AppState.related_entity_group_rows,
+            rx.grid(
+                rx.foreach(AppState.related_entity_group_rows, related_entity_group),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            rx.text("No hay entidades relacionadas disponibles.", class_name="muted small"),
+        ),
+        subtitle="Cada tarjeta explica por que aparece en este expediente.",
+    )
+
+
+def sources_section_panel() -> rx.Component:
+    return investigation_panel(
+        "Fuentes consultadas",
+        rx.cond(
+            AppState.source_contribution_rows,
+            rx.grid(
+                rx.foreach(AppState.source_contribution_rows, source_card),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            rx.text("No hay fuentes consultadas disponibles.", class_name="muted small"),
+        ),
+        subtitle="Metadata proveniente del registro de fuentes publicas locales.",
+    )
+
+
+def source_coverage_panel() -> rx.Component:
+    return investigation_panel(
+        "Cobertura de fuentes",
+        rx.cond(
+            AppState.source_coverage_rows,
+            rx.grid(
+                rx.foreach(AppState.source_coverage_rows, source_coverage_card),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            rx.text("No hay cobertura de fuentes disponible.", class_name="muted small"),
+        ),
+        subtitle="Estado de cada fuente para el demo local y que aporta al expediente.",
+    )
+
+
+def technical_panel() -> rx.Component:
+    return rx.accordion.root(
+        rx.accordion.item(
+            header="Detalles tecnicos / trazabilidad",
+            content=rx.vstack(
+                rx.text(
+                    "Informacion tecnica colapsada: comandos locales, tipos de evidencia, codigos internos y URLs de respaldo.",
+                    class_name="muted small",
+                ),
+                rx.cond(
+                    AppState.source_contribution_rows,
+                    rx.vstack(
+                        rx.foreach(AppState.source_contribution_rows, technical_source_card),
+                        spacing="2",
+                        align="stretch",
+                    ),
+                ),
+                rx.cond(
+                    AppState.technical_details,
+                    rx.vstack(
+                        rx.foreach(AppState.technical_details, technical_detail_card),
+                        spacing="2",
+                        align="stretch",
+                    ),
+                    rx.text("No hay detalles tecnicos disponibles.", class_name="muted small"),
+                ),
+                spacing="2",
+                align="stretch",
+            ),
+            value="technical-details",
+        ),
+        type="single",
+        collapsible=True,
+        variant="ghost",
+        class_name="technical-accordion technical-bottom",
+    )
+
+
+def single_investigation_product_view() -> rx.Component:
+    return rx.vstack(
+        history_panel(),
+        citizen_summary_panel(),
+        citizen_narrative_panel(),
+        relationship_journey_panel(),
+        timeline_highlights_panel(),
+        evidence_journey_panel(),
+        related_entities_panel(),
+        source_coverage_panel(),
+        sources_section_panel(),
+        technical_panel(),
+        spacing="4",
+        align="stretch",
+        class_name="product-investigation-flow",
+    )
+
+
 @rx.page(route="/", title="Inicio - DatosEnOrden")
 def home() -> rx.Component:
     return shell(
@@ -2043,6 +3017,7 @@ def home() -> rx.Component:
             ),
             subtitle="Un recorrido simple antes de entrar en la búsqueda.",
         ),
+        what_to_investigate_panel(),
         page_section(
             "Descubre",
             rx.grid(
@@ -2192,6 +3167,52 @@ def ecosystem() -> rx.Component:
     )
 
 
+@rx.page(route="/demo", title="Demo ciudadana - DatosEnOrden")
+def demo() -> rx.Component:
+    return shell(
+        rx.box(
+            rx.text("Demo ciudadana", class_name="title"),
+            rx.text(
+                "Recorrido publico con datos locales de prueba. No son datos oficiales y no implican causalidad, irregularidad ni responsabilidad.",
+                class_name="subtitle",
+            ),
+            rx.hstack(
+                rx.button("Abrir expediente de ejemplo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button"),
+                rx.button("Ver ecosistema de fuentes", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
+                rx.link("Exportar reporte HTML", href=AppState.demo_report_path, class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+                class_name="hero-actions",
+            ),
+            class_name="hero",
+        ),
+        page_section(
+            "Checklist del demo",
+            rx.vstack(
+                demo_check_item("Fuentes cargadas", AppState.demo_sources_ready),
+                demo_check_item("Expediente disponible", AppState.demo_investigation_ready),
+                demo_check_item("Reporte HTML exportable", AppState.demo_report_ready),
+                spacing="2",
+                align="stretch",
+                class_name="demo-checklist",
+            ),
+            subtitle="Estado calculado desde la base local al abrir esta ruta.",
+        ),
+        what_to_investigate_panel(),
+        page_section(
+            "Aclaracion",
+            rx.text(
+                "Este recorrido muestra como se veria un expediente ciudadano al cruzar fuentes publicas. "
+                "Los registros son locales de prueba y sirven para explicar el producto, no para afirmar hechos oficiales.",
+                class_name="story-summary",
+            ),
+            subtitle="Mensaje recomendado antes de mostrar el expediente.",
+        ),
+        on_mount=AppState.load_demo,
+        active_page=PAGE_DEMO,
+    )
+
+
 @rx.page(route="/discover", title="Descubre - DatosEnOrden")
 def discover() -> rx.Component:
     return shell(
@@ -2204,6 +3225,7 @@ def discover() -> rx.Component:
             class_name="hero",
         ),
         guided_discovery_panel(),
+        what_to_investigate_panel(),
         page_section(
             "Casos guiados",
             rx.grid(
@@ -2315,38 +3337,37 @@ def section(title: str, rows, empty_text: str) -> rx.Component:  # noqa: ANN001
 def investigation() -> rx.Component:
     return shell(
         rx.cond(
-            AppState.selected_entity_id == "",
-            investigation_empty_state(),
-            rx.box(
-                rx.vstack(
-                    rx.box(
-                        rx.text(AppState.entity_name, class_name="title"),
-                        rx.text(AppState.entity_summary, class_name="subtitle"),
+            AppState.investigation_loading,
+            investigation_loading_state(),
+            rx.cond(
+                AppState.selected_entity_id == "",
+                investigation_empty_state(),
+                rx.box(
+                    rx.vstack(
+                        rx.box(
+                            rx.text(AppState.entity_name, class_name="title"),
+                            rx.text(AppState.entity_summary, class_name="subtitle"),
+                            rx.hstack(
+                                rx.foreach(AppState.dataset_badges, lambda item: rx.text(item, class_name="badge badge-teal")),
+                                spacing="2",
+                                wrap="wrap",
+                            ),
+                            class_name="hero",
+                        ),
                         rx.hstack(
-                            rx.foreach(AppState.dataset_badges, lambda item: rx.text(item, class_name="badge badge-teal")),
+                            metric_card("Fuentes", AppState.datasets_involved, "consultadas"),
+                            metric_card("Evidencia", AppState.evidence_count, "registros de respaldo"),
+                            metric_card("Relaciones", AppState.relationship_count, "conexiones publicas"),
+                            metric_card("Entidades conectadas", AppState.connected_entities, "personas, empresas u organismos"),
                             spacing="2",
                             wrap="wrap",
+                            class_name="summary-strip",
                         ),
-                        class_name="hero",
+                        single_investigation_product_view(),
+                        spacing="4",
+                        align="stretch",
+                        class_name="investigation-shell",
                     ),
-                    rx.hstack(
-                        summary_metric_card("Fuentes", AppState.datasets_involved),
-                        summary_metric_card("Evidencia", AppState.evidence_count),
-                        summary_metric_card("Relaciones", AppState.relationship_count),
-                        summary_metric_card("Entidades conectadas", AppState.connected_entities),
-                        spacing="2",
-                        wrap="wrap",
-                        class_name="summary-strip",
-                    ),
-                    rx.box(
-                        investigation_left_column(),
-                        investigation_center_column(),
-                        context_sidebar_panel(),
-                        class_name="investigation-layout",
-                    ),
-                    spacing="4",
-                    align="stretch",
-                    class_name="investigation-shell",
                 ),
             ),
         ),
@@ -2602,6 +3623,17 @@ style = {
         "color": "#d4d4d8",
         "font_size": "12px",
     },
+    ".evidence-trust": {"background": "rgba(250, 204, 21, 0.1)", "border_color": "rgba(250, 204, 21, 0.22)"},
+    ".canonical-link-box": {
+        "border": "1px solid rgba(161, 161, 170, 0.18)",
+        "border_radius": "8px",
+        "padding": "10px",
+        "background": "#1f1f24",
+        "overflow_wrap": "anywhere",
+    },
+    ".topic-card": {"min_height": "130px", "display": "grid", "gap": "8px", "align_content": "start"},
+    ".topic-grid": {"align_items": "stretch"},
+    ".source-coverage-card": {"max_width": "none", "width": "100%"},
     ".search-chip": {
         "border": "1px solid rgba(113, 113, 122, 0.2)",
         "border_radius": "999px",
@@ -2657,7 +3689,18 @@ style = {
         "width": "100%",
         "overflow": "visible",
     },
-    ".investigation-shell": {"display": "grid", "gap": "14px"},
+    ".investigation-shell": {"display": "grid", "gap": "14px", "width": "min(95vw, 1600px)", "margin": "0 auto"},
+    ".product-investigation-flow": {
+        "display": "grid",
+        "gap": "18px",
+        "width": "100%",
+        "max_width": "1600px",
+        "margin": "0 auto",
+    },
+    ".product-metric-card": {
+        "min_width": "190px",
+        "flex": "1 1 190px",
+    },
     ".story-main": {"min_width": "0"},
     ".investigation-left": {"display": "grid", "gap": "12px", "min_width": "0"},
     ".investigation-center": {"display": "grid", "gap": "12px", "min_width": "0"},
@@ -2696,6 +3739,16 @@ style = {
     ".shell.theme-light .detail-line": {"color": "#374151", "border_top": "1px solid rgba(113, 113, 122, 0.18)"},
     ".technical-inline": {"display": "none"},
     ".technical-accordion": {"margin_top": "4px"},
+    ".technical-bottom": {
+        "border": "1px solid rgba(161, 161, 170, 0.18)",
+        "border_radius": "16px",
+        "padding": "10px 14px",
+        "background": "#18181b",
+    },
+    ".shell.theme-light .technical-bottom": {
+        "background": "#ffffff",
+        "border_color": "rgba(113, 113, 122, 0.18)",
+    },
     ".technical-item": {"padding": "8px"},
     ".fact-line": {"white_space": "pre-wrap", "color": "#e4e4e7", "line_height": "1.4"},
     ".context-title": {"font_weight": "800", "color": "#f4f4f5"},
@@ -2739,6 +3792,34 @@ style = {
     ".shell.theme-light .map-node-title": {"color": "#18181b"},
     ".map-arrow": {"font_size": "22px", "color": "#2dd4bf"},
     ".trace-arrow": {"font_size": "20px", "font_weight": "800", "color": "#2dd4bf"},
+    ".journey-list": {"max_width": "920px", "margin": "0 auto", "width": "100%"},
+    ".journey-node": {
+        "position": "relative",
+        "display": "grid",
+        "gap": "8px",
+        "padding": "16px",
+        "overflow": "hidden",
+    },
+    ".journey-node + .journey-node": {"margin_top": "8px"},
+    ".journey-step": {
+        "display": "inline-flex",
+        "align_items": "center",
+        "justify_content": "center",
+        "width": "32px",
+        "height": "32px",
+        "border_radius": "999px",
+        "background": "rgba(45, 212, 191, 0.14)",
+        "color": "#2dd4bf",
+        "font_weight": "900",
+    },
+    ".journey-connection": {
+        "text_align": "center",
+        "font_size": "28px",
+        "font_weight": "900",
+        "color": "#2dd4bf",
+    },
+    ".related-entity-group": {"display": "grid", "gap": "10px", "min_width": "0"},
+    ".related-entity-card": {"min_width": "0"},
     ".tabs-root": {"width": "100%"},
     ".tabs-list": {"margin_bottom": "10px"},
     ".tab-content": {"padding_top": "6px"},
@@ -2881,6 +3962,8 @@ style = {
     ".shell.theme-light .story-chip": {"background": "rgba(167, 139, 250, 0.08)", "color": "#6d28d9", "border_color": "rgba(167, 139, 250, 0.18)"},
     ".shell.theme-light .prompt-chip": {"background": "rgba(45, 212, 191, 0.08)", "color": "#0f766e", "border_color": "rgba(45, 212, 191, 0.18)"},
     ".shell.theme-light .comparison-chip": {"background": "rgba(45, 212, 191, 0.08)", "color": "#0f766e", "border_color": "rgba(45, 212, 191, 0.18)"},
+    ".shell.theme-light .evidence-trust": {"background": "rgba(250, 204, 21, 0.1)", "color": "#92400e", "border_color": "rgba(250, 204, 21, 0.24)"},
+    ".shell.theme-light .canonical-link-box": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
     ".shell.theme-light .flow-card": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
     ".shell.theme-light .flow-accent-teal": {"color": "#0f766e"},
     ".shell.theme-light .flow-accent-purple": {"color": "#6d28d9"},

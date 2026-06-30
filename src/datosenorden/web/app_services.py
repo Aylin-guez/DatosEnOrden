@@ -323,6 +323,8 @@ def _entity_type_label(entity_type: str) -> str:
         "LOBBY_MEETING": "Reunion de lobby",
         "CONTROL_REPORT": "Informe de control",
         "PUBLIC_OBSERVATION": "Observacion publica",
+        "ADMINISTRATIVE_PROCEDURE": "Procedimiento administrativo",
+        "ADMINISTRATIVE_RESOLUTION": "Resolucion administrativa",
         "MUNICIPALITY": "Municipio",
         "PUBLIC_PROJECT": "Proyecto publico",
         "SPENDING_ITEM": "Item de gasto",

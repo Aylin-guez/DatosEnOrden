@@ -1,0 +1,25 @@
+{
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "dataset_name": "sanciones-procedimientos-sample",
+  "source_name": "DatosEnOrden Sanciones Procedimientos Sample",
+  "records": [
+    {
+      "external_id": "sanciones-proc-2026-servicio-salud-arauco-001",
+      "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "company_name": "CONSULTORA PUBLICA SPA",
+      "person_name": "SOFIA RAMOS",
+      "procedure_number": "PROC-LOCAL-2026-001",
+      "procedure_title": "Procedimiento administrativo de muestra sobre entrega documental",
+      "procedure_date": "2026-05-22",
+      "procedure_status": "registrado en datos locales de prueba",
+      "resolution_number": "RES-LOCAL-2026-001",
+      "resolution_title": "Resolucion administrativa de muestra asociada al procedimiento",
+      "resolution_date": "2026-06-02",
+      "administrative_measure": "Medida administrativa de muestra sin caracter oficial",
+      "source_url": "local://sample/sanciones-procedimientos/sanciones-proc-2026-servicio-salud-arauco-001",
+      "source_dataset_name": "sanciones-procedimientos-sample",
+      "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. This is not official sanctions or procedure data and does not imply wrongdoing, liability, risk, or irregularity."
+    }
+  ]
+}

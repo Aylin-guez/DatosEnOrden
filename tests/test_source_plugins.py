@@ -12,6 +12,7 @@ from datosenorden.maintenance.source_plugins import get_source_plugins
 from datosenorden.maintenance.source_plugins import get_sources_by_concept
 from datosenorden.maintenance.source_plugins import get_sources_connected_to
 from datosenorden.maintenance.source_plugins import list_planned_sources
+from datosenorden.maintenance.source_plugins import list_prototype_sources
 from datosenorden.maintenance.source_plugins import plugin_status_value
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -48,9 +49,15 @@ def test_registry_lookup_helpers() -> None:
 def test_planned_sources_are_not_active() -> None:
     planned_ids = {plugin.id for plugin in list_planned_sources()}
 
-    assert {"sanciones_procedimientos"} <= planned_ids
     assert "declaraciones_intereses" not in planned_ids
+    assert "sanciones_procedimientos" not in planned_ids
     assert all(plugin.status == SourceStatus.PLANNED for plugin in list_planned_sources())
+
+
+def test_sanciones_procedimientos_is_prototype_source() -> None:
+    prototype_ids = {plugin.id for plugin in list_prototype_sources()}
+
+    assert "sanciones_procedimientos" in prototype_ids
 
 
 def test_current_source_count_matches_expected_registry_count() -> None:

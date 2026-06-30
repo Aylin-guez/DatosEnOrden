@@ -27,6 +27,8 @@ RECORD_ENTITY_TYPES = {
     "ROLE",
     "CONTROL_REPORT",
     "PUBLIC_OBSERVATION",
+    "ADMINISTRATIVE_PROCEDURE",
+    "ADMINISTRATIVE_RESOLUTION",
 }
 CANONICAL_PRIORITY = {"PUBLIC_ORGANIZATION": 0, "COMPANY": 1, "PERSON": 2, "SUPPLIER": 1, "AUTHORITY": 2}
 
@@ -310,6 +312,8 @@ def _record_label(entity_type: str) -> str:
         "ROLE": "Registro especifico",
         "CONTROL_REPORT": "Registro especifico",
         "PUBLIC_OBSERVATION": "Registro especifico",
+        "ADMINISTRATIVE_PROCEDURE": "Registro especifico",
+        "ADMINISTRATIVE_RESOLUTION": "Registro especifico",
     }
     return labels.get(entity_type, entity_type.replace("_", " ").title())
 

@@ -106,15 +106,16 @@ This index is the operational companion to `SOURCES.md`. It lists registered pub
 - Summary: `python scripts/declaraciones_intereses_summary.py`
 - Readiness: local prototype.
 
-## Planned
-
 ### Sanciones y Procedimientos
 
 - Source id: `sanciones_procedimientos`
-- Contributes: planned administrative resolution/procedure records.
-- Concepts: Organismo, Empresa, Persona.
-- Relationships: ENTITY_HAS_ADMINISTRATIVE_RECORD, PROCEDURE_INVOLVES_ENTITY.
-- Loader: not available yet.
-- Summary: not available yet.
-- Readiness: planned.
+- Contributes: administrative procedure and resolution sample records.
+- Concepts: Organismo, Empresa, Persona, Procedimiento administrativo, Resolucion administrativa.
+- Relationships: PROCEDURE_INVOLVES_ORGANIZATION, PROCEDURE_INVOLVES_COMPANY, PROCEDURE_INVOLVES_PERSON, PROCEDURE_HAS_RESOLUTION.
+- Loader: `python scripts/load_sanciones_procedimientos_sample.py`
+- Summary: `python scripts/sanciones_procedimientos_summary.py`
+- Readiness: local prototype.
 
+## Planned
+
+No planned-only source is required for the current demo pack.
