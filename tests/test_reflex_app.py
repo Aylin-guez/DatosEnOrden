@@ -200,6 +200,45 @@ def test_investigation_without_id_does_not_load_example(monkeypatch) -> None:
     assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_EMPTY
 
 
+def test_investigation_without_id_shows_welcome_not_loading() -> None:
+    source = inspect.getsource(reflex_app.investigation)
+
+    assert "investigation_empty_state()" in source
+    assert 'AppState.router.url.query.contains("id=")' not in source
+    assert "on_load=AppState.load_investigation" in source
+
+
+def test_investigation_with_url_id_prefers_loading_or_error_over_welcome() -> None:
+    source = inspect.getsource(reflex_app.investigation)
+
+    assert source.index("investigation_error_state()") < source.index("investigation_loading_state()")
+    assert source.index("investigation_loading_state()") < source.index("investigation_empty_state()")
+
+
+def test_open_demo_button_uses_stable_investigation_href() -> None:
+    source = inspect.getsource(reflex_app.investigation_empty_state)
+
+    assert "Abrir expediente demo" in source
+    assert "_investigation_href(DEMO_INVESTIGATION_TARGET)" in source
+    assert "run_search" not in source
+
+
+def test_investigation_error_state_has_retry_and_demo_actions() -> None:
+    source = inspect.getsource(reflex_app.investigation_error_state)
+
+    assert "Reintentar" in source
+    assert "Volver al demo" in source
+    assert "AppState.load_investigation" in source
+
+
+def test_loading_state_has_manual_fallback_actions() -> None:
+    source = inspect.getsource(reflex_app.investigation_loading_state)
+
+    assert "Reintentar" in source
+    assert "Volver al demo" in source
+    assert "AppState.load_investigation" in source
+
+
 def test_nav_expediente_points_to_empty_investigation_and_search_is_header_action() -> None:
     source = inspect.getsource(reflex_app.shell)
 
@@ -465,6 +504,43 @@ def test_name_and_uuid_url_targets_load_same_canonical_investigation(monkeypatch
     assert by_name.entity_name == by_uuid.entity_name == "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
     assert by_name.evidence_count == by_uuid.evidence_count == 2
     assert by_name.relationship_count == by_uuid.relationship_count == 3
+    assert by_name.investigation_status == by_uuid.investigation_status == reflex_app.INVESTIGATION_STATUS_LOADED
+    assert by_name.investigation_loading is by_uuid.investigation_loading is False
+    assert by_name.requested_investigation_target == by_uuid.requested_investigation_target == ""
+
+
+def test_loading_is_not_final_state_when_backend_responds(monkeypatch) -> None:
+    calls = {"investigation": 0}
+    _patch_investigation_services(monkeypatch, calls=calls)
+    state = _investigation_state(query="SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO")
+
+    reflex_app.AppState.load_investigation.fn(state)
+
+    assert calls["investigation"] == 1
+    assert state.investigation_loading is False
+    assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_LOADED
+    assert state.requested_investigation_target == ""
+    assert state.evidence_count > 0
+
+
+def test_backend_failure_sets_error_not_loading(monkeypatch) -> None:
+    state = _investigation_state(query="SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO")
+    monkeypatch.setattr(
+        reflex_app,
+        "resolve_investigation_target",
+        lambda value: {
+            "found": True,
+            "entity_id": "11111111-1111-1111-1111-111111111111",
+            "entity_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+        },
+    )
+    monkeypatch.setattr(reflex_app, "get_investigation", lambda entity_id: (_ for _ in ()).throw(RuntimeError("backend down")))
+
+    reflex_app.AppState.load_investigation.fn(state)
+
+    assert state.investigation_loading is False
+    assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_ERROR
+    assert "RuntimeError" in state.investigation_status_message
 
 
 def test_new_state_reconstructs_from_page_raw_path(monkeypatch) -> None:
@@ -544,6 +620,7 @@ def _investigation_state(query: str):
         connected_entities=0,
         last_loaded_investigation_target="",
         last_valid_investigation_target="",
+        requested_investigation_target="",
         investigation_loaded=False,
         investigation_loading=False,
         router=SimpleNamespace(url=SimpleNamespace(query_parameters={"id": query})),

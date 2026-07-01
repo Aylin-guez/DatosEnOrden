@@ -514,12 +514,13 @@ def _safe_public_values(obj: object) -> list[object]:
     ]
 
 
-def page_section(title: str, *children, subtitle: str | None = None) -> rx.Component:
+def page_section(title: str, *children, subtitle: str | None = None, class_name: str = "") -> rx.Component:
     body = [rx.text(title, class_name="section-title")]
     if subtitle is not None:
         body.append(rx.text(subtitle, class_name="section-subtitle"))
     body.extend(children)
-    return rx.vstack(*body, spacing="3", align="stretch", class_name="page-section")
+    section_class = "page-section" if not class_name else f"page-section {class_name}"
+    return rx.vstack(*body, spacing="3", align="stretch", class_name=section_class)
 
 
 def _clear_investigation_state(self) -> None:
@@ -580,6 +581,7 @@ def _clear_investigation_state(self) -> None:
     self.canonical_investigation_link = ""
     self.investigation_status_message = ""
     self.investigation_status = INVESTIGATION_STATUS_IDLE
+    self.requested_investigation_target = ""
     self.last_loaded_investigation_target = ""
     self.last_valid_investigation_target = ""
     self.investigation_loaded = False
@@ -1005,6 +1007,7 @@ class AppState(rx.State):
     knowledge_error: str = ""
     investigation_status_message: str = ""
     investigation_status: str = INVESTIGATION_STATUS_IDLE
+    requested_investigation_target: str = ""
     last_loaded_investigation_target: str = ""
     last_valid_investigation_target: str = ""
     investigation_loaded: bool = False
@@ -1021,6 +1024,11 @@ class AppState(rx.State):
 
     def submit_header_search(self):
         query = str(self.header_search_query or self.query or "").strip()
+        self.query = query
+        return rx.redirect(_search_href(query))
+
+    def submit_main_search(self):
+        query = str(self.query or self.header_search_query or "").strip()
         self.query = query
         return rx.redirect(_search_href(query))
 
@@ -1452,8 +1460,10 @@ class AppState(rx.State):
             had_valid_state=had_valid_state,
         )
         if query_id:
+            self.requested_investigation_target = query_id
             self.last_valid_investigation_target = query_id
         if not target:
+            self.requested_investigation_target = ""
             self.investigation_loading = False
             if had_valid_state:
                 self.investigation_status = INVESTIGATION_STATUS_LOADED
@@ -1469,6 +1479,8 @@ class AppState(rx.State):
             resolved = _json_dict(resolve_investigation_target(target))
             if not bool(_field(resolved, "found", False)):
                 _clear_investigation_state(self)
+                self.requested_investigation_target = target
+                self.last_valid_investigation_target = target
                 self.investigation_status = INVESTIGATION_STATUS_ERROR
                 self.investigation_status_message = str(
                     _field(resolved, "warning", "No se encontro una entidad local para abrir el expediente.")
@@ -1484,10 +1496,13 @@ class AppState(rx.State):
                 if had_valid_state:
                     self.investigation_loading = False
                     self.investigation_status = INVESTIGATION_STATUS_LOADED
+                    self.requested_investigation_target = ""
                     self.investigation_status_message = "La respuesta local no trajo datos suficientes; se conserva el expediente cargado."
                     _debug_investigation("preserved previous state", received=target, resolved=resolved_entity_id, reason="empty response")
                     return
                 _clear_investigation_state(self)
+                self.requested_investigation_target = target
+                self.last_valid_investigation_target = target
                 self.investigation_status = INVESTIGATION_STATUS_ERROR
                 self.investigation_status_message = "La respuesta local no trajo datos suficientes para este expediente."
                 self.error_message = self.investigation_status_message
@@ -1503,10 +1518,13 @@ class AppState(rx.State):
         except Exception as exc:  # noqa: BLE001
             if had_valid_state:
                 self.investigation_status = INVESTIGATION_STATUS_LOADED
+                self.requested_investigation_target = ""
                 self.investigation_status_message = f"No se pudo refrescar el expediente; se conserva la vista cargada. {type(exc).__name__}: {exc}"
                 _debug_investigation("preserved previous state", received=target, reason=type(exc).__name__)
                 return
             _clear_investigation_state(self)
+            self.requested_investigation_target = target
+            self.last_valid_investigation_target = target
             self.investigation_status = INVESTIGATION_STATUS_ERROR
             self.error_message = f"{type(exc).__name__}: {exc}"
             self.investigation_status_message = self.error_message
@@ -1677,6 +1695,7 @@ class AppState(rx.State):
         self.canonical_investigation_link = f"http://localhost:3000{_investigation_href(self.entity_name or target)}"
         self.last_loaded_investigation_target = self.selected_entity_id
         self.last_valid_investigation_target = target
+        self.requested_investigation_target = ""
         self.investigation_loaded = True
         self.investigation_status = INVESTIGATION_STATUS_LOADED
         self.investigation_status_message = ""
@@ -1752,9 +1771,25 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
         ),
         rx.vstack(*children, spacing="5", align="stretch", class_name="page"),
         app_footer(),
-        class_name=rx.cond(AppState.theme_dark, "shell theme-dark", "shell theme-light"),
+        class_name=rx.cond(AppState.theme_dark, f"shell theme-dark {_page_class(active_page)}", f"shell theme-light {_page_class(active_page)}"),
         **props,
     )
+
+
+def _page_class(active_page: str) -> str:
+    return {
+        PAGE_HOME: "page-home",
+        PAGE_DISCOVER: "page-discover",
+        PAGE_INVESTIGATION: "page-investigation",
+        PAGE_LIBRARY: "page-library",
+        PAGE_KNOWLEDGE: "page-library",
+        PAGE_TRACKING: "page-tracking",
+        PAGE_REPORTS: "page-reports",
+        PAGE_ECOSYSTEM: "page-ecosystem",
+        PAGE_PROJECT: "page-project",
+        PAGE_SEARCH: "page-discover",
+        PAGE_DEMO: "page-home",
+    }.get(active_page, "page-home")
 
 
 def app_footer() -> rx.Component:
@@ -1766,17 +1801,18 @@ def app_footer() -> rx.Component:
             ),
             rx.hstack(
                 rx.link("DatosEnOrden", href="/", class_name="footer-link"),
-                rx.text("DatosEnOrden Studio", class_name="footer-link"),
+                rx.link("DatosEnOrden Studio", href="/project", class_name="footer-link"),
                 rx.link("Reportes", href="/reports", class_name="footer-link"),
                 rx.link("Biblioteca", href="/library", class_name="footer-link"),
                 rx.link("Seguimiento", href="/tracking", class_name="footer-link"),
                 rx.link("Fuentes", href="/ecosystem", class_name="footer-link"),
                 rx.link("Estado del proyecto", href="/project", class_name="footer-link"),
-                rx.text("Contacto", class_name="footer-link"),
+                rx.link("Contacto", href="mailto:datosenorden@gmail.com", class_name="footer-link"),
                 spacing="3",
                 wrap="wrap",
                 justify="center",
             ),
+            rx.text("Contacto: datosenorden@gmail.com", class_name="footer-copy"),
             rx.text("Desarrollado por DatosEnOrden Studio.", class_name="footer-copy"),
             spacing="2",
             align="center",
@@ -2726,53 +2762,34 @@ def investigation_entry_card(title: str, body: str, button_label: str, href: str
 def investigation_empty_state() -> rx.Component:
     return rx.vstack(
         rx.box(
-            rx.text("Abre un expediente", class_name="title"),
-            rx.text("Un expediente reúne las fuentes públicas disponibles para una entidad.", class_name="subtitle"),
-            rx.cond(
-                AppState.investigation_status_message != "",
-                rx.vstack(
-                    rx.text(AppState.investigation_status_message, class_name="muted"),
-                    rx.hstack(
-                        rx.button("Volver a demo", on_click=rx.redirect("/demo"), class_name="button"),
-                        rx.button("Reintentar", on_click=AppState.load_investigation, class_name="button button-secondary"),
-                        spacing="2",
-                        wrap="wrap",
-                    ),
-                    spacing="2",
-                    align="start",
+            rx.text("¿Qué quieres investigar?", class_name="title"),
+            rx.text("Un expediente reúne fuentes, evidencia y relaciones para ayudarte a entender una entidad sin perder el contexto.", class_name="subtitle"),
+            rx.hstack(
+                rx.input(
+                    placeholder="Busca organismo, empresa, persona o proyecto",
+                    value=AppState.query,
+                    on_change=AppState.set_query,
+                    class_name="input search-input",
                 ),
+                rx.button("Buscar", on_click=AppState.submit_main_search, class_name="button search-button"),
+                spacing="3",
+                align="center",
+                class_name="search-bar investigation-welcome-search",
             ),
-            class_name="hero",
+            rx.hstack(
+                rx.button("Abrir expediente demo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button"),
+                rx.button("Ver biblioteca", on_click=rx.redirect("/library"), class_name="button button-secondary"),
+                rx.button("Explorar fuentes", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+                class_name="hero-actions",
+            ),
+            class_name="hero investigation-welcome",
         ),
         rx.grid(
-            investigation_entry_card(
-                "Buscar una entidad",
-                "Encuentra organismos, proveedores, autoridades o cargos públicos.",
-                "Ir a Buscar",
-                "/search",
-                "button",
-            ),
-            rx.box(
-                rx.text("Ver ejemplos", class_name="card-title"),
-                rx.text("Abre un expediente ya conectado por varias fuentes locales.", class_name="muted small"),
-                rx.cond(
-                    AppState.connection_rows_preview,
-                    rx.vstack(
-                        rx.foreach(AppState.connection_rows_preview[:1], search_example_card),
-                        spacing="2",
-                        align="stretch",
-                    ),
-                    rx.text("Todavía no hay ejemplos disponibles.", class_name="muted small"),
-                ),
-                class_name="card empty-entry-card empty-entry-card-wide",
-            ),
-            investigation_entry_card(
-                "Entender fuentes",
-                "Explora primero el mapa si todavía no sabes qué buscar.",
-                "Ver Ecosistema",
-                "/ecosystem",
-                "button button-secondary",
-            ),
+            help_card("¿Qué es un expediente?", "Una carpeta de lectura: reúne lo que sabemos, de dónde viene y cómo se conecta."),
+            help_card("¿Qué es evidencia?", "Una pista verificable que permite volver a la fuente o al documento original."),
+            help_card("¿Qué puedes hacer después?", "Leer un reporte, seguir la historia del proyecto o revisar las fuentes."),
             columns="3",
             spacing="3",
             class_name="responsive-grid investigation-empty-grid",
@@ -2786,7 +2803,36 @@ def investigation_loading_state() -> rx.Component:
     return rx.box(
         rx.text("Cargando expediente...", class_name="title"),
         rx.text("Leyendo el identificador de la URL y reconstruyendo la vista desde la base local.", class_name="subtitle"),
+        rx.hstack(
+            rx.button("Reintentar", on_click=AppState.load_investigation, class_name="button button-secondary"),
+            rx.button("Volver al demo", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
+            spacing="3",
+            wrap="wrap",
+            class_name="hero-actions",
+        ),
         class_name="hero",
+    )
+
+
+def investigation_error_state() -> rx.Component:
+    return rx.box(
+        rx.text("No se pudo abrir el expediente", class_name="title"),
+        rx.text(
+            rx.cond(
+                AppState.investigation_status_message != "",
+                AppState.investigation_status_message,
+                "La app no pudo cargar este expediente local. Puedes reintentar o volver al recorrido demo.",
+            ),
+            class_name="subtitle",
+        ),
+        rx.hstack(
+            rx.button("Reintentar", on_click=AppState.load_investigation, class_name="button"),
+            rx.button("Volver al demo", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
+            spacing="3",
+            wrap="wrap",
+            class_name="hero-actions",
+        ),
+        class_name="hero investigation-error",
     )
 
 
@@ -3435,9 +3481,9 @@ def home() -> rx.Component:
                 class_name="badge badge-purple launch-notice",
             ),
             rx.hstack(
-                rx.button("Expediente demo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button"),
-                rx.button("Seguimiento demo", on_click=rx.redirect("/tracking"), class_name="button button-secondary"),
-                rx.button("Reporte ciudadano", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
+                rx.button("Leer un reporte ciudadano", on_click=rx.redirect("/reports"), class_name="button"),
+                rx.button("Abrir expediente demo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button button-secondary"),
+                rx.button("Revisar documento explicado", on_click=rx.redirect("/library"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -3445,58 +3491,53 @@ def home() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Que puedes hacer aqui",
-            rx.grid(
-                help_card("Consultar documentos oficiales", "Lee fichas y resumenes ciudadanos preparados desde la Biblioteca."),
-                help_card("Comprender proyectos", "Abre un expediente para ver contexto, relaciones y evidencia en un solo lugar."),
-                help_card("Seguir cambios", "Revisa el seguimiento para entender hitos, fechas y estado de una historia publica."),
-                help_card("Leer reportes ciudadanos", "Consulta una lectura tipo articulo, con fuentes y siguientes pasos."),
-                help_card("Explorar relaciones", "Mira como una entidad aparece conectada con documentos, fuentes y otras entidades."),
-                help_card("Revisar fuentes", "Comprueba de donde sale cada pieza de informacion antes de sacar conclusiones."),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Un punto de entrada para entender informacion publica sin perder la evidencia.",
-        ),
-        page_section(
             "Entradas principales",
             rx.grid(
-                rx.box(
-                    rx.text("Expediente demo", class_name="card-title"),
-                    rx.text("Abre una vista integrada de fuentes, evidencia, relaciones y contexto ciudadano.", class_name="muted small"),
-                    rx.button("Abrir expediente", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button"),
-                    class_name="card report-card",
-                ),
-                rx.box(
-                    rx.text("Seguimiento demo", class_name="card-title"),
-                    rx.text("Sigue la historia documental de una propuesta y sus hitos asociados.", class_name="muted small"),
-                    rx.button("Ver seguimiento", on_click=rx.redirect("/tracking"), class_name="button"),
-                    class_name="card report-card",
-                ),
-                rx.box(
-                    rx.text("Reporte ciudadano", class_name="card-title"),
-                    rx.text("Lee una sintesis neutral conectada a expediente, seguimiento y evidencia.", class_name="muted small"),
-                    rx.button("Ver reporte", on_click=rx.redirect("/reports"), class_name="button"),
-                    class_name="card report-card",
-                ),
+                next_step_card("Leer un reporte ciudadano", "Una lectura tipo articulo que resume el caso, sus fuentes y sus siguientes pasos.", "Leer reporte", "/reports"),
+                next_step_card("Abrir expediente demo", "Una carpeta navegable con fuentes, evidencia, relaciones y contexto.", "Abrir expediente", _investigation_href(DEMO_INVESTIGATION_TARGET)),
+                next_step_card("Revisar documento explicado", "Un documento de prueba convertido en resumen, preguntas y puntos clave.", "Abrir Biblioteca", "/library"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Tres formas de entrar al mismo caso local de prueba.",
+            subtitle="Tres puertas de entrada al mismo recorrido ciudadano de demostracion.",
         ),
         page_section(
-            "Novedades",
+            "Que puedes hacer aqui",
             rx.grid(
-                next_step_card("Biblioteca Oficial demo", "Primer espacio para documentos explicados con resumen ciudadano.", "Abrir biblioteca", "/library"),
-                next_step_card("Reporte ciudadano demo", "Lectura tipo articulo conectada a expediente y seguimiento.", "Leer reporte", "/reports"),
-                next_step_card("Estado del proyecto", "Que es el MVP, que usa datos demo y que falta antes del lanzamiento publico.", "Ver estado", "/project"),
-                columns="3",
+                help_card("Consultar documentos", "Leer documentos explicados en lenguaje ciudadano."),
+                help_card("Comprender proyectos", "Abrir expedientes para ver contexto y relaciones."),
+                help_card("Seguir cambios", "Revisar una timeline con hitos y estados."),
+                help_card("Revisar fuentes", "Volver a la evidencia antes de compartir conclusiones."),
+                columns="4",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Contenido de demostracion para orientar la primera visita.",
+            subtitle="La plataforma ordena informacion publica para leerla con calma, no para emitir acusaciones.",
+        ),
+        page_section(
+            "Demo disponible",
+            rx.grid(
+                rx.box(
+                    rx.text("Servicio de Salud Arauco Hospital de Arauco", class_name="card-title"),
+                    rx.text(
+                        "Recorrido recomendado con datos locales de prueba: expediente, documento explicado, reporte ciudadano y seguimiento.",
+                        class_name="story-summary",
+                    ),
+                    rx.hstack(
+                        rx.button("Empezar por el expediente", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button"),
+                        rx.button("Leer reporte", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
+                        rx.button("Ver seguimiento", on_click=rx.redirect("/tracking"), class_name="button button-secondary"),
+                        spacing="2",
+                        wrap="wrap",
+                    ),
+                    class_name="card public-demo-card",
+                ),
+                columns="1",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="LOCAL_TEST_DATA / NOT_OFFICIAL_DATA. Sirve para mostrar la experiencia, no para afirmar hechos oficiales.",
         ),
         page_section(
             "Recorrido",
@@ -3864,9 +3905,9 @@ def tracking() -> rx.Component:
             ),
             rx.grid(
                 rx.foreach(AppState.tracking_events, tracking_event_card),
-                columns="2",
-                spacing="3",
-                class_name="responsive-grid",
+                columns="1",
+                spacing="4",
+                class_name="timeline-list",
             ),
             subtitle="Propuesta -> documento oficial -> presupuesto -> compra publica -> proveedor -> publicacion/cargo -> control -> expediente relacionado.",
         ),
@@ -4151,6 +4192,7 @@ def reports() -> rx.Component:
                 rx.text("No hay reportes ciudadanos locales disponibles.", class_name="muted small"),
             ),
             subtitle="Prototipos read-only marcados como datos locales de prueba.",
+            class_name="reports-catalog-section",
         ),
         page_section(
             "Resumen",
@@ -4162,6 +4204,7 @@ def reports() -> rx.Component:
                 wrap="wrap",
             ),
             subtitle="Lectura inicial para entender el caso sin sacar conclusiones apresuradas.",
+            class_name="reports-article-section",
         ),
         page_section(
             "Que cambio",
@@ -4172,6 +4215,7 @@ def reports() -> rx.Component:
                 class_name="responsive-grid",
             ),
             subtitle="Hitos y conexiones explicadas como lectura ciudadana.",
+            class_name="reports-wide-section",
         ),
         page_section(
             "Por que importa",
@@ -4184,6 +4228,7 @@ def reports() -> rx.Component:
                 class_name="responsive-grid",
             ),
             subtitle="El reporte no acusa ni concluye: ayuda a comprender y revisar.",
+            class_name="reports-wide-section",
         ),
         page_section(
             "Fuentes",
@@ -4198,6 +4243,7 @@ def reports() -> rx.Component:
                 wrap="wrap",
             ),
             subtitle="Referencias livianas: metadata y anclas de evidencia, sin PDFs pesados.",
+            class_name="reports-wide-section",
         ),
         page_section(
             "Expedientes relacionados",
@@ -4257,6 +4303,23 @@ def project() -> rx.Component:
             subtitle="La version publica muestra el potencial del producto con datos locales de prueba.",
         ),
         page_section(
+            "DatosEnOrden Studio",
+            rx.text(
+                "DatosEnOrden ciudadano es la primera aplicacion publica del ecosistema. DatosEnOrden Studio prepara soluciones para organizaciones que necesitan ordenar, conectar y seguir su propia informacion documental sin perder evidencia.",
+                class_name="story-summary",
+            ),
+            rx.grid(
+                help_card("Seguimiento / TraceFlow", "Capacidad para seguir estados, hitos, responsables, documentos y cambios en el tiempo."),
+                help_card("Knowledge Engine", "Capacidad para transformar documentos y registros en resumenes, preguntas, claims y evidencia revisable."),
+                help_card("Reportes y documentacion", "Capacidad para convertir conocimiento estructurado en reportes, publicaciones y materiales para distintas audiencias."),
+                help_card("Platform Core configurable", "Capacidad para adaptar vocabulario, workflows, templates y audiencias sin hardcodear el negocio."),
+                columns="4",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Presentado como capacidades de producto, no como detalle interno de implementacion.",
+        ),
+        page_section(
             "Que significa MVP",
             rx.text(
                 "MVP significa producto minimo viable: una version suficientemente completa para probar si el recorrido se entiende, si las conexiones son utiles y si la experiencia ayuda a revisar informacion con evidencia.",
@@ -4293,6 +4356,10 @@ def project() -> rx.Component:
             "Como apoyar reportando errores",
             rx.text(
                 "Si encuentras un texto confuso, una pantalla vacia, un enlace que no ayuda o una afirmacion que necesita mejor evidencia, reportalo con la ruta de la pagina y una breve descripcion.",
+                class_name="story-summary",
+            ),
+            rx.text(
+                "Quieres reportar un error, sugerir una fuente o conversar sobre una implementacion para tu organizacion? Escribe a datosenorden@gmail.com.",
                 class_name="story-summary",
             ),
             rx.hstack(
@@ -4370,57 +4437,61 @@ def section(title: str, rows, empty_text: str) -> rx.Component:  # noqa: ANN001
     )
 
 
-@rx.page(route="/investigation", title="Expediente - DatosEnOrden")
+@rx.page(route="/investigation", title="Expediente - DatosEnOrden", on_load=AppState.load_investigation)
 def investigation() -> rx.Component:
     return shell(
         rx.cond(
-            AppState.investigation_loading,
-            investigation_loading_state(),
-            rx.cond(
-                AppState.selected_entity_id == "",
-                investigation_empty_state(),
-                rx.box(
-                    rx.vstack(
-                        rx.box(
-                            rx.text(AppState.entity_name, class_name="title"),
-                            rx.text(AppState.entity_summary, class_name="subtitle"),
-                            rx.hstack(
-                                rx.foreach(AppState.dataset_badges, lambda item: rx.text(item, class_name="badge badge-teal")),
-                                spacing="2",
-                                wrap="wrap",
-                            ),
-                            class_name="hero",
-                        ),
+            AppState.selected_entity_id != "",
+            rx.box(
+                rx.vstack(
+                    rx.box(
+                        rx.text(AppState.entity_name, class_name="title"),
+                        rx.text(AppState.entity_summary, class_name="subtitle"),
                         rx.hstack(
-                            metric_card("Fuentes", AppState.datasets_involved, "consultadas"),
-                            metric_card("Evidencia", AppState.evidence_count, "registros de respaldo"),
-                            metric_card("Relaciones", AppState.relationship_count, "conexiones publicas"),
-                            metric_card("Entidades conectadas", AppState.connected_entities, "personas, empresas u organismos"),
+                            rx.foreach(AppState.dataset_badges, lambda item: rx.text(item, class_name="badge badge-teal")),
                             spacing="2",
                             wrap="wrap",
-                            class_name="summary-strip",
                         ),
-                        single_investigation_product_view(),
-                        page_section(
-                            "Siguientes pasos",
-                            rx.grid(
-                                next_step_card("Leer reporte ciudadano", "Ver una explicacion en formato articulo.", "Ir a Reportes", "/reports"),
-                                next_step_card("Ver documento oficial", "Revisar el resumen ciudadano y preguntas clave.", "Ir a Biblioteca", "/library"),
-                                next_step_card("Seguir proyecto", "Ver la historia en el tiempo y sus hitos.", "Ir a Seguimiento", "/tracking"),
-                                columns="3",
-                                spacing="3",
-                                class_name="responsive-grid",
-                            ),
-                            subtitle="Un expediente ayuda a entrar; las otras vistas ayudan a seguir leyendo.",
-                        ),
-                        spacing="4",
-                        align="stretch",
-                        class_name="investigation-shell",
+                        class_name="hero",
                     ),
+                    rx.hstack(
+                        metric_card("Fuentes", AppState.datasets_involved, "consultadas"),
+                        metric_card("Evidencia", AppState.evidence_count, "registros de respaldo"),
+                        metric_card("Relaciones", AppState.relationship_count, "conexiones publicas"),
+                        metric_card("Entidades conectadas", AppState.connected_entities, "personas, empresas u organismos"),
+                        spacing="2",
+                        wrap="wrap",
+                        class_name="summary-strip",
+                    ),
+                    single_investigation_product_view(),
+                    page_section(
+                        "Siguientes pasos",
+                        rx.grid(
+                            next_step_card("Leer reporte ciudadano", "Ver una explicacion en formato articulo.", "Ir a Reportes", "/reports"),
+                            next_step_card("Ver documento oficial", "Revisar el resumen ciudadano y preguntas clave.", "Ir a Biblioteca", "/library"),
+                            next_step_card("Seguir proyecto", "Ver la historia en el tiempo y sus hitos.", "Ir a Seguimiento", "/tracking"),
+                            columns="3",
+                            spacing="3",
+                            class_name="responsive-grid",
+                        ),
+                        subtitle="Un expediente ayuda a entrar; las otras vistas ayudan a seguir leyendo.",
+                    ),
+                    spacing="4",
+                    align="stretch",
+                    class_name="investigation-shell",
+                ),
+            ),
+            rx.cond(
+                AppState.investigation_status == INVESTIGATION_STATUS_ERROR,
+                investigation_error_state(),
+                rx.cond(
+                    (AppState.investigation_loading)
+                    | (AppState.investigation_status == INVESTIGATION_STATUS_LOADING),
+                    investigation_loading_state(),
+                    investigation_empty_state(),
                 ),
             ),
         ),
-        on_mount=AppState.load_investigation,
         active_page=PAGE_INVESTIGATION,
     )
 
@@ -4618,6 +4689,24 @@ style = {
         "padding": "28px",
         "background": "linear-gradient(180deg, rgba(31, 31, 36, 0.92), rgba(24, 24, 27, 0.92))",
     },
+    ".page-home .hero": {
+        "padding": "46px 34px",
+        "border_left": "4px solid rgba(228, 228, 231, 0.34)",
+        "background": "linear-gradient(180deg, rgba(31, 31, 36, 0.96), rgba(18, 18, 22, 0.94))",
+    },
+    ".page-investigation .hero": {"border_left": "4px solid rgba(45, 212, 191, 0.55)"},
+    ".page-library .hero": {"border_left": "4px solid rgba(167, 139, 250, 0.58)"},
+    ".page-tracking .hero": {"border_left": "4px solid rgba(74, 222, 128, 0.56)"},
+    ".page-reports .hero": {"border_left": "4px solid rgba(251, 146, 60, 0.58)"},
+    ".page-ecosystem .hero": {"border_left": "4px solid rgba(96, 165, 250, 0.58)"},
+    ".page-project .hero": {"border_left": "4px solid rgba(161, 161, 170, 0.62)"},
+    ".page-home .title": {"color": "#f4f4f5"},
+    ".page-investigation .title": {"color": "#ccfbf1"},
+    ".page-library .title": {"color": "#ddd6fe"},
+    ".page-tracking .title": {"color": "#bbf7d0"},
+    ".page-reports .title": {"color": "#fed7aa"},
+    ".page-ecosystem .title": {"color": "#bfdbfe"},
+    ".page-project .title": {"color": "#e4e4e7"},
     ".shell.theme-light .hero": {
         "background": "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 248, 0.98))",
         "border_color": "rgba(113, 113, 122, 0.18)",
@@ -4626,6 +4715,12 @@ style = {
     ".subtitle": {"color": "#a1a1aa", "max_width": "820px", "line_height": "1.55"},
     ".shell.theme-light .subtitle": {"color": "#71717a"},
     ".section-title": {"font_size": "20px", "font_weight": "700", "margin_bottom": "12px", "color": "#f4f4f5"},
+    ".page-reports .section-title": {"font_size": "24px", "font_weight": "800", "color": "#fed7aa"},
+    ".page-library .section-title": {"color": "#ddd6fe"},
+    ".page-tracking .section-title": {"color": "#bbf7d0"},
+    ".page-investigation .section-title": {"color": "#ccfbf1"},
+    ".page-ecosystem .section-title": {"color": "#bfdbfe"},
+    ".page-project .section-title": {"color": "#e4e4e7"},
     ".shell.theme-light .section-title": {"color": "#18181b"},
     ".section-subtitle": {"color": "#a1a1aa", "margin_bottom": "14px"},
     ".shell.theme-light .section-subtitle": {"color": "#71717a"},
@@ -4633,6 +4728,32 @@ style = {
         "display": "grid",
         "gap": "14px",
         "padding": "4px 0 10px",
+    },
+    ".page-home .page-section": {"padding": "12px 0 18px"},
+    ".page-reports .page-section": {
+        "width": "100%",
+        "max_width": "1180px",
+        "margin": "0 auto",
+        "padding": "24px 0",
+        "border_top": "1px solid rgba(251, 146, 60, 0.16)",
+    },
+    ".page-reports .reports-article-section": {"max_width": "980px"},
+    ".page-reports .reports-catalog-section, .page-reports .reports-wide-section": {"max_width": "1180px"},
+    ".page-library .page-section": {
+        "padding": "22px 0",
+        "border_top": "1px solid rgba(167, 139, 250, 0.14)",
+    },
+    ".page-tracking .page-section": {
+        "padding": "20px 0",
+        "border_top": "1px solid rgba(74, 222, 128, 0.14)",
+    },
+    ".page-ecosystem .page-section": {
+        "padding": "20px 0",
+        "border_top": "1px solid rgba(96, 165, 250, 0.14)",
+    },
+    ".page-project .page-section": {
+        "padding": "20px 0",
+        "border_top": "1px solid rgba(161, 161, 170, 0.14)",
     },
     ".card": {
         "border": "1px solid rgba(161, 161, 170, 0.16)",
@@ -4682,6 +4803,9 @@ style = {
     ".badge-purple": {"background": "rgba(167, 139, 250, 0.14)", "color": "#a78bfa", "border_color": "rgba(167, 139, 250, 0.3)"},
     ".launch-notice": {"width": "fit-content", "margin_top": "6px"},
     ".badge-amber": {"background": "rgba(250, 204, 21, 0.14)", "color": "#facc15", "border_color": "rgba(250, 204, 21, 0.28)"},
+    ".page-tracking .badge-teal": {"background": "rgba(74, 222, 128, 0.12)", "color": "#86efac", "border_color": "rgba(74, 222, 128, 0.28)"},
+    ".page-reports .badge-teal": {"background": "rgba(251, 146, 60, 0.12)", "color": "#fdba74", "border_color": "rgba(251, 146, 60, 0.28)"},
+    ".page-ecosystem .badge-teal": {"background": "rgba(96, 165, 250, 0.12)", "color": "#93c5fd", "border_color": "rgba(96, 165, 250, 0.28)"},
     ".mini-pill": {
         "border": "1px solid rgba(45, 212, 191, 0.22)",
         "border_radius": "999px",
@@ -5011,13 +5135,66 @@ style = {
     ".search-result-card": {"min_height": "200px"},
     ".discovery-card": {"min_height": "220px"},
     ".tracking-card": {"min_height": "220px", "display": "grid", "gap": "10px", "align_content": "start"},
-    ".tracking-event-card": {"min_height": "210px"},
+    ".tracking-event-card": {
+        "min_height": "210px",
+        "border_left": "3px solid rgba(74, 222, 128, 0.62)",
+        "background": "linear-gradient(90deg, rgba(74, 222, 128, 0.06), #18181b 34%)",
+    },
+    ".timeline-list": {
+        "position": "relative",
+        "max_width": "980px",
+    },
+    ".page-tracking .timeline-list": {
+        "padding_left": "18px",
+        "border_left": "1px solid rgba(74, 222, 128, 0.28)",
+    },
+    ".page-tracking .tracking-event-card": {
+        "min_height": "auto",
+        "padding": "18px 20px",
+        "border_left": "3px solid rgba(74, 222, 128, 0.72)",
+        "border_radius": "0 8px 8px 0",
+    },
     ".tracking-document-card": {"min_height": "230px"},
     ".report-card": {"min_height": "210px", "display": "grid", "gap": "10px", "align_content": "start"},
     ".report-section-card": {"min_height": "190px", "display": "grid", "gap": "8px", "align_content": "start"},
     ".help-card": {"min_height": "150px", "display": "grid", "gap": "8px", "align_content": "start"},
     ".next-step-card": {"min_height": "185px", "display": "grid", "gap": "10px", "align_content": "start"},
     ".button-disabled": {"opacity": "0.55", "cursor": "not-allowed"},
+    ".page-investigation .investigation-card": {"border_left": "3px solid rgba(45, 212, 191, 0.38)"},
+    ".page-investigation .summary-card": {"border_top": "2px solid rgba(45, 212, 191, 0.32)"},
+    ".page-library .tracking-document-card": {
+        "border_left": "3px solid rgba(167, 139, 250, 0.58)",
+        "background": "linear-gradient(90deg, rgba(167, 139, 250, 0.06), #18181b 34%)",
+    },
+    ".page-library .report-section-card": {"border_top": "2px solid rgba(167, 139, 250, 0.32)"},
+    ".page-reports .report-card": {
+        "background": "transparent",
+        "border_left": "3px solid rgba(251, 146, 60, 0.46)",
+        "border_top": "0",
+        "border_right": "0",
+        "border_bottom": "0",
+        "border_radius": "0",
+        "padding": "8px 0 8px 18px",
+    },
+    ".page-reports .report-section-card": {
+        "background": "transparent",
+        "border_top": "0",
+        "border_right": "0",
+        "border_bottom": "0",
+        "border_left": "3px solid rgba(251, 146, 60, 0.34)",
+        "border_radius": "0",
+        "padding": "6px 0 6px 18px",
+    },
+    ".page-reports .story-summary": {"font_size": "17px", "line_height": "1.75", "max_width": "900px"},
+    ".page-ecosystem .source-card, .page-ecosystem .card": {"border_left": "3px solid rgba(96, 165, 250, 0.34)"},
+    ".page-project .flow-card, .page-project .help-card": {"border_left": "3px solid rgba(161, 161, 170, 0.42)"},
+    ".investigation-welcome": {"padding": "42px 34px"},
+    ".investigation-welcome-search": {"max_width": "860px", "margin_top": "22px"},
+    ".investigation-error": {"border_left": "4px solid rgba(251, 113, 133, 0.56)"},
+    ".public-demo-card": {
+        "border_left": "3px solid rgba(45, 212, 191, 0.38)",
+        "background": "linear-gradient(90deg, rgba(45, 212, 191, 0.05), #18181b 32%)",
+    },
     ".explorer-panel": {
         "border": "1px solid rgba(161, 161, 170, 0.16)",
         "border_radius": "16px",
