@@ -13,6 +13,11 @@ from datosenorden.maintenance.dataset_registry import list_datasets
 from datosenorden.maintenance.demo_pack import build_demo_status
 from datosenorden.maintenance.discovery_cases import get_discovery_cases as _get_discovery_cases
 from datosenorden.maintenance.citizen_dashboard import build_citizen_dashboard
+from datosenorden.maintenance.citizen_reports import build_citizen_report_demo
+from datosenorden.maintenance.citizen_reports import citizen_report_to_dict
+from datosenorden.maintenance.citizen_reports import export_citizen_report_demo as _export_citizen_report_demo
+from datosenorden.maintenance.citizen_reports import get_citizen_report as _get_citizen_report
+from datosenorden.maintenance.citizen_reports import list_citizen_reports as _list_citizen_reports
 from datosenorden.maintenance.ecosystem_registry import build_ecosystem_registry
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.investigation_export import export_investigation_markdown
@@ -25,8 +30,16 @@ from datosenorden.maintenance.investigation_report import export_investigation_r
 from datosenorden.maintenance.investigation_view import build_investigation_view
 from datosenorden.maintenance.investigation_view import investigation_explanation_text
 from datosenorden.maintenance.investigation_timeline import build_investigation_timeline
+from datosenorden.maintenance.knowledge_engine import build_knowledge_demo
+from datosenorden.maintenance.knowledge_engine import build_knowledge_digest
+from datosenorden.maintenance.knowledge_engine import knowledge_digest_to_dict
+from datosenorden.maintenance.knowledge_engine import list_knowledge_documents as _list_knowledge_documents
+from datosenorden.maintenance.knowledge_engine import official_document_to_dict
 from datosenorden.maintenance.guided_questions import get_guided_questions as _get_guided_questions
 from datosenorden.maintenance.institution_profile import build_institution_profile
+from datosenorden.maintenance.platform_config import get_default_platform_config
+from datosenorden.maintenance.platform_config import load_platform_config
+from datosenorden.maintenance.platform_config import summarize_platform_config
 from datosenorden.maintenance.product_navigation import get_guided_discovery_options as _get_guided_discovery_options
 from datosenorden.maintenance.product_navigation import get_home_navigation_examples as _get_home_navigation_examples
 from datosenorden.maintenance.product_navigation import get_record_context as _get_record_context
@@ -34,6 +47,12 @@ from datosenorden.maintenance.product_navigation import resolve_canonical_expedi
 from datosenorden.maintenance.search_workspace import search_workspace as _search_workspace
 from datosenorden.maintenance.source_contributions import build_source_contributions
 from datosenorden.maintenance.source_trace import build_source_trace
+from datosenorden.maintenance.tracking import build_tracking_demo
+from datosenorden.maintenance.tracking import export_tracking_demo_report as _export_tracking_demo_report
+from datosenorden.maintenance.tracking import get_tracking_item as _get_tracking_item
+from datosenorden.maintenance.tracking import get_tracking_timeline as _get_tracking_timeline
+from datosenorden.maintenance.tracking import list_tracking_items as _list_tracking_items
+from datosenorden.maintenance.tracking import tracking_to_dict
 
 
 def search_entities(query: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -293,6 +312,72 @@ def get_demo_status() -> dict[str, Any]:
     )
     report_dict["missing"] = report_dict.pop("repairs")
     return report_dict
+
+
+def get_tracking_demo() -> dict[str, Any]:
+    return _jsonify(tracking_to_dict(build_tracking_demo()))
+
+
+def get_tracking_items() -> list[dict[str, Any]]:
+    return _jsonify([tracking_to_dict(_get_tracking_timeline(item.id))["item"] for item in _list_tracking_items()])
+
+
+def get_tracking_item(item_id: str) -> dict[str, Any]:
+    timeline = _get_tracking_item(item_id)
+    return _jsonify(tracking_to_dict(timeline)) if timeline is not None else {}
+
+
+def get_tracking_timeline(item_id: str) -> dict[str, Any]:
+    timeline = _get_tracking_timeline(item_id)
+    return _jsonify(tracking_to_dict(timeline)) if timeline is not None else {}
+
+
+def export_tracking_demo_report() -> str:
+    return _export_tracking_demo_report()
+
+
+def get_knowledge_demo() -> dict[str, Any]:
+    return _jsonify(knowledge_digest_to_dict(build_knowledge_demo()))
+
+
+def get_knowledge_digest(document_id: str) -> dict[str, Any]:
+    try:
+        return _jsonify(knowledge_digest_to_dict(build_knowledge_digest(document_id)))
+    except ValueError:
+        return {}
+
+
+def get_knowledge_documents() -> list[dict[str, Any]]:
+    return _jsonify([official_document_to_dict(document) for document in _list_knowledge_documents()])
+
+
+def get_citizen_report_demo() -> dict[str, Any]:
+    return _jsonify(citizen_report_to_dict(build_citizen_report_demo()))
+
+
+def get_citizen_reports() -> list[dict[str, Any]]:
+    return _jsonify([citizen_report_to_dict(report) for report in _list_citizen_reports()])
+
+
+def get_citizen_report(report_id: str) -> dict[str, Any]:
+    report = _get_citizen_report(report_id)
+    return _jsonify(citizen_report_to_dict(report)) if report is not None else {}
+
+
+def export_citizen_report_demo() -> str:
+    return _export_citizen_report_demo()
+
+
+def get_platform_config_summary() -> dict[str, Any]:
+    return _jsonify(summarize_platform_config(get_default_platform_config()))
+
+
+def get_platform_examples() -> list[dict[str, Any]]:
+    examples = [
+        get_default_platform_config(),
+        load_platform_config("config/platform/client_example.json"),
+    ]
+    return _jsonify([summarize_platform_config(config) for config in examples])
 
 
 @contextmanager

@@ -1,0 +1,192 @@
+{
+  "id": "datosenorden_public",
+  "name": "DatosEnOrden publico",
+  "description": "Aplicacion publica demostrativa construida sobre motores configurables de DatosEnOrden Studio.",
+  "version": "1",
+  "branding": {
+    "product_name": "DatosEnOrden",
+    "studio_name": "DatosEnOrden Studio",
+    "tone": "neutral, claro, trazable",
+    "tagline": "Comprende la informacion. Sigue su historia.",
+    "primary_color": "#0f766e"
+  },
+  "feature_flags": {
+    "knowledge_engine": true,
+    "tracking_engine": true,
+    "report_engine": true,
+    "source_plugins": true,
+    "public_app": true,
+    "external_apis": false,
+    "scraping": false,
+    "auth": false,
+    "payments": false
+  },
+  "vocabulary": {
+    "terms": {
+      "entidad": "Entidad",
+      "organismo": "Organismo",
+      "empresa": "Empresa",
+      "persona": "Persona",
+      "documento_oficial": "Documento oficial",
+      "expediente": "Expediente",
+      "seguimiento": "Seguimiento",
+      "reporte_ciudadano": "Reporte ciudadano",
+      "evidencia": "Evidencia",
+      "fuente_publica": "Fuente publica"
+    },
+    "entity_types": [
+      {
+        "id": "public_organization",
+        "label": "Organismo publico",
+        "description": "Entidad institucional visible en fuentes publicas.",
+        "aliases": ["organismo", "institucion"]
+      },
+      {
+        "id": "company",
+        "label": "Empresa",
+        "description": "Entidad privada o proveedora visible en registros.",
+        "aliases": ["proveedor", "sociedad"]
+      },
+      {
+        "id": "person",
+        "label": "Persona",
+        "description": "Persona mencionada por fuentes publicas locales.",
+        "aliases": ["autoridad", "representante"]
+      },
+      {
+        "id": "official_document",
+        "label": "Documento oficial",
+        "description": "Documento o registro usado como evidencia."
+      },
+      {
+        "id": "proposal",
+        "label": "Propuesta",
+        "description": "Iniciativa o materia que puede tener seguimiento."
+      },
+      {
+        "id": "citizen_report",
+        "label": "Reporte ciudadano",
+        "description": "Salida de lectura publica basada en evidencia."
+      },
+      {
+        "id": "tracking_event",
+        "label": "Evento de seguimiento",
+        "description": "Hito fechado dentro de una historia documental."
+      },
+      {
+        "id": "evidence",
+        "label": "Evidencia",
+        "description": "Ancla que permite revisar una afirmacion."
+      }
+    ],
+    "relationship_types": [
+      {
+        "id": "aparece_en",
+        "label": "aparece en",
+        "description": "Una entidad aparece en un documento, registro o fuente."
+      },
+      {
+        "id": "se_relaciona_con",
+        "label": "se relaciona con",
+        "description": "Relacion descriptiva entre entidades."
+      },
+      {
+        "id": "tiene_evidencia",
+        "label": "tiene evidencia",
+        "description": "Una afirmacion o entidad tiene evidencia asociada."
+      },
+      {
+        "id": "es_fuente_de",
+        "label": "es fuente de",
+        "description": "Una fuente alimenta un documento, claim o vista."
+      },
+      {
+        "id": "genera_evento",
+        "label": "genera evento",
+        "description": "Un documento o fuente origina un evento de seguimiento."
+      },
+      {
+        "id": "se_resume_en",
+        "label": "se resume en",
+        "description": "Conocimiento estructurado se resume en una salida."
+      },
+      {
+        "id": "se_publica_en",
+        "label": "se publica en",
+        "description": "Un reporte o documento se publica en un formato."
+      }
+    ],
+    "document_types": [
+      {
+        "id": "official_document",
+        "label": "Documento oficial",
+        "description": "Registro documental usado como fuente."
+      },
+      {
+        "id": "proposal",
+        "label": "Propuesta",
+        "description": "Documento que describe una iniciativa."
+      },
+      {
+        "id": "citizen_report",
+        "label": "Reporte ciudadano",
+        "description": "Reporte para audiencia publica."
+      },
+      {
+        "id": "tracking_summary",
+        "label": "Resumen de seguimiento",
+        "description": "Salida de eventos y estados."
+      }
+    ],
+    "evidence_types": [
+      {
+        "id": "source_record",
+        "label": "Registro fuente",
+        "description": "Registro original o metadata de origen."
+      },
+      {
+        "id": "document_section",
+        "label": "Seccion documental",
+        "description": "Fragmento o seccion citada."
+      },
+      {
+        "id": "url",
+        "label": "URL",
+        "description": "Referencia verificable a una fuente."
+      },
+      {
+        "id": "excerpt",
+        "label": "Extracto",
+        "description": "Texto breve que orienta la revision."
+      }
+    ]
+  },
+  "workflows": [
+    {
+      "id": "seguimiento",
+      "label": "Seguimiento",
+      "description": "Workflow publico de eventos documentales.",
+      "states": [
+        {"id": "propuesto", "label": "Propuesto", "order": 1},
+        {"id": "publicado", "label": "Publicado", "order": 2},
+        {"id": "en_revision", "label": "En revision", "order": 3},
+        {"id": "aprobado", "label": "Aprobado", "order": 4},
+        {"id": "implementado", "label": "Implementado", "order": 5, "terminal": true},
+        {"id": "actualizado", "label": "Actualizado", "order": 6},
+        {"id": "archivado", "label": "Archivado", "order": 7, "terminal": true}
+      ]
+    }
+  ],
+  "audiences": [
+    {"id": "ciudadano", "label": "Ciudadano", "description": "Persona que necesita lectura clara y evidencia revisable."},
+    {"id": "periodista", "label": "Periodista", "description": "Persona que requiere trazabilidad y fuentes."},
+    {"id": "organizacion", "label": "Organizacion", "description": "Equipo que necesita vista ejecutiva o institucional."},
+    {"id": "desarrollador", "label": "Desarrollador", "description": "Usuario tecnico que integra o audita datos."}
+  ],
+  "output_templates": [
+    {"id": "reporte_ciudadano_html", "label": "Reporte ciudadano HTML", "format": "html", "audience_id": "ciudadano"},
+    {"id": "expediente_html", "label": "Expediente HTML", "format": "html", "audience_id": "ciudadano"},
+    {"id": "seguimiento_html", "label": "Seguimiento HTML", "format": "html", "audience_id": "ciudadano"},
+    {"id": "documento_resumen_html", "label": "Documento resumen HTML", "format": "html", "audience_id": "ciudadano"}
+  ]
+}

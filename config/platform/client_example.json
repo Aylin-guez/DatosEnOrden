@@ -1,0 +1,146 @@
+{
+  "id": "client_example",
+  "name": "Cliente ficticio - proyectos internos",
+  "description": "Configuracion ficticia para seguimiento de proyectos internos de una organizacion.",
+  "version": "1",
+  "branding": {
+    "product_name": "ProjectFlow Demo",
+    "studio_name": "DatosEnOrden Studio",
+    "tone": "claro, operativo, trazable",
+    "tagline": "Ordena proyectos, documentos y decisiones.",
+    "primary_color": "#2563eb"
+  },
+  "feature_flags": {
+    "knowledge_engine": true,
+    "tracking_engine": true,
+    "report_engine": true,
+    "source_plugins": true,
+    "public_app": false,
+    "external_apis": false,
+    "scraping": false,
+    "auth": false,
+    "payments": false
+  },
+  "vocabulary": {
+    "terms": {
+      "proyecto": "Proyecto",
+      "hito": "Hito",
+      "responsable": "Responsable",
+      "documento": "Documento",
+      "evidencia": "Evidencia",
+      "reporte_ejecutivo": "Reporte ejecutivo"
+    },
+    "entity_types": [
+      {
+        "id": "project",
+        "label": "Proyecto",
+        "description": "Iniciativa interna que requiere seguimiento."
+      },
+      {
+        "id": "milestone",
+        "label": "Hito",
+        "description": "Evento relevante del proyecto."
+      },
+      {
+        "id": "owner",
+        "label": "Responsable",
+        "description": "Rol o equipo responsable de un hito o documento."
+      },
+      {
+        "id": "document",
+        "label": "Documento",
+        "description": "Material interno o externo asociado al proyecto."
+      },
+      {
+        "id": "evidence",
+        "label": "Evidencia",
+        "description": "Respaldo verificable para una afirmacion."
+      },
+      {
+        "id": "executive_report",
+        "label": "Reporte ejecutivo",
+        "description": "Salida sintetica para direccion o equipo."
+      }
+    ],
+    "relationship_types": [
+      {
+        "id": "belongs_to",
+        "label": "pertenece a",
+        "description": "Un hito o documento pertenece a un proyecto."
+      },
+      {
+        "id": "owned_by",
+        "label": "es responsabilidad de",
+        "description": "Un proyecto o hito tiene un responsable."
+      },
+      {
+        "id": "has_evidence",
+        "label": "tiene evidencia",
+        "description": "Una decision o hito tiene respaldo."
+      },
+      {
+        "id": "summarized_in",
+        "label": "se resume en",
+        "description": "Un conjunto de conocimiento se resume en un reporte."
+      }
+    ],
+    "document_types": [
+      {
+        "id": "project_brief",
+        "label": "Ficha de proyecto",
+        "description": "Documento inicial o ficha de contexto."
+      },
+      {
+        "id": "meeting_note",
+        "label": "Nota de reunion",
+        "description": "Registro de acuerdos o decisiones."
+      },
+      {
+        "id": "executive_report",
+        "label": "Reporte ejecutivo",
+        "description": "Sintesis para audiencia ejecutiva."
+      }
+    ],
+    "evidence_types": [
+      {
+        "id": "document_section",
+        "label": "Seccion de documento",
+        "description": "Fragmento verificable de un documento."
+      },
+      {
+        "id": "decision_record",
+        "label": "Registro de decision",
+        "description": "Respaldo de una decision del proyecto."
+      },
+      {
+        "id": "status_update",
+        "label": "Actualizacion de estado",
+        "description": "Evidencia de avance o cambio."
+      }
+    ]
+  },
+  "workflows": [
+    {
+      "id": "project_tracking",
+      "label": "Seguimiento de proyectos",
+      "description": "Workflow ficticio para proyectos internos.",
+      "states": [
+        {"id": "creado", "label": "Creado", "order": 1},
+        {"id": "revisado", "label": "Revisado", "order": 2},
+        {"id": "aprobado", "label": "Aprobado", "order": 3},
+        {"id": "en_ejecucion", "label": "En ejecucion", "order": 4},
+        {"id": "finalizado", "label": "Finalizado", "order": 5, "terminal": true}
+      ]
+    }
+  ],
+  "audiences": [
+    {"id": "executive", "label": "Direccion", "description": "Audiencia que necesita resumen y decisiones."},
+    {"id": "project_team", "label": "Equipo de proyecto", "description": "Audiencia que necesita detalle operativo."},
+    {"id": "auditor", "label": "Auditor", "description": "Audiencia que revisa trazabilidad y evidencia."}
+  ],
+  "output_templates": [
+    {"id": "executive_report_html", "label": "Reporte ejecutivo HTML", "format": "html", "audience_id": "executive"},
+    {"id": "project_timeline_html", "label": "Timeline de proyecto HTML", "format": "html", "audience_id": "project_team"},
+    {"id": "evidence_pack_html", "label": "Paquete de evidencia HTML", "format": "html", "audience_id": "auditor"}
+  ]
+}

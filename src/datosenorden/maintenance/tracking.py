@@ -7,6 +7,11 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
+from datosenorden.maintenance.platform_config import PlatformConfig
+from datosenorden.maintenance.platform_config import WorkflowConfig
+from datosenorden.maintenance.platform_config import get_default_platform_config
+from datosenorden.maintenance.platform_config import workflow_state_values
+
 
 LOCAL_TEST_DATA = "LOCAL_TEST_DATA"
 NOT_OFFICIAL_DATA = "NOT_OFFICIAL_DATA"
@@ -384,6 +389,18 @@ def get_tracking_item(item_id: str) -> TrackingTimeline | None:
 
 def get_tracking_timeline(item_id: str) -> TrackingTimeline | None:
     return get_tracking_item(item_id)
+
+
+def tracking_state_values_from_config(
+    config: PlatformConfig | None = None,
+    workflow_id: str | None = "seguimiento",
+) -> tuple[str, ...]:
+    data = config or get_default_platform_config()
+    return workflow_state_values(data, workflow_id)
+
+
+def tracking_state_values_from_workflow(workflow: WorkflowConfig) -> tuple[str, ...]:
+    return tuple(state.id for state in workflow.states)
 
 
 def render_tracking_demo_summary(timeline: TrackingTimeline | None = None) -> str:
