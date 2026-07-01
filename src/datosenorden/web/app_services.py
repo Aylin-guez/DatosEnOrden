@@ -20,6 +20,8 @@ from datosenorden.maintenance.citizen_reports import get_citizen_report as _get_
 from datosenorden.maintenance.citizen_reports import list_citizen_reports as _list_citizen_reports
 from datosenorden.maintenance.ecosystem_registry import build_ecosystem_registry
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
+from datosenorden.maintenance.entity_resolution import ResolutionResult
+from datosenorden.maintenance.entity_resolution import resolve_entity as _resolve_platform_entity
 from datosenorden.maintenance.investigation_export import export_investigation_markdown
 from datosenorden.maintenance.investigation_story import build_investigation_story
 from datosenorden.maintenance.entity_explorer import search_buyers
@@ -89,7 +91,11 @@ def search_entities(query: str, limit: int = 10) -> list[dict[str, Any]]:
 
 
 def resolve_investigation_target(value: str) -> dict[str, Any]:
-    canonical = _resolve_canonical_expediente_target(value)
+    platform_resolution = _resolve_entity_for_investigation(value)
+    platform_entity = platform_resolution.entity if platform_resolution.found else None
+    target = platform_entity.id if platform_entity is not None else value
+
+    canonical = _resolve_canonical_expediente_target(target)
     if not canonical.get("found", False):
         return {
             "found": False,
@@ -98,6 +104,7 @@ def resolve_investigation_target(value: str) -> dict[str, Any]:
             "matched_by": "",
             "warning": str(canonical.get("warning", "")),
             "canonical": canonical,
+            "entity_resolution": platform_resolution.to_dict(),
         }
     entity_id = str(canonical.get("canonical_entity_id", ""))
     entity_name = str(canonical.get("canonical_entity_name", ""))
@@ -105,10 +112,32 @@ def resolve_investigation_target(value: str) -> dict[str, Any]:
         "found": True,
         "entity_id": entity_id,
         "entity_name": entity_name,
-        "matched_by": str(canonical.get("matched_by", "")),
+        "matched_by": _investigation_match_method(platform_resolution, str(canonical.get("matched_by", ""))),
         "warning": str(canonical.get("warning", "")),
         "canonical": canonical,
+        "entity_resolution": platform_resolution.to_dict(),
     }
+
+
+def _resolve_entity_for_investigation(value: str) -> ResolutionResult:
+    try:
+        return _resolve_platform_entity(value)
+    except Exception:  # noqa: BLE001
+        return ResolutionResult(False, str(value or ""), 0.0, "", reason="platform_resolution_unavailable")
+
+
+def _investigation_match_method(platform_resolution: ResolutionResult, fallback_method: str) -> str:
+    if not platform_resolution.found:
+        return fallback_method
+    if platform_resolution.method == "identifier":
+        return "entity_id"
+    if platform_resolution.method == "exact":
+        return "exact_name"
+    if platform_resolution.method == "canonical":
+        return "case_insensitive_name"
+    if platform_resolution.method == "alias":
+        return "alias"
+    return platform_resolution.method or fallback_method
 
 
 def get_investigation(entity_id: str) -> dict[str, Any]:

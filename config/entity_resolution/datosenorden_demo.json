@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "name": "DatosEnOrden demo entity registry",
+    "status": "LOCAL_TEST_DATA",
+    "notice": "NOT_OFFICIAL_DATA",
+    "description": "Read-only demo registry for generic entity resolution."
+  },
+  "entities": [
+    {
+      "id": "338d160c-8d5d-47e1-9c37-038ed5043ba1",
+      "canonical_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "aliases": [
+        "Servicio de Salud Arauco",
+        "Servicio Salud Arauco",
+        "SSA Arauco",
+        "Hospital de Arauco"
+      ],
+      "identifiers": [
+        {
+          "type": "uuid",
+          "value": "338d160c-8d5d-47e1-9c37-038ed5043ba1"
+        },
+        {
+          "type": "demo_case_id",
+          "value": "arauco-hospital-demo"
+        }
+      ],
+      "tags": [
+        "demo",
+        "public_app"
+      ],
+      "metadata": {
+        "source": "local_demo_seed",
+        "visibility": "public_demo"
+      }
+    },
+    {
+      "id": "client-example-project-alpha",
+      "canonical_name": "Proyecto Interno Alpha",
+      "aliases": [
+        "Proyecto Alpha",
+        "Alpha Interno",
+        "Iniciativa Alpha"
+      ],
+      "identifiers": [
+        {
+          "type": "internal_project_id",
+          "value": "PRJ-ALPHA-001"
+        }
+      ],
+      "tags": [
+        "client_example",
+        "generic_domain"
+      ],
+      "metadata": {
+        "source": "fictional_example",
+        "visibility": "documentation_only"
+      }
+    }
+  ]
+}
