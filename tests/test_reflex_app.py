@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import inspect
 import pickle
 from types import MappingProxyType
 from types import SimpleNamespace
@@ -160,13 +161,12 @@ def test_load_investigation_without_selection_uses_guided_empty_state(monkeypatc
 
     reflex_app.AppState.load_investigation.fn(state)
 
-    assert calls == ["load_home"]
+    assert calls == []
     assert state.error_message == ""
     assert state.selected_entity_id == ""
     assert state.selected_entity_name == ""
     assert state.report_path == ""
-    assert len(state.connection_rows_preview) == 6
-    assert state.connection_rows_preview == state.connection_rows[:6]
+    assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_EMPTY
 
 
 def test_investigation_without_id_does_not_load_example(monkeypatch) -> None:
@@ -197,6 +197,21 @@ def test_investigation_without_id_does_not_load_example(monkeypatch) -> None:
     assert state.entity_name == ""
     assert state.evidence_count == 0
     assert state.investigation_loaded is False
+    assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_EMPTY
+
+
+def test_nav_expediente_points_to_empty_investigation_and_search_is_header_action() -> None:
+    source = inspect.getsource(reflex_app.shell)
+
+    assert 'rx.link("Expediente", href="/investigation"' in source
+    assert 'rx.link("Biblioteca", href="/library"' in source
+    assert 'rx.link("Seguimiento", href="/tracking"' in source
+    assert 'rx.link("Reportes", href="/reports"' in source
+    assert 'rx.link("Proyecto", href="/project"' in source
+    assert 'rx.link("Buscar", href="/search"' not in source
+    assert source.index('rx.link("Expediente"') < source.index('rx.link("Reportes"') < source.index('rx.link("Biblioteca"') < source.index('rx.link("Seguimiento"')
+    assert "header_search" in source
+    assert "toggle_header_search" in source
 
 
 def test_router_query_value_reads_raw_path() -> None:
@@ -205,9 +220,9 @@ def test_router_query_value_reads_raw_path() -> None:
     assert reflex_app._router_query_value(router, "id") == "SERVICIO DE SALUD"
 
 
-def test_router_query_value_reads_page_raw_path_when_url_query_is_empty() -> None:
+def test_router_query_value_reads_url_raw_path_when_query_parameters_are_empty() -> None:
     router = SimpleNamespace(
-        url=SimpleNamespace(query_parameters={}),
+        url=SimpleNamespace(query_parameters={}, raw_path="/investigation?id=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO"),
         page=SimpleNamespace(raw_path="/investigation?id=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO"),
     )
 
@@ -234,13 +249,18 @@ def test_router_query_value_does_not_deepcopy_router_metadata() -> None:
     assert reflex_app._router_query_value(router, "id") == "SERVICIO DE SALUD"
 
 
-def test_load_investigation_preserves_loaded_state_when_query_temporarily_missing(monkeypatch) -> None:
+def test_load_investigation_without_id_preserves_loaded_state_during_refresh(monkeypatch) -> None:
     calls: list[str] = []
     state = SimpleNamespace(
         error_message="",
         selected_entity_id="11111111-1111-1111-1111-111111111111",
         selected_entity_name="Entidad demo",
         entity_name="Entidad demo",
+        evidence_count=2,
+        relationship_count=3,
+        datasets_involved=2,
+        connected_entities=1,
+        investigation_loaded=True,
         router=SimpleNamespace(url=SimpleNamespace(query_parameters={})),
         load_home=lambda: calls.append("load_home"),
     )
@@ -250,6 +270,8 @@ def test_load_investigation_preserves_loaded_state_when_query_temporarily_missin
     assert calls == []
     assert state.selected_entity_id == "11111111-1111-1111-1111-111111111111"
     assert state.entity_name == "Entidad demo"
+    assert state.evidence_count == 2
+    assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_LOADED
 
 
 def test_investigation_href_encodes_name_target() -> None:
@@ -351,7 +373,7 @@ def test_load_investigation_stores_pickle_safe_payload(monkeypatch) -> None:
     pickle.dumps(payload)
 
 
-def test_load_investigation_keeps_data_when_query_disappears_or_backend_empty(monkeypatch) -> None:
+def test_load_investigation_reloads_from_url_and_handles_backend_empty(monkeypatch) -> None:
     state = _investigation_state(query="SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO")
     calls = {"investigation": 0}
 
@@ -369,6 +391,7 @@ def test_load_investigation_keeps_data_when_query_disappears_or_backend_empty(mo
 
     assert state.entity_name == "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
     assert state.evidence_count == 2
+    assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_LOADED
     assert calls["investigation"] == 1
 
     state.router = SimpleNamespace(url=SimpleNamespace(query_parameters={"id": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"}))
@@ -376,7 +399,7 @@ def test_load_investigation_keeps_data_when_query_disappears_or_backend_empty(mo
 
     assert state.entity_name == "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
     assert state.evidence_count == 2
-    assert calls["investigation"] == 1
+    assert calls["investigation"] == 2
 
     state.last_loaded_investigation_target = "different-target"
     monkeypatch.setattr(
@@ -389,6 +412,7 @@ def test_load_investigation_keeps_data_when_query_disappears_or_backend_empty(mo
     assert state.entity_name == "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
     assert state.evidence_count == 2
     assert state.investigation_loaded is True
+    assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_LOADED
 
 
 def test_refresh_without_id_stays_empty_and_does_not_open_example(monkeypatch) -> None:
@@ -448,8 +472,7 @@ def test_new_state_reconstructs_from_page_raw_path(monkeypatch) -> None:
     _patch_investigation_services(monkeypatch, calls=calls)
     state = _investigation_state(query="")
     state.router = SimpleNamespace(
-        url=SimpleNamespace(query_parameters={}),
-        page=SimpleNamespace(raw_path="/investigation?id=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO"),
+        url=SimpleNamespace(query_parameters={}, raw_path="/investigation?id=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO"),
     )
 
     reflex_app.AppState.load_investigation.fn(state)
@@ -459,6 +482,26 @@ def test_new_state_reconstructs_from_page_raw_path(monkeypatch) -> None:
     assert state.relationship_count == 3
     assert state.investigation_loaded is True
     assert calls["investigation"] == 1
+
+
+def test_timer_like_new_state_with_url_id_keeps_non_zero_metrics(monkeypatch) -> None:
+    calls = {"investigation": 0}
+    _patch_investigation_services(monkeypatch, calls=calls)
+    state = _investigation_state(query="SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO")
+    state.router = SimpleNamespace(
+        url=SimpleNamespace(
+            query_parameters={"id": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"},
+            raw_path="/investigation?id=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO",
+        ),
+    )
+
+    reflex_app.AppState.load_investigation.fn(state)
+
+    assert state.selected_entity_id == "11111111-1111-1111-1111-111111111111"
+    assert state.evidence_count > 0
+    assert state.relationship_count > 0
+    assert state.datasets_involved > 0
+    assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_LOADED
 
 
 def test_backend_empty_after_good_state_does_not_zero_metrics(monkeypatch) -> None:
@@ -480,6 +523,7 @@ def test_backend_empty_after_good_state_does_not_zero_metrics(monkeypatch) -> No
     assert state.relationship_count == 3
     assert state.datasets_involved == 2
     assert state.investigation_loaded is True
+    assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_LOADED
     assert "conserva el expediente" in state.investigation_status_message
 
 
@@ -561,6 +605,126 @@ def _contains_mappingproxy(value) -> bool:  # noqa: ANN001
 def test_empty_state_helpers_render_without_error() -> None:
     assert reflex_app.search_empty_state() is not None
     assert reflex_app.investigation_empty_state() is not None
+
+
+def test_load_tracking_populates_demo(monkeypatch) -> None:
+    state = SimpleNamespace(error_message="")
+    monkeypatch.setattr(
+        reflex_app,
+        "get_tracking_items",
+        lambda: [
+            {
+                "id": "tracking-demo",
+                "title": "Seguimiento demo",
+                "summary": "Resumen",
+                "item_type": "proposal",
+                "current_status": "published",
+                "related_expediente_target": "Entidad demo",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        reflex_app,
+        "get_tracking_demo",
+        lambda: {
+            "item": {
+                "id": "tracking-demo",
+                "title": "Seguimiento demo",
+                "summary": "Resumen",
+                "current_status": "published",
+                "related_expediente_target": "Entidad demo",
+                "related_sources": ["DIPRES", "ChileCompra"],
+            },
+            "events": [{"title": "Evento", "date": "2026-01-01", "status": "published", "source": "DIPRES", "description": "Demo"}],
+            "documents": [{"title": "Doc"}],
+            "evidence": [{"label": "Ev"}],
+            "follow_targets": [{"label": "Follow"}],
+        },
+    )
+
+    reflex_app.AppState.load_tracking.fn(state)
+
+    assert state.tracking_title == "Seguimiento demo"
+    assert state.tracking_current_status == "published"
+    assert state.tracking_events[0]["title"] == "Evento"
+    assert state.tracking_related_sources == ["DIPRES", "ChileCompra"]
+
+
+def test_tracking_route_is_registered() -> None:
+    source = inspect.getsource(reflex_app.tracking)
+
+    assert 'route="/tracking"' in source
+    assert "Sigue la historia de una propuesta publica" in source
+
+
+def test_load_reports_populates_demo(monkeypatch) -> None:
+    state = SimpleNamespace(error_message="")
+    monkeypatch.setattr(
+        reflex_app,
+        "get_citizen_reports",
+        lambda: [
+            {
+                "id": "report-demo",
+                "title": "Reporte demo",
+                "subtitle": "Subtitulo",
+                "subject": "Entidad demo",
+                "summary": "Resumen",
+                "current_status": "demo_read_only",
+                "related_expediente_target": "Entidad demo",
+                "sources": ["ChileCompra"],
+                "sections": [],
+                "evidence_refs": [],
+                "classification": "LOCAL_TEST_DATA",
+                "official_status": "NOT_OFFICIAL_DATA",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        reflex_app,
+        "get_citizen_report_demo",
+        lambda: {
+            "id": "report-demo",
+            "title": "Reporte demo",
+            "subtitle": "Subtitulo",
+            "subject": "Entidad demo",
+            "summary": "Resumen",
+            "current_status": "demo_read_only",
+            "related_expediente_target": "Entidad demo",
+            "sources": ["ChileCompra", "DIPRES"],
+            "sections": [{"title": "Seccion", "summary": "Detalle", "evidence_refs": ["ev1"]}],
+            "evidence_refs": ["ev1"],
+            "classification": "LOCAL_TEST_DATA",
+            "official_status": "NOT_OFFICIAL_DATA",
+        },
+    )
+    monkeypatch.setattr(reflex_app, "export_citizen_report_demo", lambda: "reports/citizen_report_arauco.html")
+
+    reflex_app.AppState.load_reports.fn(state)
+
+    assert state.citizen_report_title == "Reporte demo"
+    assert state.citizen_report_subject == "Entidad demo"
+    assert state.citizen_report_sections[0]["evidence_text"] == "ev1"
+    assert state.citizen_report_sources == ["ChileCompra", "DIPRES"]
+    assert state.citizen_report_path == "reports/citizen_report_arauco.html"
+
+
+def test_reports_route_is_registered() -> None:
+    source = inspect.getsource(reflex_app.reports)
+
+    assert 'route="/reports"' in source
+    assert "Reportes ciudadanos" in source
+
+
+def test_library_and_project_routes_are_registered() -> None:
+    library_source = inspect.getsource(reflex_app.library)
+    project_source = inspect.getsource(reflex_app.project)
+
+    assert 'route="/library"' in library_source
+    assert "Biblioteca Oficial" in library_source
+    assert "Preguntas importantes" in library_source
+    assert 'route="/project"' in project_source
+    assert "Estado del proyecto" in project_source
+    assert "Que significa MVP" in project_source
 
 
 def test_load_dashboard_populates_summary_metrics(monkeypatch) -> None:
