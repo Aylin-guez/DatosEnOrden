@@ -15,7 +15,37 @@ from datosenorden.db.session import SessionLocal
 from datosenorden.etl.chilecompra.client import ApiResponse
 from datosenorden.etl.chilecompra.mappers import ChileCompraGraphMapper
 from datosenorden.etl.chilecompra.normalizers import ChileCompraNormalizer
-from datosenorden.etl.loaders.graph_loader import GraphLoader
+from datosenorden.etl.core.pipeline import DatasetAdapter
+from datosenorden.etl.core.pipeline import DatasetLoadRequest
+from datosenorden.etl.core.pipeline import load_dataset
+
+
+class ChileCompraFileAdapter(DatasetAdapter):
+    dataset_id = "chilecompra"
+
+    def validate(self, request: DatasetLoadRequest) -> tuple[str, ...]:
+        if request.input_path is None:
+            return ("input_path is required",)
+        if not request.input_path.exists():
+            return (f"file not found: {request.input_path}",)
+        if request.input_path.suffix.lower() != ".json":
+            return ("expected a .json file",)
+        return ()
+
+    def normalize(self, request: DatasetLoadRequest):  # noqa: ANN201
+        assert request.input_path is not None
+        payload = _read_payload(request.input_path)
+        query_date_value = str((request.metadata or {}).get("query_date", ""))
+        query_date = date.fromisoformat(query_date_value) if query_date_value else None
+        response = ApiResponse(
+            url=f"local://chilecompra-file/{request.input_path.name}",
+            params={"source": str(request.input_path)},
+            payload=payload,
+        )
+        return ChileCompraNormalizer().normalize(response, query_date=query_date)
+
+    def build_relationships(self, normalized):  # noqa: ANN201
+        return ChileCompraGraphMapper().map_purchase_orders(normalized)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -26,6 +56,40 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     payload_path = Path(args.path)
+    request = DatasetLoadRequest(
+        dataset_id="chilecompra",
+        input_path=payload_path,
+        dry_run=args.dry_run,
+        metadata={"query_date": args.query_date} if args.query_date else {},
+    )
+    adapter = ChileCompraFileAdapter()
+    validation_errors = adapter.validate(request)
+    if validation_errors:
+        for error in validation_errors:
+            print(f"error: {error}", file=sys.stderr)
+        return 1
+
+    with SessionLocal() as session:
+        result = load_dataset(session, adapter, request)
+
+    print("load_chilecompra_file:")
+    print(f"  source={payload_path}")
+    print(f"  dry_run={args.dry_run}")
+    print(f"  records={result.raw_count}")
+    print(f"  rejected={result.rejected_count}")
+    print(f"  entities={result.entities}")
+    print(f"  claims={result.claims}")
+    print(f"  evidence={result.evidence}")
+    print(f"  relationships={result.relationships}")
+    print("  import_job_id=")
+    if result.errors:
+        print("  errors:")
+        for error in result.errors:
+            print(f"    - {error}")
+    return 1 if result.errors and not result.claims else 0
+
+
+def _read_payload(payload_path: Path) -> dict:
     payload = json.loads(payload_path.read_text(encoding="utf-8"))
     if isinstance(payload, list):
         payload = {"Listado": payload, "Version": "LOCAL_TEST_DATA", "FechaCreacion": ""}
@@ -33,30 +97,7 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("Expected a JSON object or list of purchase order records.")
     payload.setdefault("Listado", [])
     payload.setdefault("_datosenorden_notice", "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA unless the operator verifies the source.")
-
-    query_date = date.fromisoformat(args.query_date) if args.query_date else None
-    response = ApiResponse(url=f"local://chilecompra-file/{payload_path.name}", params={"source": str(payload_path)}, payload=payload)
-    normalized = ChileCompraNormalizer().normalize(response, query_date=query_date)
-    batch = ChileCompraGraphMapper().map_purchase_orders(normalized)
-
-    with SessionLocal() as session:
-        job = GraphLoader(session).load(batch, dry_run=args.dry_run)
-
-    print("load_chilecompra_file:")
-    print(f"  source={payload_path}")
-    print(f"  dry_run={args.dry_run}")
-    print(f"  records={batch.raw_count}")
-    print(f"  rejected={batch.rejected_count}")
-    print(f"  entities={len(batch.entities)}")
-    print(f"  claims={len(batch.claims)}")
-    print(f"  evidence={len(batch.evidence)}")
-    print(f"  relationships={len(batch.public_relationships)}")
-    print(f"  import_job_id={getattr(job, 'id', '') if job is not None else ''}")
-    if batch.errors:
-        print("  errors:")
-        for error in batch.errors:
-            print(f"    - {error}")
-    return 1 if batch.errors and not batch.claims else 0
+    return payload
 
 
 if __name__ == "__main__":

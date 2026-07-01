@@ -18,6 +18,7 @@ from datosenorden.web.app_services import get_data_ecosystem
 from datosenorden.web.app_services import get_guided_questions
 from datosenorden.web.app_services import get_investigation
 from datosenorden.web.app_services import get_investigation_timeline
+from datosenorden.web.app_services import get_real_data_readiness
 from datosenorden.web.app_services import export_citizen_report_demo
 from datosenorden.web.app_services import export_investigation_report
 from datosenorden.web.app_services import export_tracking_demo_report
@@ -118,6 +119,9 @@ def main() -> int:
     plugin_sources = get_source_plugins()
     checks.append(("ecosystem has active/prototype sources", len(active_or_prototype) >= MIN_SOURCES, str(len(active_or_prototype))))
     checks.append(("source plugins available", len(plugin_sources) >= 11, str(len(plugin_sources))))
+    readiness = get_real_data_readiness()
+    readiness_totals = _field(readiness, "totals", {}) or {}
+    checks.append(("real data readiness has connected source", int(_field(readiness_totals, "ready", 0) or 0) >= 1, str(_field(readiness_totals, "ready", 0))))
 
     checks.append(_check_reflex_compile())
 

@@ -25,6 +25,7 @@ from datosenorden.web.app_services import get_guided_discovery_options
 from datosenorden.web.app_services import get_guided_questions
 from datosenorden.web.app_services import get_investigation
 from datosenorden.web.app_services import get_investigation_knowledge
+from datosenorden.web.app_services import get_real_data_readiness
 from datosenorden.web.app_services import get_entity_comparison
 from datosenorden.web.app_services import get_investigation_graph
 from datosenorden.web.app_services import get_investigation_markdown
@@ -898,6 +899,11 @@ class AppState(rx.State):
     ecosystem_prototype_count: int = 0
     ecosystem_planned_count: int = 0
     ecosystem_concept_count: int = 0
+    real_data_sources: list[dict] = []
+    real_data_ready_count: int = 0
+    real_data_partial_count: int = 0
+    real_data_demo_count: int = 0
+    real_data_without_loader_count: int = 0
     connection_rows: list[dict] = []
     connection_rows_preview: list[dict] = []
     discovery_case_rows: list[dict] = []
@@ -1194,6 +1200,21 @@ class AppState(rx.State):
             self.ecosystem_prototype_count = len(self.ecosystem_prototype_sources)
             self.ecosystem_planned_count = len(self.ecosystem_planned_sources)
             self.ecosystem_concept_count = len(self.ecosystem_concepts)
+            readiness = _json_dict(get_real_data_readiness())
+            self.real_data_sources = [
+                {
+                    **dict(row),
+                    "entity_types_text": " | ".join(str(item) for item in row.get("entity_types", [])),
+                    "last_loaded_text": str(row.get("last_loaded", "from_database")),
+                    "official_url_text": str(row.get("official_url", "")) or "Pendiente",
+                }
+                for row in _json_list(readiness.get("entries", []))
+            ]
+            totals = _json_dict(readiness.get("totals", {}))
+            self.real_data_ready_count = int(totals.get("ready", 0) or 0)
+            self.real_data_partial_count = int(totals.get("partial", 0) or 0)
+            self.real_data_demo_count = int(totals.get("demo", 0) or 0)
+            self.real_data_without_loader_count = int(totals.get("without_loader", 0) or 0)
         except Exception as exc:  # noqa: BLE001
             self.error_message = f"{type(exc).__name__}: {exc}"
 
@@ -1942,6 +1963,29 @@ def ecosystem_roadmap_card(row: dict) -> rx.Component:
         rx.text(row["sources_text"], class_name="source-fact"),
         rx.text(row.get("note_text", ""), class_name="muted small"),
         class_name="card",
+    )
+
+
+def real_data_source_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["display_name"], class_name="card-title"),
+            rx.text(row["status"], class_name=_accent_badge_class(str(row.get("status", "")))),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["description"], class_name="muted small"),
+        rx.hstack(
+            rx.text(f"registros: {row['source_records']}", class_name="mini-pill"),
+            rx.text(f"entidades: {row['entities']}", class_name="mini-pill"),
+            rx.text(f"relaciones: {row['relationships']}", class_name="mini-pill mini-pill-purple"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.text(f"formato: {row['expected_format']}", class_name="source-fact"),
+        rx.text(f"loader: {row['loader_script']}", class_name="technical-line"),
+        rx.text(f"cobertura: {row['coverage']}", class_name="muted small"),
+        class_name="card ecosystem-card real-data-card",
     )
 
 
@@ -3807,6 +3851,24 @@ def ecosystem() -> rx.Component:
                 class_name="responsive-grid",
             ),
             subtitle="Conceptos visibles en cada fuente.",
+        ),
+        page_section(
+            "Estado interno de datos reales",
+            rx.hstack(
+                metric("Listas", AppState.real_data_ready_count),
+                metric("Parciales", AppState.real_data_partial_count),
+                metric("Con demo", AppState.real_data_demo_count),
+                metric("Sin loader", AppState.real_data_without_loader_count),
+                spacing="3",
+                wrap="wrap",
+            ),
+            rx.grid(
+                rx.foreach(AppState.real_data_sources, real_data_source_card),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Panel operativo: datasets descargables, loaders locales y estado de carga. No usa scraping ni APIs externas desde la UI.",
         ),
         page_section(
             "Cómo se cruzan las fuentes",

@@ -434,6 +434,19 @@ def test_dataset_summary_includes_active_datasets(monkeypatch) -> None:
     assert summary["datasets"][0]["health"] == "active"
 
 
+def test_get_real_data_readiness_passthrough(monkeypatch) -> None:
+    monkeypatch.setattr(
+        app_services,
+        "summarize_real_dataset_registry",
+        lambda session: {"entries": [{"id": "chilecompra"}], "totals": {"ready": 1}},
+    )
+
+    result = app_services.get_real_data_readiness()
+
+    assert result["totals"]["ready"] == 1
+    assert result["entries"][0]["id"] == "chilecompra"
+
+
 def test_get_data_ecosystem_returns_registry_payload(monkeypatch) -> None:
     _patch_session(monkeypatch)
     monkeypatch.setattr(

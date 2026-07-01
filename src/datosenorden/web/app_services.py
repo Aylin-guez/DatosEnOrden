@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
 from datosenorden.maintenance.dataset_registry import list_datasets
+from datosenorden.maintenance.dataset_registry import summarize_real_dataset_registry
 from datosenorden.maintenance.demo_pack import build_demo_status
 from datosenorden.maintenance.discovery_cases import get_discovery_cases as _get_discovery_cases
 from datosenorden.maintenance.citizen_dashboard import build_citizen_dashboard
@@ -23,6 +24,8 @@ from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.entity_resolution import ResolutionResult
 from datosenorden.maintenance.entity_resolution import resolve_entity as _resolve_platform_entity
 from datosenorden.maintenance.investigation_export import export_investigation_markdown
+from datosenorden.maintenance.investigation_knowledge import build_investigation_knowledge
+from datosenorden.maintenance.investigation_knowledge import investigation_knowledge_to_dict
 from datosenorden.maintenance.investigation_story import build_investigation_story
 from datosenorden.maintenance.entity_explorer import search_buyers
 from datosenorden.maintenance.entity_explorer import search_suppliers
@@ -161,7 +164,7 @@ def get_investigation(entity_id: str) -> dict[str, Any]:
     profile = view.profile
     compact_metrics = _compact_metrics(view)
     relationship_cards = _relationship_cards(profile.direct_neighbors)
-    return {
+    payload = {
         "found": True,
         "resolution": resolved,
         "entity": _jsonify(profile.entity),
@@ -192,6 +195,12 @@ def get_investigation(entity_id: str) -> dict[str, Any]:
             "relationship_counts": _jsonify(profile.relationship_counts),
         },
     }
+    payload["knowledge"] = get_investigation_knowledge(payload)
+    return payload
+
+
+def get_investigation_knowledge(investigation: dict[str, Any]) -> dict[str, Any]:
+    return investigation_knowledge_to_dict(build_investigation_knowledge(investigation))
 
 
 
@@ -211,6 +220,11 @@ def get_dataset_summary() -> dict[str, Any]:
             "relationships": sum(int(row["relationships"]) for row in datasets),
         },
     }
+
+
+def get_real_data_readiness() -> dict[str, Any]:
+    with _session_scope() as session:
+        return _jsonify(summarize_real_dataset_registry(session))
 
 
 def get_data_ecosystem() -> dict[str, Any]:

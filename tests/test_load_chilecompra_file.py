@@ -49,19 +49,26 @@ def test_load_chilecompra_file_maps_local_json_without_real_db(monkeypatch, tmp_
                 errors=(),
             )
 
-    class FakeGraphLoader:
-        def __init__(self, session):  # noqa: ANN001
-            calls["session"] = session
-
-        def load(self, batch, dry_run=False):  # noqa: ANN001
-            calls["dry_run"] = dry_run
-            calls["batch"] = batch
-            return SimpleNamespace(id="job-1")
+    def fake_load_dataset(session, adapter, request):  # noqa: ANN001
+        calls["session"] = session
+        normalized = adapter.normalize(request)
+        batch = adapter.build_relationships(normalized)
+        calls["dry_run"] = request.dry_run
+        calls["batch"] = batch
+        return SimpleNamespace(
+            raw_count=batch.raw_count,
+            rejected_count=batch.rejected_count,
+            entities=len(batch.entities),
+            claims=len(batch.claims),
+            evidence=len(batch.evidence),
+            relationships=len(batch.public_relationships),
+            errors=(),
+        )
 
     monkeypatch.setattr(module, "SessionLocal", lambda: _SessionContext())
     monkeypatch.setattr(module, "ChileCompraNormalizer", FakeNormalizer)
     monkeypatch.setattr(module, "ChileCompraGraphMapper", FakeMapper)
-    monkeypatch.setattr(module, "GraphLoader", FakeGraphLoader)
+    monkeypatch.setattr(module, "load_dataset", fake_load_dataset)
 
     exit_code = module.main([str(payload_path), "--dry-run"])
 
@@ -70,4 +77,4 @@ def test_load_chilecompra_file_maps_local_json_without_real_db(monkeypatch, tmp_
     assert calls["dry_run"] is True
     assert calls["payload_notice"] == "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA unless the operator verifies the source."
     assert "records=1" in output
-    assert "import_job_id=job-1" in output
+    assert "import_job_id=" in output

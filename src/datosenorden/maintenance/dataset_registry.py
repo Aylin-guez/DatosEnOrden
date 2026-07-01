@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from html import escape
 from typing import Iterable
@@ -23,6 +23,25 @@ class DatasetRegistryEntry:
     source_names: tuple[str, ...] = ()
     aliases: tuple[str, ...] = ()
     planned: bool = False
+
+
+@dataclass(frozen=True)
+class RealDatasetRegistryEntry:
+    id: str
+    display_name: str
+    description: str
+    status: str
+    official_url: str
+    expected_format: str
+    loader_script: str
+    last_loaded: str
+    supports_incremental: bool
+    entity_types: tuple[str, ...]
+    coverage: str
+    demo_available: bool
+    sample_dataset: str
+    priority: str = "medium"
+    difficulty: str = "medium"
 
 
 @dataclass(frozen=True)
@@ -76,8 +95,186 @@ DATASET_REGISTRY: tuple[DatasetRegistryEntry, ...] = tuple(
 )
 
 
+REAL_DATASET_REGISTRY: tuple[RealDatasetRegistryEntry, ...] = (
+    RealDatasetRegistryEntry(
+        id="chilecompra",
+        display_name="ChileCompra",
+        description="Compras publicas y ordenes de compra cargables desde archivo local exportado o payload compatible.",
+        status="connected_file_loader",
+        official_url="https://www.mercadopublico.cl/",
+        expected_format="JSON compatible con ChileCompra, objeto con Listado o lista de ordenes de compra.",
+        loader_script="scripts/load_chilecompra_file.py",
+        last_loaded="from_database",
+        supports_incremental=False,
+        entity_types=("PUBLIC_ORGANIZATION", "COMPANY", "CONTRACT"),
+        coverage="Ordenes de compra, compradores, proveedores, evidencia y relaciones basicas.",
+        demo_available=True,
+        sample_dataset="data/sample/chilecompra_purchase_orders_sample.json",
+        priority="high",
+        difficulty="medium",
+    ),
+    RealDatasetRegistryEntry(
+        id="lobby",
+        display_name="Lobby",
+        description="Registros de reuniones de lobby desde archivo local de muestra; pendiente ruta real descargable.",
+        status="prototype_sample_loader",
+        official_url="https://www.leylobby.gob.cl/",
+        expected_format="JSON local normalizado de reuniones.",
+        loader_script="scripts/load_lobby_sample.py",
+        last_loaded="from_database",
+        supports_incremental=False,
+        entity_types=("PUBLIC_ORGANIZATION", "PERSON", "LOBBY_MEETING"),
+        coverage="Reuniones, contraparte, organismo y materia cuando el archivo local existe.",
+        demo_available=True,
+        sample_dataset="data/sample/lobby_meeting_sample.json",
+        priority="medium",
+        difficulty="medium",
+    ),
+    RealDatasetRegistryEntry(
+        id="dipres",
+        display_name="DIPRES",
+        description="Presupuesto publico desde archivo local de muestra; falta contrato de dataset descargable real.",
+        status="prototype_sample_loader",
+        official_url="https://www.dipres.gob.cl/",
+        expected_format="JSON local normalizado de presupuesto.",
+        loader_script="scripts/load_dipres_sample.py",
+        last_loaded="from_database",
+        supports_incremental=False,
+        entity_types=("PUBLIC_ORGANIZATION", "BUDGET"),
+        coverage="Asignaciones presupuestarias de prueba y relaciones con organismo.",
+        demo_available=True,
+        sample_dataset="data/sample/dipres_budget_sample.json",
+        priority="medium",
+        difficulty="medium",
+    ),
+    RealDatasetRegistryEntry(
+        id="transparencia-activa",
+        display_name="Transparencia Activa",
+        description="Cargos y roles publicos desde archivo local de muestra; pendiente fuente descargable estable.",
+        status="prototype_sample_loader",
+        official_url="https://www.portaltransparencia.cl/",
+        expected_format="JSON local normalizado de cargos/roles.",
+        loader_script="scripts/load_transparencia_sample.py",
+        last_loaded="from_database",
+        supports_incremental=False,
+        entity_types=("PUBLIC_ORGANIZATION", "PERSON", "ROLE"),
+        coverage="Roles, titulares y periodos cuando el sample esta cargado.",
+        demo_available=True,
+        sample_dataset="data/sample/transparencia_activa_sample.json",
+        priority="medium",
+        difficulty="high",
+    ),
+    RealDatasetRegistryEntry(
+        id="diario-oficial",
+        display_name="Diario Oficial",
+        description="Publicaciones oficiales desde archivo local de muestra; no descargar PDFs en esta fase.",
+        status="prototype_sample_loader",
+        official_url="https://www.diariooficial.interior.gob.cl/",
+        expected_format="JSON local normalizado de publicaciones.",
+        loader_script="scripts/load_diario_oficial_sample.py",
+        last_loaded="from_database",
+        supports_incremental=False,
+        entity_types=("PUBLIC_OBSERVATION", "PUBLIC_ORGANIZATION", "PERSON"),
+        coverage="Publicaciones, actos y entidades mencionadas en datos de prueba.",
+        demo_available=True,
+        sample_dataset="data/sample/diario_oficial_sample.json",
+        priority="medium",
+        difficulty="high",
+    ),
+    RealDatasetRegistryEntry(
+        id="registro-empresas",
+        display_name="Registro Empresas",
+        description="Relaciones societarias desde archivo local de muestra; pendiente fuente publica descargable verificable.",
+        status="prototype_sample_loader",
+        official_url="",
+        expected_format="JSON local normalizado de empresas, personas y relaciones.",
+        loader_script="scripts/load_registro_empresas_sample.py",
+        last_loaded="from_database",
+        supports_incremental=False,
+        entity_types=("COMPANY", "PERSON"),
+        coverage="Representantes, propietarios y modificaciones de muestra.",
+        demo_available=True,
+        sample_dataset="data/sample/registro_empresas_sample.json",
+        priority="low",
+        difficulty="high",
+    ),
+    RealDatasetRegistryEntry(
+        id="contraloria",
+        display_name="Contraloria",
+        description="Informes y observaciones desde archivo local de muestra.",
+        status="prototype_sample_loader",
+        official_url="https://www.contraloria.cl/",
+        expected_format="JSON local normalizado de informes.",
+        loader_script="scripts/load_contraloria_sample.py",
+        last_loaded="from_database",
+        supports_incremental=False,
+        entity_types=("PUBLIC_ORGANIZATION", "CONTROL_REPORT", "PUBLIC_OBSERVATION"),
+        coverage="Informes y observaciones de prueba.",
+        demo_available=True,
+        sample_dataset="data/sample/contraloria_sample.json",
+        priority="medium",
+        difficulty="high",
+    ),
+    RealDatasetRegistryEntry(
+        id="servel",
+        display_name="SERVEL",
+        description="Autoridades y periodos desde archivo local de muestra.",
+        status="prototype_sample_loader",
+        official_url="https://www.servel.cl/",
+        expected_format="JSON local normalizado de autoridades.",
+        loader_script="scripts/load_servel_sample.py",
+        last_loaded="from_database",
+        supports_incremental=False,
+        entity_types=("PERSON", "ROLE", "ELECTORAL_PERIOD"),
+        coverage="Autoridades electas y periodos de prueba.",
+        demo_available=True,
+        sample_dataset="data/sample/servel_authorities_sample.json",
+        priority="low",
+        difficulty="medium",
+    ),
+)
+
+
 def list_datasets(session: Session) -> tuple[DatasetSummary, ...]:
     return tuple(_summarize_dataset(session, entry) for entry in DATASET_REGISTRY)
+
+
+def list_real_dataset_registry() -> tuple[RealDatasetRegistryEntry, ...]:
+    return REAL_DATASET_REGISTRY
+
+
+def get_real_dataset_entry(dataset_id: str) -> RealDatasetRegistryEntry | None:
+    cleaned = dataset_id.strip().lower()
+    return next((entry for entry in REAL_DATASET_REGISTRY if entry.id == cleaned), None)
+
+
+def summarize_real_dataset_registry(session: Session | None = None) -> dict[str, object]:
+    entries = []
+    source_stats = {row.slug: row for row in list_datasets(session)} if session is not None else {}
+    for entry in REAL_DATASET_REGISTRY:
+        row = source_stats.get(entry.id)
+        entries.append(
+            {
+                **asdict(entry),
+                "source_records": row.source_records if row is not None else 0,
+                "entities": row.entities if row is not None else 0,
+                "claims": row.claims if row is not None else 0,
+                "evidence": row.evidence if row is not None else 0,
+                "relationships": row.relationships if row is not None else 0,
+                "health": row.health if row is not None else "unknown",
+                "ready_for_real_data": entry.status == "connected_file_loader" and bool(entry.loader_script),
+            }
+        )
+    return {
+        "entries": entries,
+        "totals": {
+            "sources": len(entries),
+            "ready": sum(1 for entry in entries if entry["ready_for_real_data"]),
+            "partial": sum(1 for entry in entries if str(entry["status"]).startswith("prototype")),
+            "demo": sum(1 for entry in entries if bool(entry["demo_available"])),
+            "without_loader": sum(1 for entry in entries if not str(entry["loader_script"]).strip()),
+        },
+    }
 
 
 def get_dataset_details(session: Session, dataset_slug: str) -> DatasetDetails | None:

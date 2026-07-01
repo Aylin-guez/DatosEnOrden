@@ -10,6 +10,9 @@ from datosenorden.maintenance.dataset_registry import render_dataset_details_tex
 from datosenorden.maintenance.dataset_registry import render_dataset_list_text
 from datosenorden.maintenance.dataset_registry import render_dataset_profile_html
 from datosenorden.maintenance.dataset_registry import resolve_dataset
+from datosenorden.maintenance.dataset_registry import get_real_dataset_entry
+from datosenorden.maintenance.dataset_registry import list_real_dataset_registry
+from datosenorden.maintenance.dataset_registry import summarize_real_dataset_registry
 
 
 def test_resolve_dataset_matches_slug_alias_and_name() -> None:
@@ -229,3 +232,23 @@ def test_render_dataset_profile_html_contains_key_sections() -> None:
     assert "source_records" in html
     assert "¿Qué significa esto?" in html
     assert "PUBLIC_ORGANIZATION" in html
+
+
+def test_real_dataset_registry_declares_operational_fields() -> None:
+    entries = list_real_dataset_registry()
+    chilecompra = get_real_dataset_entry("chilecompra")
+
+    assert chilecompra is not None
+    assert chilecompra.loader_script == "scripts/load_chilecompra_file.py"
+    assert chilecompra.expected_format
+    assert chilecompra.supports_incremental is False
+    assert "PUBLIC_ORGANIZATION" in chilecompra.entity_types
+    assert all(entry.id and entry.display_name and entry.status for entry in entries)
+
+
+def test_summarize_real_dataset_registry_is_json_safe_without_session() -> None:
+    summary = summarize_real_dataset_registry()
+
+    assert summary["totals"]["sources"] >= 1
+    assert summary["totals"]["ready"] >= 1
+    assert any(entry["id"] == "chilecompra" for entry in summary["entries"])
