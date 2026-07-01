@@ -1,0 +1,23 @@
+{
+  "Version": "LOCAL_TEST_DATA",
+  "FechaCreacion": "2026-01-01T00:00:00",
+  "_datosenorden_notice": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA. Estructura local compatible con el loader de archivo.",
+  "Listado": [
+    {
+      "Codigo": "LOCAL-OC-ARAUCO-001",
+      "Nombre": "Orden de compra local de prueba para insumos operativos",
+      "FechaEnvio": "2026-03-15",
+      "Comprador": {
+        "CodigoOrganismo": "SSA-ARAUCO-DEMO",
+        "NombreOrganismo": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+      },
+      "Proveedor": {
+        "CodigoProveedor": "PROV-DEMO-001",
+        "NombreProveedor": "Proveedor Local de Prueba SpA",
+        "RutProveedor": "00.000.000-0"
+      },
+      "MontoTotal": 1200000,
+      "Moneda": "CLP"
+    }
+  ]
+}

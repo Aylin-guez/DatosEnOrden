@@ -24,6 +24,7 @@ from datosenorden.web.app_services import get_discovery_cases
 from datosenorden.web.app_services import get_guided_discovery_options
 from datosenorden.web.app_services import get_guided_questions
 from datosenorden.web.app_services import get_investigation
+from datosenorden.web.app_services import get_investigation_knowledge
 from datosenorden.web.app_services import get_entity_comparison
 from datosenorden.web.app_services import get_investigation_graph
 from datosenorden.web.app_services import get_investigation_markdown
@@ -229,6 +230,7 @@ def _format_relationship_rows(rows: list[dict]) -> list[dict]:
     for row in rows:
         if _field(row, "who", None) is not None:
             technical = _field(row, "technical_details", {})
+            neighbor_id = _clean(_field(technical, "neighbor_id"), "")
             formatted.append(
                 {
                     "title": _clean(_field(row, "who"), "Entidad conectada"),
@@ -242,19 +244,22 @@ def _format_relationship_rows(rows: list[dict]) -> list[dict]:
                         f"relationship_id={_clean(_field(technical, 'relationship_id'))}",
                         f"relationship_type={_clean(_field(technical, 'relationship_type'))}",
                         f"direction={_clean(_field(technical, 'direction'))}",
-                        f"neighbor_id={_clean(_field(technical, 'neighbor_id'))}",
+                        f"neighbor_id={neighbor_id}",
                     ]),
                     "detail_text": "\n".join([
                         f"relationship_id={_clean(_field(technical, 'relationship_id'))}",
                         f"relationship_type={_clean(_field(technical, 'relationship_type'))}",
                         f"direction={_clean(_field(technical, 'direction'))}",
-                        f"neighbor_id={_clean(_field(technical, 'neighbor_id'))}",
+                        f"neighbor_id={neighbor_id}",
                     ]),
                     "trust_label": "Registro local de demo",
+                    "target_href": _investigation_href(neighbor_id) if neighbor_id else "",
+                    "action_label": "Abrir expediente" if neighbor_id else "Relacionado",
                 }
             )
             continue
         neighbor = _field(row, "neighbor", {})
+        neighbor_id = _clean(_field(neighbor, "id"), "")
         formatted.append(
             {
                 "title": _clean(_field(neighbor, "name"), "Entidad conectada"),
@@ -270,6 +275,8 @@ def _format_relationship_rows(rows: list[dict]) -> list[dict]:
                     f"Dirección: {_human_label(_field(row, 'direction'))}",
                 ]),
                 "trust_label": "Registro local de demo",
+                "target_href": _investigation_href(neighbor_id) if neighbor_id else "",
+                "action_label": "Abrir expediente" if neighbor_id else "Relacionado",
             }
         )
     return formatted
@@ -578,6 +585,10 @@ def _clear_investigation_state(self) -> None:
     self.related_entity_group_rows = []
     self.report_path = ""
     self.citizen_summary = ""
+    self.investigation_key_points = []
+    self.investigation_questions = []
+    self.investigation_limitations = []
+    self.investigation_neutrality_notice = ""
     self.canonical_investigation_link = ""
     self.investigation_status_message = ""
     self.investigation_status = INVESTIGATION_STATUS_IDLE
@@ -769,6 +780,8 @@ def _build_related_entity_group_rows(relationships: list[dict], registry: list[d
             "type": _display_label(entity_type),
             "why": _clean(_field(row, "explanation"), "Aparece por una relacion publica registrada."),
             "source": _clean(_field(row, "dataset"), "Grafo local"),
+            "target_href": _clean(_field(row, "target_href"), ""),
+            "action_label": _clean(_field(row, "action_label"), "Relacionado"),
         }
         label = item["type"].lower()
         if "empresa" in label or "proveedor" in label:
@@ -788,6 +801,8 @@ def _build_related_entity_group_rows(relationships: list[dict], registry: list[d
                 "type": "Registro de empresa",
                 "why": _clean(_field(row, "facts_text"), "Aparece en registros societarios locales."),
                 "source": _clean(_field(row, "dataset"), "Registro Empresas"),
+                "target_href": "",
+                "action_label": "Relacionado",
             }
         )
     for row in lobby[:3]:
@@ -797,6 +812,8 @@ def _build_related_entity_group_rows(relationships: list[dict], registry: list[d
                 "type": "Lobby",
                 "why": _clean(_field(row, "facts_text"), "Aparece por una reunion registrada localmente."),
                 "source": _clean(_field(row, "dataset"), "Lobby"),
+                "target_href": "",
+                "action_label": "Relacionado",
             }
         )
     for row in procurement[:3]:
@@ -806,6 +823,8 @@ def _build_related_entity_group_rows(relationships: list[dict], registry: list[d
                 "type": "Compra publica",
                 "why": _clean(_field(row, "facts_text"), "Aparece por una compra publica local."),
                 "source": _clean(_field(row, "dataset"), "ChileCompra"),
+                "target_href": "",
+                "action_label": "Relacionado",
             }
         )
     flattened: list[dict] = []
@@ -964,6 +983,10 @@ class AppState(rx.State):
     related_entity_group_rows: list[dict] = []
     report_path: str = ""
     citizen_summary: str = ""
+    investigation_key_points: list[dict] = []
+    investigation_questions: list[str] = []
+    investigation_limitations: list[str] = []
+    investigation_neutrality_notice: str = ""
     canonical_investigation_link: str = DEMO_INVESTIGATION_URL
     demo_sources_ready: bool = False
     demo_investigation_ready: bool = False
@@ -1684,14 +1707,29 @@ class AppState(rx.State):
             for item in _field(contributions, "sources", [])
         ]
         self.source_coverage_rows = _build_source_coverage_rows(self.source_contribution_rows)
-        self.citizen_summary = _citizen_summary_text(
-            self.entity_name,
-            self.datasets_involved,
-            self.evidence_count,
-            self.relationship_count,
-            self.connected_entities,
-            self.dataset_badges,
+        knowledge = _json_dict(data.get("knowledge") or get_investigation_knowledge(data))
+        self.citizen_summary = str(
+            _field(knowledge, "citizen_summary", "")
+            or _citizen_summary_text(
+                self.entity_name,
+                self.datasets_involved,
+                self.evidence_count,
+                self.relationship_count,
+                self.connected_entities,
+                self.dataset_badges,
+            )
         )
+        self.investigation_key_points = [
+            {
+                "text": str(_field(item, "text", "")),
+                "sources_text": " | ".join(str(value) for value in _field(item, "source_ids", [])),
+                "evidence_text": " | ".join(str(value) for value in _field(item, "evidence_ids", [])),
+            }
+            for item in _json_list(_field(knowledge, "key_points", []))
+        ]
+        self.investigation_questions = [str(item) for item in _field(knowledge, "suggested_questions", [])]
+        self.investigation_limitations = [str(item) for item in _field(knowledge, "limitations", [])]
+        self.investigation_neutrality_notice = str(_field(knowledge, "neutrality_notice", ""))
         self.canonical_investigation_link = f"http://localhost:3000{_investigation_href(self.entity_name or target)}"
         self.last_loaded_investigation_target = self.selected_entity_id
         self.last_valid_investigation_target = target
@@ -1978,10 +2016,69 @@ def journey_node(row: dict) -> rx.Component:
     )
 
 
+def investigation_key_point_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text(row["text"], class_name="muted"),
+        rx.cond(
+            row["evidence_text"] != "",
+            rx.text(f"Evidencia: {row['evidence_text']}", class_name="source-fact"),
+        ),
+        rx.cond(
+            row["sources_text"] != "",
+            rx.text(f"Fuentes: {row['sources_text']}", class_name="mini-pill"),
+        ),
+        class_name="knowledge-point",
+    )
+
+
 def citizen_summary_panel() -> rx.Component:
     return investigation_panel(
         "Resumen ciudadano",
         rx.text(AppState.citizen_summary, class_name="story-summary story-summary-dominant"),
+        rx.cond(
+            AppState.investigation_key_points,
+            rx.vstack(
+                rx.text("Puntos clave", class_name="context-title"),
+                rx.grid(
+                    rx.foreach(AppState.investigation_key_points, investigation_key_point_card),
+                    columns="2",
+                    spacing="2",
+                    class_name="responsive-grid",
+                ),
+                spacing="2",
+                align="stretch",
+            ),
+        ),
+        rx.cond(
+            AppState.investigation_questions,
+            rx.vstack(
+                rx.text("Preguntas sugeridas", class_name="context-title"),
+                rx.hstack(
+                    rx.foreach(AppState.investigation_questions, lambda item: rx.text(item, class_name="search-chip")),
+                    spacing="2",
+                    wrap="wrap",
+                ),
+                spacing="2",
+                align="stretch",
+            ),
+        ),
+        rx.cond(
+            AppState.investigation_limitations,
+            rx.vstack(
+                rx.text("Limitaciones", class_name="context-title"),
+                rx.hstack(
+                    rx.foreach(AppState.investigation_limitations, lambda item: rx.text(item, class_name="mini-pill evidence-trust")),
+                    spacing="2",
+                    wrap="wrap",
+                ),
+                spacing="2",
+                align="stretch",
+            ),
+        ),
+        rx.cond(
+            AppState.investigation_neutrality_notice != "",
+            rx.text(AppState.investigation_neutrality_notice, class_name="source-fact"),
+        ),
         rx.grid(
             summary_metric_card("Fuentes publicas", AppState.datasets_involved),
             summary_metric_card("Evidencias", AppState.evidence_count),
@@ -2021,6 +2118,11 @@ def related_entity_card(row: dict) -> rx.Component:
         rx.text(row["type"], class_name="mini-pill mini-pill-purple"),
         rx.text(row["title"], class_name="context-title"),
         rx.text(row["why"], class_name="muted small"),
+        rx.cond(
+            row.get("target_href", "") != "",
+            rx.button(row.get("action_label", "Abrir expediente"), on_click=rx.redirect(row["target_href"]), class_name="button button-secondary"),
+            rx.text(row.get("action_label", "Relacionado"), class_name="mini-pill"),
+        ),
         class_name="context-item related-entity-card",
     )
 
@@ -2034,6 +2136,11 @@ def context_entity_card(row: dict) -> rx.Component:
         rx.text(row["title"], class_name="context-title"),
         rx.text(row["relationship_type"], class_name="mini-pill mini-pill-purple"),
         rx.text(row["explanation"], class_name="muted small"),
+        rx.cond(
+            row.get("target_href", "") != "",
+            rx.button(row.get("action_label", "Abrir expediente"), on_click=rx.redirect(row["target_href"]), class_name="button button-secondary"),
+            rx.text(row.get("action_label", "Relacionado"), class_name="mini-pill"),
+        ),
         class_name="context-item",
     )
 
@@ -2276,7 +2383,11 @@ def workspace_match_card(row: dict) -> rx.Component:
             wrap="wrap",
         ),
         rx.hstack(
-            rx.button("Abrir expediente", on_click=AppState.open_canonical_investigation(row["canonical_entity_id"]), class_name="button button-secondary"),
+            rx.cond(
+                row.get("action_href", "") != "",
+                rx.button(row.get("action_label", "Abrir"), on_click=rx.redirect(row["action_href"]), class_name="button button-secondary"),
+                rx.button("Abrir expediente", on_click=AppState.open_canonical_investigation(row["canonical_entity_id"]), class_name="button button-secondary"),
+            ),
             rx.cond(
                 row.get("is_record", False),
                 rx.text("Ver registro: pendiente", class_name="mini-pill"),
@@ -2627,6 +2738,7 @@ def tracking_event_card(row: dict) -> rx.Component:
         rx.text(row["title"], class_name="card-title"),
         rx.text(row["description"], class_name="muted small"),
         rx.text(f"Fuente: {row['source']}", class_name="source-fact"),
+        rx.text(rx.cond(row.get("origin", "") == "demo_manual", "Origen: demo manual", "Origen: timeline derivada"), class_name="mini-pill evidence-trust"),
         class_name="card tracking-event-card",
     )
 
@@ -2663,6 +2775,7 @@ def knowledge_document_card(row: dict) -> rx.Component:
         rx.text(row["title"], class_name="card-title"),
         rx.text(f"{row['source']} | {row['document_type']} | {row['published_at']}", class_name="muted small"),
         rx.text(row["summary"], class_name="source-fact"),
+        rx.text(row["official_url"], class_name="mono id-line"),
         rx.button("Abrir expediente", on_click=AppState.open_canonical_investigation(row["related_expediente_target"]), class_name="button"),
         class_name="card tracking-document-card",
     )
@@ -4144,6 +4257,21 @@ def library() -> rx.Component:
             subtitle="Ideas principales vinculadas a evidencia.",
         ),
         page_section(
+            "Anclas y evidencia",
+            rx.cond(
+                AppState.knowledge_evidence,
+                rx.grid(
+                    rx.foreach(AppState.knowledge_evidence, tracking_evidence_card),
+                    columns="2",
+                    spacing="3",
+                    class_name="responsive-grid",
+                ),
+                rx.text("Todavia no hay anclas de evidencia disponibles.", class_name="muted small"),
+            ),
+            rx.text(AppState.knowledge_notice, class_name="muted small"),
+            subtitle="Cada resumen debe poder revisarse contra una referencia original o local.",
+        ),
+        page_section(
             "Siguientes pasos",
             rx.grid(
                 next_step_card("Leer el reporte", "Ver la lectura completa en formato articulo.", "Ir a Reportes", "/reports"),
@@ -4944,6 +5072,15 @@ style = {
         "border_radius": "14px",
         "padding": "8px",
         "background": "#1f1f24",
+    },
+    ".knowledge-point": {
+        "border": "1px solid rgba(45, 212, 191, 0.16)",
+        "border_left": "3px solid rgba(45, 212, 191, 0.42)",
+        "border_radius": "8px",
+        "padding": "12px",
+        "background": "rgba(24, 24, 27, 0.42)",
+        "display": "grid",
+        "gap": "8px",
     },
     ".shell.theme-light .narrative-item": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.16)"},
     ".narrative-text": {"font_size": "13px", "color": "#e4e4e7", "line_height": "1.45"},

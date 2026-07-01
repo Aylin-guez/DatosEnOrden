@@ -657,4 +657,4 @@ def _item_to_dict(item: TrackableItem) -> dict[str, Any]:
 
 
 def _event_to_dict(event: TrackingEvent) -> dict[str, Any]:
-    return {**event.__dict__, "status": event.status.value}
+    return {**event.__dict__, "status": event.status.value, "origin": "demo_manual"}

@@ -30,6 +30,12 @@ def build_investigation_timeline(entity_id: str) -> dict[str, object]:
                 "dataset_name": event.dataset_name,
                 "category": category,
                 "explanation": event.explanation or event_explanation(event.predicate),
+                "origin": "derived_from_expediente",
+                "source_id": str(event.source_record_id),
+                "source_record_id": str(event.source_record_id),
+                "evidence_id": "",
+                "claim_id": str(event.claim_id),
+                "predicate": event.predicate,
                 "technical": [
                     f"claim_id={event.claim_id}",
                     f"predicate={event.predicate}",
