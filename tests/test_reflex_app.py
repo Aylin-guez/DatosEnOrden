@@ -865,3 +865,31 @@ def test_load_dashboard_populates_summary_metrics(monkeypatch) -> None:
     assert state.dashboard_budget_total == 123
     assert state.dashboard_contracts == 4
     assert state.dashboard_featured_entities[0]["organization_name"] == "Entidad demo"
+
+
+def test_official_document_route_and_nav_are_visible() -> None:
+    source = inspect.getsource(reflex_app.shell)
+
+    assert 'rx.link("Documento Oficial", href="/official-document"' in source
+    assert "PAGE_DOCUMENT" in source
+
+    page_source = inspect.getsource(reflex_app.official_document)
+    assert '@rx.page(route="/official-document"' in page_source
+    assert "official_document_viewer" in page_source
+    assert "Resumen ciudadano" in page_source
+    assert "Puntos importantes" in page_source
+    assert "Preguntas" in page_source
+    assert "Referencias" in page_source
+
+
+def test_official_document_components_link_references_to_anchors() -> None:
+    viewer_source = inspect.getsource(reflex_app.official_document_viewer)
+    reference_source = inspect.getsource(reflex_app.reference_button)
+    fragment_source = inspect.getsource(reflex_app.document_fragment_card)
+
+    assert "document_id" in viewer_source
+    assert "fragment_id" in viewer_source
+    assert "highlight" in viewer_source
+    assert "AppState.select_document_anchor" in reference_source
+    assert "Este parrafo respalda" in fragment_source
+    assert "document-fragment-active" in fragment_source

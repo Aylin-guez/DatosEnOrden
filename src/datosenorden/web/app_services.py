@@ -96,10 +96,23 @@ def search_entities(query: str, limit: int = 10) -> list[dict[str, Any]]:
 def resolve_investigation_target(value: str) -> dict[str, Any]:
     platform_resolution = _resolve_entity_for_investigation(value)
     platform_entity = platform_resolution.entity if platform_resolution.found else None
-    target = platform_entity.id if platform_entity is not None else value
 
-    canonical = _resolve_canonical_expediente_target(target)
+    canonical = _resolve_canonical_expediente_target(value)
+    if not canonical.get("found", False) and platform_entity is not None:
+        canonical = _resolve_canonical_expediente_target(platform_entity.canonical_name)
+    if not canonical.get("found", False) and platform_entity is not None:
+        canonical = _resolve_canonical_expediente_target(platform_entity.id)
     if not canonical.get("found", False):
+        if platform_entity is not None:
+            return {
+                "found": True,
+                "entity_id": str(platform_entity.id),
+                "entity_name": str(platform_entity.canonical_name),
+                "matched_by": _investigation_match_method(platform_resolution, "entity_resolution"),
+                "warning": str(canonical.get("warning", "")),
+                "canonical": canonical,
+                "entity_resolution": platform_resolution.to_dict(),
+            }
         return {
             "found": False,
             "entity_id": "",

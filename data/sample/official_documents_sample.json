@@ -1,0 +1,54 @@
+{
+  "documents": [
+    {
+      "id": "knowledge-doc-arauco-hospital-demo-2026",
+      "title": "Ficha local de demostracion sobre fortalecimiento hospitalario Arauco 2026",
+      "source": "Documento oficial local de prueba",
+      "document_type": "official_record_demo",
+      "published_at": "2026-04-12",
+      "official_url": "local://knowledge/araucodemo/ficha-fortalecimiento-2026",
+      "summary": "Documento local de prueba para demostrar como DatosEnOrden transforma metadata y secciones en conocimiento estructurado.",
+      "related_expediente_target": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "related_tracking_item_id": "tracking-arauco-hospital-strengthening",
+      "related_citizen_report_id": "citizen-report-arauco-hospital-demo",
+      "public_source": "Repositorio publico local de demostracion",
+      "hash_sha256": "demo-sha256-knowledge-arauco-2026",
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "sections": [
+        {
+          "id": "metadata",
+          "title": "Metadata declarada",
+          "order": 1,
+          "text": "El registro indica una ficha local de demostracion asociada al Servicio de Salud Arauco Hospital de Arauco. La metadata incluye fuente, fecha, tipo documental y conexiones locales de prueba.",
+          "page": 18,
+          "fragment_id": "frag-metadata-declarada"
+        },
+        {
+          "id": "purpose",
+          "title": "Proposito informado",
+          "order": 2,
+          "text": "El proposito del documento demo es explicar una lectura ciudadana de antecedentes sobre fortalecimiento hospitalario. No evalua desempeno, no asigna responsabilidad y no reemplaza la evidencia original.",
+          "page": 19,
+          "fragment_id": "frag-proposito-informado"
+        },
+        {
+          "id": "connections",
+          "title": "Conexiones reutilizables",
+          "order": 3,
+          "text": "El documento se conecta con un expediente, un seguimiento documental, un reporte ciudadano y una fuente publica local. Estas conexiones permiten reutilizar el mismo conocimiento en distintas vistas del producto.",
+          "page": 20,
+          "fragment_id": "frag-conexiones-reutilizables"
+        },
+        {
+          "id": "review",
+          "title": "Revision recomendada",
+          "order": 4,
+          "text": "Cada afirmacion generada desde este documento debe revisarse contra el registro original, especialmente antes de publicar o citar conclusiones. El motor solo organiza evidencia local de prueba.",
+          "page": 21,
+          "fragment_id": "frag-revision-recomendada"
+        }
+      ]
+    }
+  ]
+}

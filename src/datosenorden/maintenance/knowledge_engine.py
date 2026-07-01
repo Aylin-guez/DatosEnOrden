@@ -26,6 +26,60 @@ class DocumentSection:
     title: str
     text: str
     order: int
+    page: int = 1
+    fragment_id: str = ""
+
+
+@dataclass(frozen=True)
+class DocumentReference:
+    document_id: str
+    title: str
+    source: str
+    document_type: str
+    published_at: str
+    official_url: str
+    classification: str = LOCAL_TEST_DATA
+    official_status: str = NOT_OFFICIAL_DATA
+
+
+@dataclass(frozen=True)
+class PageReference:
+    document_id: str
+    page: int
+    label: str
+
+
+@dataclass(frozen=True)
+class DocumentFragment:
+    id: str
+    document_id: str
+    page: int
+    section_id: str
+    section_title: str
+    text: str
+    anchor_id: str
+
+
+@dataclass(frozen=True)
+class FragmentAnchor:
+    id: str
+    document_id: str
+    page: int
+    section_id: str
+    fragment_id: str
+    label: str
+    excerpt: str
+
+
+@dataclass(frozen=True)
+class Citation:
+    id: str
+    document_id: str
+    page: int
+    section_id: str
+    fragment_id: str
+    quoted_text: str
+    label: str
 
 
 @dataclass(frozen=True)
@@ -54,6 +108,11 @@ class KeyPoint:
     detail: str
     section_id: str
     evidence_id: str
+    document_id: str
+    page: int
+    fragment_id: str
+    citation_id: str
+    reference_label: str
 
 
 @dataclass(frozen=True)
@@ -62,6 +121,11 @@ class CitizenQuestion:
     question: str
     why_it_matters: str
     evidence_id: str
+    document_id: str
+    page: int
+    fragment_id: str
+    citation_id: str
+    reference_label: str
 
 
 @dataclass(frozen=True)
@@ -70,6 +134,7 @@ class KnowledgeClaim:
     claim: str
     evidence_ids: tuple[str, ...]
     review_note: str
+    citation_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -77,10 +142,14 @@ class EvidenceAnchor:
     id: str
     document_id: str
     section_id: str
+    page: int
+    fragment_id: str
     source: str
     label: str
     url: str
     excerpt: str
+    citation_id: str
+    quoted_text: str
     classification: str = LOCAL_TEST_DATA
     official_status: str = NOT_OFFICIAL_DATA
 
@@ -88,6 +157,11 @@ class EvidenceAnchor:
 @dataclass(frozen=True)
 class KnowledgeDigest:
     document: OfficialDocument
+    document_reference: DocumentReference
+    pages: tuple[PageReference, ...]
+    fragments: tuple[DocumentFragment, ...]
+    anchors: tuple[FragmentAnchor, ...]
+    citations: tuple[Citation, ...]
     citizen_summary: str
     key_points: tuple[KeyPoint, ...]
     citizen_questions: tuple[CitizenQuestion, ...]
@@ -128,12 +202,20 @@ def build_knowledge_digest(document: OfficialDocument | str, path: Path | str = 
             raise ValueError(f"Unknown knowledge document: {document}")
         document = resolved
 
-    evidence = _build_evidence(document)
+    fragments = _build_fragments(document)
+    fragment_anchors = _build_fragment_anchors(fragments)
+    citations = _build_citations(fragment_anchors)
+    evidence = _build_evidence(document, fragment_anchors, citations)
     key_points = _build_key_points(document, evidence)
     questions = _build_citizen_questions(document, evidence)
-    claims = _build_claims(document, evidence)
+    claims = _build_claims(document, evidence, citations)
     return KnowledgeDigest(
         document=document,
+        document_reference=_document_reference(document),
+        pages=_build_pages(fragments),
+        fragments=fragments,
+        anchors=fragment_anchors,
+        citations=citations,
         citizen_summary=_build_citizen_summary(document),
         key_points=key_points,
         citizen_questions=questions,
@@ -190,6 +272,11 @@ def get_knowledge_vocabulary(config: PlatformConfig | None = None) -> dict[str, 
 def knowledge_digest_to_dict(digest: KnowledgeDigest) -> dict[str, Any]:
     return {
         "document": official_document_to_dict(digest.document),
+        "document_reference": digest.document_reference.__dict__,
+        "pages": [page.__dict__ for page in digest.pages],
+        "fragments": [fragment.__dict__ for fragment in digest.fragments],
+        "anchors": [anchor.__dict__ for anchor in digest.anchors],
+        "citations": [citation.__dict__ for citation in digest.citations],
         "citizen_summary": digest.citizen_summary,
         "key_points": [point.__dict__ for point in digest.key_points],
         "citizen_questions": [question.__dict__ for question in digest.citizen_questions],
@@ -217,6 +304,8 @@ def _official_document_from_dict(row: dict[str, Any]) -> OfficialDocument:
             title=str(section.get("title", "")),
             text=str(section.get("text", "")),
             order=int(section.get("order", index + 1) or index + 1),
+            page=int(section.get("page", index + 1) or index + 1),
+            fragment_id=str(section.get("fragment_id", "")),
         )
         for index, section in enumerate(row.get("sections", []))
     )
@@ -248,25 +337,101 @@ def _build_citizen_summary(document: OfficialDocument) -> str:
     )
 
 
-def _build_evidence(document: OfficialDocument) -> tuple[EvidenceAnchor, ...]:
-    anchors: list[EvidenceAnchor] = []
+def _document_reference(document: OfficialDocument) -> DocumentReference:
+    return DocumentReference(
+        document_id=document.id,
+        title=document.title,
+        source=document.source,
+        document_type=document.document_type,
+        published_at=document.published_at,
+        official_url=document.official_url,
+        classification=document.classification,
+        official_status=document.official_status,
+    )
+
+
+def _build_fragments(document: OfficialDocument) -> tuple[DocumentFragment, ...]:
+    return tuple(
+        DocumentFragment(
+            id=_fragment_id(document, section),
+            document_id=document.id,
+            page=section.page,
+            section_id=section.id,
+            section_title=section.title,
+            text=section.text,
+            anchor_id=f"anchor-{document.id}-{_fragment_id(document, section)}",
+        )
+        for section in document.sections
+    )
+
+
+def _build_pages(fragments: tuple[DocumentFragment, ...]) -> tuple[PageReference, ...]:
+    if not fragments:
+        return ()
+    pages = sorted({fragment.page for fragment in fragments})
+    return tuple(PageReference(document_id=fragments[0].document_id, page=page, label=f"Pagina {page}") for page in pages)
+
+
+def _build_fragment_anchors(fragments: tuple[DocumentFragment, ...]) -> tuple[FragmentAnchor, ...]:
+    return tuple(
+        FragmentAnchor(
+            id=fragment.anchor_id,
+            document_id=fragment.document_id,
+            page=fragment.page,
+            section_id=fragment.section_id,
+            fragment_id=fragment.id,
+            label=fragment.section_title,
+            excerpt=_excerpt(fragment.text),
+        )
+        for fragment in fragments
+    )
+
+
+def _build_citations(anchors: tuple[FragmentAnchor, ...]) -> tuple[Citation, ...]:
+    return tuple(
+        Citation(
+            id=f"citation-{anchor.document_id}-{anchor.fragment_id}",
+            document_id=anchor.document_id,
+            page=anchor.page,
+            section_id=anchor.section_id,
+            fragment_id=anchor.fragment_id,
+            quoted_text=anchor.excerpt,
+            label=f"Pagina {anchor.page} - {anchor.label}",
+        )
+        for anchor in anchors
+    )
+
+
+def _build_evidence(
+    document: OfficialDocument,
+    fragment_anchors: tuple[FragmentAnchor, ...],
+    citations: tuple[Citation, ...],
+) -> tuple[EvidenceAnchor, ...]:
+    evidence: list[EvidenceAnchor] = []
+    citation_by_fragment = {citation.fragment_id: citation for citation in citations}
+    anchor_by_section = {anchor.section_id: anchor for anchor in fragment_anchors}
     for section in document.sections:
-        anchors.append(
+        fragment_id = _fragment_id(document, section)
+        citation = citation_by_fragment.get(fragment_id)
+        fragment_anchor = anchor_by_section.get(section.id)
+        evidence.append(
             EvidenceAnchor(
                 id=f"evidence-{document.id}-{section.id}",
                 document_id=document.id,
                 section_id=section.id,
+                page=section.page,
+                fragment_id=fragment_id,
                 source=document.source,
                 label=section.title,
-                url=f"{document.official_url}#{section.id}",
-                excerpt=_excerpt(section.text),
+                url=f"{document.official_url}#page={section.page}&fragment={fragment_id}",
+                excerpt=fragment_anchor.excerpt if fragment_anchor is not None else _excerpt(section.text),
+                citation_id=citation.id if citation is not None else "",
+                quoted_text=citation.quoted_text if citation is not None else _excerpt(section.text, limit=160),
                 classification=document.classification,
                 official_status=document.official_status,
             )
         )
-    return tuple(anchors)
-
-
+    return tuple(evidence)
 def _build_key_points(document: OfficialDocument, evidence: tuple[EvidenceAnchor, ...]) -> tuple[KeyPoint, ...]:
     points: list[KeyPoint] = []
     for index, section in enumerate(document.sections[:5], start=1):
@@ -278,6 +443,11 @@ def _build_key_points(document: OfficialDocument, evidence: tuple[EvidenceAnchor
                 detail=_first_sentence(section.text) or document.summary,
                 section_id=section.id,
                 evidence_id=anchor.id if anchor is not None else "",
+                document_id=document.id,
+                page=anchor.page if anchor is not None else section.page,
+                fragment_id=anchor.fragment_id if anchor is not None else _fragment_id(document, section),
+                citation_id=anchor.citation_id if anchor is not None else "",
+                reference_label=_reference_label(anchor),
             )
         )
     return tuple(points)
@@ -310,13 +480,23 @@ def _build_citizen_questions(
                 question=question,
                 why_it_matters=why,
                 evidence_id=anchor.id if anchor is not None else "",
+                document_id=document.id,
+                page=anchor.page if anchor is not None else section.page,
+                fragment_id=anchor.fragment_id if anchor is not None else _fragment_id(document, section),
+                citation_id=anchor.citation_id if anchor is not None else "",
+                reference_label=_reference_label(anchor),
             )
         )
     return tuple(questions)
 
 
-def _build_claims(document: OfficialDocument, evidence: tuple[EvidenceAnchor, ...]) -> tuple[KnowledgeClaim, ...]:
+def _build_claims(
+    document: OfficialDocument,
+    evidence: tuple[EvidenceAnchor, ...],
+    citations: tuple[Citation, ...],
+) -> tuple[KnowledgeClaim, ...]:
     evidence_ids = tuple(anchor.id for anchor in evidence)
+    citation_ids = tuple(citation.id for citation in citations)
     first_evidence = evidence_ids[:1]
     return (
         KnowledgeClaim(
@@ -324,18 +504,21 @@ def _build_claims(document: OfficialDocument, evidence: tuple[EvidenceAnchor, ..
             claim=f"El documento demo se identifica como {document.title}.",
             evidence_ids=first_evidence,
             review_note="Revisar y verificar titulo, fuente y URL en el registro original antes de reutilizar.",
+            citation_ids=citation_ids[:1],
         ),
         KnowledgeClaim(
             id="claim-related-expediente",
             claim=f"El documento se conecta al expediente {document.related_expediente_target}.",
             evidence_ids=evidence_ids[:2],
             review_note="La conexion es metadata local de prueba y debe revisarse con evidencia original.",
+            citation_ids=citation_ids[:2],
         ),
         KnowledgeClaim(
             id="claim-public-source",
             claim=f"La fuente publica declarada para este digest es {document.public_source}.",
             evidence_ids=evidence_ids[-1:] if evidence_ids else (),
             review_note="No usar esta afirmacion como conclusion automatica; revisar la fuente original.",
+            citation_ids=citation_ids[-1:] if citation_ids else (),
         ),
     )
 
@@ -416,6 +599,16 @@ def _render_knowledge_html(digest: KnowledgeDigest) -> str:
 
 def _anchor_for_section(evidence: tuple[EvidenceAnchor, ...], section_id: str) -> EvidenceAnchor | None:
     return next((anchor for anchor in evidence if anchor.section_id == section_id), None)
+
+
+def _fragment_id(document: OfficialDocument, section: DocumentSection) -> str:
+    return section.fragment_id or f"{document.id}-{section.id}"
+
+
+def _reference_label(anchor: EvidenceAnchor | None) -> str:
+    if anchor is None:
+        return "Referencia pendiente"
+    return f"Pagina {anchor.page} - {anchor.label}"
 
 
 def _first_sentence(text: str) -> str:

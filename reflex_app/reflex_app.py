@@ -59,6 +59,7 @@ PAGE_INVESTIGATION = "investigation"
 PAGE_TRACKING = "tracking"
 PAGE_KNOWLEDGE = "knowledge"
 PAGE_LIBRARY = "library"
+PAGE_DOCUMENT = "official_document"
 PAGE_REPORTS = "reports"
 PAGE_DASHBOARD = "dashboard"
 PAGE_DEMO = "demo"
@@ -327,6 +328,69 @@ def _json_list(value: object) -> list:
     safe = to_json_safe(value)
     return safe if isinstance(safe, list) else []
 
+
+
+def _reference_rows(rows: list[dict], evidence_by_id: dict[str, dict]) -> list[dict]:
+    enriched: list[dict] = []
+    for row in rows:
+        evidence = evidence_by_id.get(str(row.get("evidence_id", "")), {})
+        page = int(row.get("page", evidence.get("page", 1)) or 1)
+        fragment_id = str(row.get("fragment_id", evidence.get("fragment_id", "")))
+        reference_label = str(row.get("reference_label", evidence.get("reference_label", ""))) or f"Pagina {page}"
+        enriched.append(
+            {
+                **dict(row),
+                "page": page,
+                "fragment_id": fragment_id,
+                "reference_label": reference_label,
+                "quoted_text": str(evidence.get("quoted_text", evidence.get("excerpt", ""))),
+            }
+        )
+    return enriched
+
+
+def _claim_reference_row(row: dict, evidence_by_id: dict[str, dict]) -> dict:
+    evidence_ids = [str(ref) for ref in row.get("evidence_ids", [])]
+    first_evidence = evidence_by_id.get(evidence_ids[0], {}) if evidence_ids else {}
+    page = int(first_evidence.get("page", 1) or 1)
+    fragment_id = str(first_evidence.get("fragment_id", ""))
+    reference_label = str(first_evidence.get("reference_label", "")) or f"Pagina {page}"
+    return {
+        **dict(row),
+        "evidence_text": " | ".join(evidence_ids),
+        "citation_text": " | ".join(str(ref) for ref in row.get("citation_ids", [])),
+        "page": page,
+        "fragment_id": fragment_id,
+        "reference_label": reference_label,
+        "quoted_text": str(first_evidence.get("quoted_text", first_evidence.get("excerpt", ""))),
+    }
+
+
+def _document_fragment_rows(
+    fragments: list[dict],
+    key_points: list[dict],
+    questions: list[dict],
+    claims: list[dict],
+) -> list[dict]:
+    supported_by: dict[str, list[str]] = {}
+    for row in key_points:
+        supported_by.setdefault(str(row.get("fragment_id", "")), []).append(f"Punto importante: {row.get('title', '')}")
+    for row in questions:
+        supported_by.setdefault(str(row.get("fragment_id", "")), []).append(f"Pregunta frecuente: {row.get('question', '')}")
+    for row in claims:
+        supported_by.setdefault(str(row.get("fragment_id", "")), []).append(f"Resumen ciudadano: {row.get('claim', '')}")
+    enriched: list[dict] = []
+    for fragment in fragments:
+        fragment_id = str(fragment.get("id", ""))
+        supports = [item for item in supported_by.get(fragment_id, []) if item.strip()]
+        enriched.append(
+            {
+                **dict(fragment),
+                "supports": supports,
+                "supports_text": " | ".join(supports) if supports else "Sin afirmaciones asociadas en esta demo.",
+            }
+        )
+    return enriched
 
 def _display_label(value: object) -> str:
     labels = {
@@ -1030,9 +1094,16 @@ class AppState(rx.State):
     knowledge_questions: list[dict] = []
     knowledge_claims: list[dict] = []
     knowledge_evidence: list[dict] = []
+    knowledge_pages: list[dict] = []
+    knowledge_fragments: list[dict] = []
+    knowledge_citations: list[dict] = []
     knowledge_connections: list[dict] = []
     knowledge_notice: str = ""
     knowledge_expediente_target: str = DEMO_INVESTIGATION_TARGET
+    knowledge_selected_page: int = 18
+    knowledge_selected_fragment_id: str = ""
+    knowledge_selected_reference_label: str = "Pagina 18"
+    knowledge_selected_excerpt: str = ""
     knowledge_error: str = ""
     investigation_status_message: str = ""
     investigation_status: str = INVESTIGATION_STATUS_IDLE
@@ -1397,16 +1468,28 @@ class AppState(rx.State):
             self.knowledge_document = document
             self.knowledge_title = str(_field(document, "title", ""))
             self.knowledge_summary = str(_field(demo, "citizen_summary", ""))
-            self.knowledge_key_points = _json_list(demo.get("key_points", []))
-            self.knowledge_questions = _json_list(demo.get("citizen_questions", []))
+            evidence_rows = _json_list(demo.get("evidence", []))
+            evidence_by_id = {str(row.get("id", "")): row for row in evidence_rows}
+            self.knowledge_pages = _json_list(demo.get("pages", []))
+            self.knowledge_citations = _json_list(demo.get("citations", []))
+            self.knowledge_key_points = _reference_rows(_json_list(demo.get("key_points", [])), evidence_by_id)
+            self.knowledge_questions = _reference_rows(_json_list(demo.get("citizen_questions", [])), evidence_by_id)
             self.knowledge_claims = [
-                {
-                    **dict(row),
-                    "evidence_text": " | ".join(str(ref) for ref in row.get("evidence_ids", [])),
-                }
+                _claim_reference_row(row, evidence_by_id)
                 for row in _json_list(demo.get("claims", []))
             ]
-            self.knowledge_evidence = _json_list(demo.get("evidence", []))
+            self.knowledge_evidence = evidence_rows
+            self.knowledge_fragments = _document_fragment_rows(
+                _json_list(demo.get("fragments", [])),
+                self.knowledge_key_points,
+                self.knowledge_questions,
+                self.knowledge_claims,
+            )
+            first_anchor = self.knowledge_evidence[0] if self.knowledge_evidence else {}
+            self.knowledge_selected_page = int(first_anchor.get("page", 18) or 18)
+            self.knowledge_selected_fragment_id = str(first_anchor.get("fragment_id", ""))
+            self.knowledge_selected_reference_label = str(first_anchor.get("reference_label", "")) or f"Pagina {self.knowledge_selected_page}"
+            self.knowledge_selected_excerpt = str(first_anchor.get("excerpt", ""))
             self.knowledge_connections = [
                 {"label": str(key), "value": str(value)}
                 for key, value in _json_dict(demo.get("connections", {})).items()
@@ -1422,9 +1505,16 @@ class AppState(rx.State):
             self.knowledge_questions = []
             self.knowledge_claims = []
             self.knowledge_evidence = []
+            self.knowledge_pages = []
+            self.knowledge_fragments = []
+            self.knowledge_citations = []
             self.knowledge_connections = []
             self.knowledge_notice = ""
             self.knowledge_expediente_target = DEMO_INVESTIGATION_TARGET
+            self.knowledge_selected_page = 18
+            self.knowledge_selected_fragment_id = ""
+            self.knowledge_selected_reference_label = "Pagina 18"
+            self.knowledge_selected_excerpt = ""
             self.knowledge_error = f"{type(exc).__name__}: {exc}"
             self.error_message = self.knowledge_error
 
@@ -1479,6 +1569,17 @@ class AppState(rx.State):
 
     def open_knowledge_investigation(self):
         return rx.redirect(_investigation_href(self.knowledge_expediente_target or DEMO_INVESTIGATION_TARGET))
+
+    def select_document_anchor(self, page: int, fragment_id: str) -> None:
+        self.knowledge_selected_page = int(page or 1)
+        self.knowledge_selected_fragment_id = str(fragment_id or "")
+        self.knowledge_selected_reference_label = f"Pagina {self.knowledge_selected_page}"
+        self.knowledge_selected_excerpt = ""
+        for row in self.knowledge_evidence:
+            if str(row.get("fragment_id", "")) == self.knowledge_selected_fragment_id:
+                self.knowledge_selected_reference_label = str(row.get("reference_label", "")) or f"Pagina {self.knowledge_selected_page}"
+                self.knowledge_selected_excerpt = str(row.get("excerpt", ""))
+                return
 
     def open_report_investigation(self):
         return rx.redirect(_investigation_href(self.citizen_report_subject or DEMO_INVESTIGATION_TARGET))
@@ -1775,6 +1876,7 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
         rx.link("Expediente", href="/investigation", class_name=_nav_class(active_page == PAGE_INVESTIGATION)),
         rx.link("Reportes", href="/reports", class_name=_nav_class(active_page == PAGE_REPORTS)),
         rx.link("Biblioteca", href="/library", class_name=_nav_class(active_page == PAGE_LIBRARY)),
+        rx.link("Documento Oficial", href="/official-document", class_name=_nav_class(active_page == PAGE_DOCUMENT)),
         rx.link("Seguimiento", href="/tracking", class_name=_nav_class(active_page == PAGE_TRACKING)),
         rx.link("Fuentes", href="/ecosystem", class_name=_nav_class(active_page == PAGE_ECOSYSTEM)),
         rx.link("Proyecto", href="/project", class_name=_nav_class(active_page == PAGE_PROJECT)),
@@ -1842,6 +1944,7 @@ def _page_class(active_page: str) -> str:
         PAGE_INVESTIGATION: "page-investigation",
         PAGE_LIBRARY: "page-library",
         PAGE_KNOWLEDGE: "page-library",
+        PAGE_DOCUMENT: "page-document",
         PAGE_TRACKING: "page-tracking",
         PAGE_REPORTS: "page-reports",
         PAGE_ECOSYSTEM: "page-ecosystem",
@@ -1979,11 +2082,14 @@ def real_data_source_card(row: dict) -> rx.Component:
             rx.text(f"registros: {row['source_records']}", class_name="mini-pill"),
             rx.text(f"entidades: {row['entities']}", class_name="mini-pill"),
             rx.text(f"relaciones: {row['relationships']}", class_name="mini-pill mini-pill-purple"),
+            rx.text(f"oficiales: {row.get('official_records', 0)}", class_name="mini-pill evidence-trust"),
+            rx.text(f"test/local: {row.get('test_records', 0)}", class_name="mini-pill"),
             spacing="2",
             wrap="wrap",
         ),
         rx.text(f"formato: {row['expected_format']}", class_name="source-fact"),
         rx.text(f"loader: {row['loader_script']}", class_name="technical-line"),
+        rx.text(f"ultima carga: {row.get('last_loaded', '')}", class_name="technical-line"),
         rx.text(f"cobertura: {row['coverage']}", class_name="muted small"),
         class_name="card ecosystem-card real-data-card",
     )
@@ -2798,6 +2904,108 @@ def tracking_document_card(row: dict) -> rx.Component:
     )
 
 
+
+def reference_button(row: dict) -> rx.Component:
+    return rx.button(
+        row["reference_label"],
+        on_click=AppState.select_document_anchor(row["page"], row["fragment_id"]),
+        class_name="reference-button",
+    )
+
+
+def document_fragment_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(f"Pagina {row['page']}", class_name="mini-pill evidence-trust"),
+            rx.text(row["section_title"], class_name="context-title"),
+            justify="between",
+            align="start",
+            wrap="wrap",
+        ),
+        rx.text(row["text"], class_name="document-fragment-text"),
+        rx.box(
+            rx.text("Este parrafo respalda", class_name="mini-pill"),
+            rx.text(row["supports_text"], class_name="muted small"),
+            class_name="fragment-supports",
+        ),
+        class_name=rx.cond(
+            row["id"] == AppState.knowledge_selected_fragment_id,
+            "document-fragment document-fragment-active",
+            "document-fragment",
+        ),
+    )
+
+
+def document_page_button(row: dict) -> rx.Component:
+    return rx.button(
+        row["label"],
+        on_click=AppState.select_document_anchor(row["page"], ""),
+        class_name=rx.cond(
+            row["page"] == AppState.knowledge_selected_page,
+            "page-chip page-chip-active",
+            "page-chip",
+        ),
+    )
+
+
+def official_document_viewer(document_id: str, page: int, fragment_id: str, highlight: str) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text("Documento", class_name="mini-pill evidence-trust"),
+            rx.text(document_id, class_name="mono id-line"),
+            justify="between",
+            align="center",
+            wrap="wrap",
+        ),
+        rx.hstack(
+            rx.foreach(AppState.knowledge_pages, document_page_button),
+            spacing="2",
+            wrap="wrap",
+            class_name="document-page-nav",
+        ),
+        rx.box(
+            rx.text(f"Pagina seleccionada: {page}", class_name="document-page-label"),
+            rx.text(highlight, class_name="document-highlight"),
+            rx.text(fragment_id, class_name="mono id-line"),
+            class_name="document-current-anchor",
+        ),
+        rx.box(
+            rx.foreach(AppState.knowledge_fragments, document_fragment_card),
+            class_name="document-page",
+        ),
+        class_name="official-document-viewer",
+    )
+
+
+def official_summary_reference_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["detail"], class_name="muted small"),
+        rx.text(row["quoted_text"], class_name="source-fact"),
+        reference_button(row),
+        class_name="official-reference-card",
+    )
+
+
+def official_question_reference_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text(row["question"], class_name="card-title"),
+        rx.text(row["why_it_matters"], class_name="muted small"),
+        rx.text(row["quoted_text"], class_name="source-fact"),
+        reference_button(row),
+        class_name="official-reference-card",
+    )
+
+
+def official_claim_reference_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text(row["claim"], class_name="card-title"),
+        rx.text(row["review_note"], class_name="muted small"),
+        rx.text(row["quoted_text"], class_name="source-fact"),
+        reference_button(row),
+        class_name="official-reference-card",
+    )
+
 def tracking_evidence_card(row: dict) -> rx.Component:
     return rx.box(
         rx.text(row["source"], class_name="mini-pill"),
@@ -2820,7 +3028,12 @@ def knowledge_document_card(row: dict) -> rx.Component:
         rx.text(f"{row['source']} | {row['document_type']} | {row['published_at']}", class_name="muted small"),
         rx.text(row["summary"], class_name="source-fact"),
         rx.text(row["official_url"], class_name="mono id-line"),
-        rx.button("Abrir expediente", on_click=AppState.open_canonical_investigation(row["related_expediente_target"]), class_name="button"),
+        rx.hstack(
+            rx.button("Ver documento", on_click=rx.redirect("/official-document"), class_name="button"),
+            rx.button("Abrir expediente", on_click=AppState.open_canonical_investigation(row["related_expediente_target"]), class_name="button button-secondary"),
+            spacing="2",
+            wrap="wrap",
+        ),
         class_name="card tracking-document-card",
     )
 
@@ -3640,7 +3853,7 @@ def home() -> rx.Component:
             rx.hstack(
                 rx.button("Leer un reporte ciudadano", on_click=rx.redirect("/reports"), class_name="button"),
                 rx.button("Abrir expediente demo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button button-secondary"),
-                rx.button("Revisar documento explicado", on_click=rx.redirect("/library"), class_name="button button-secondary"),
+                rx.button("Revisar documento explicado", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -3652,7 +3865,7 @@ def home() -> rx.Component:
             rx.grid(
                 next_step_card("Leer un reporte ciudadano", "Una lectura tipo articulo que resume el caso, sus fuentes y sus siguientes pasos.", "Leer reporte", "/reports"),
                 next_step_card("Abrir expediente demo", "Una carpeta navegable con fuentes, evidencia, relaciones y contexto.", "Abrir expediente", _investigation_href(DEMO_INVESTIGATION_TARGET)),
-                next_step_card("Revisar documento explicado", "Un documento de prueba convertido en resumen, preguntas y puntos clave.", "Abrir Biblioteca", "/library"),
+                next_step_card("Revisar documento explicado", "Un documento de prueba convertido en resumen, preguntas y puntos clave.", "Abrir documento", "/official-document"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
@@ -4126,7 +4339,7 @@ def tracking() -> rx.Component:
             rx.grid(
                 next_step_card("Abrir expediente", "Ver la entidad, relaciones y evidencia asociada.", "Ir al expediente", _investigation_href(DEMO_INVESTIGATION_TARGET)),
                 next_step_card("Leer reporte ciudadano", "Ver una lectura tipo articulo del caso.", "Ir a Reportes", "/reports"),
-                next_step_card("Ver documento oficial", "Abrir la Biblioteca para revisar preguntas y puntos clave.", "Ir a Biblioteca", "/library"),
+                next_step_card("Ver documento oficial", "Abrir el visor para revisar paginas y fragmentos.", "Ver documento", "/official-document"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
@@ -4237,6 +4450,93 @@ def knowledge() -> rx.Component:
         active_page=PAGE_KNOWLEDGE,
     )
 
+
+
+@rx.page(route="/official-document", title="Documento Oficial - DatosEnOrden")
+def official_document() -> rx.Component:
+    return shell(
+        rx.box(
+            rx.text("Documento Oficial", class_name="title"),
+            rx.text(
+                "Documento local de demostracion explicado junto a sus paginas, fragmentos y referencias trazables.",
+                class_name="subtitle",
+            ),
+            rx.text("Demo local. Sin scraping, sin IA y sin PDFs pesados.", class_name="badge badge-purple launch-notice"),
+            rx.hstack(
+                rx.button("Ver documento", on_click=AppState.select_document_anchor(AppState.knowledge_selected_page, AppState.knowledge_selected_fragment_id), class_name="button"),
+                rx.button("Abrir expediente", on_click=AppState.open_knowledge_investigation, class_name="button button-secondary"),
+                rx.button("Ver Biblioteca", on_click=rx.redirect("/library"), class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+                class_name="hero-actions",
+            ),
+            class_name="hero",
+        ),
+        page_section(
+            "Ficha del documento",
+            rx.grid(
+                rx.box(rx.text("Titulo", class_name="mini-pill"), rx.text(AppState.knowledge_title, class_name="card-title"), class_name="context-item"),
+                rx.box(rx.text("Organismo", class_name="mini-pill"), rx.text(AppState.knowledge_document["source"], class_name="context-title"), class_name="context-item"),
+                rx.box(rx.text("Fecha", class_name="mini-pill"), rx.text(AppState.knowledge_document["published_at"], class_name="context-title"), class_name="context-item"),
+                rx.box(rx.text("Estado", class_name="mini-pill"), rx.text(AppState.knowledge_document["official_status"], class_name="context-title"), class_name="context-item"),
+                columns="4",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            rx.text(AppState.knowledge_document["official_url"], class_name="mono id-line"),
+            rx.button("Ver documento", on_click=AppState.select_document_anchor(AppState.knowledge_selected_page, AppState.knowledge_selected_fragment_id), class_name="button"),
+            subtitle="La ficha identifica el documento antes de mostrar cualquier lectura ciudadana.",
+        ),
+        rx.box(
+            rx.box(
+                official_document_viewer(
+                    AppState.knowledge_document["id"],
+                    AppState.knowledge_selected_page,
+                    AppState.knowledge_selected_fragment_id,
+                    AppState.knowledge_selected_excerpt,
+                ),
+                class_name="document-main-column",
+            ),
+            rx.box(
+                page_section(
+                    "Resumen ciudadano",
+                    rx.text(AppState.knowledge_summary, class_name="story-summary"),
+                    rx.text(AppState.knowledge_selected_reference_label, class_name="mini-pill evidence-trust"),
+                    subtitle="El resumen acompana al documento; la referencia visible abre el fragmento respaldante.",
+                ),
+                page_section(
+                    "Puntos importantes",
+                    rx.foreach(AppState.knowledge_key_points, official_summary_reference_card),
+                    subtitle="Cada punto apunta a una pagina y fragmento.",
+                ),
+                page_section(
+                    "Preguntas",
+                    rx.foreach(AppState.knowledge_questions, official_question_reference_card),
+                    subtitle="Preguntas frecuentes conectadas al texto original.",
+                ),
+                page_section(
+                    "Afirmaciones verificables",
+                    rx.foreach(AppState.knowledge_claims, official_claim_reference_card),
+                    subtitle="Las afirmaciones conservan evidencia y cita breve.",
+                ),
+                class_name="document-side-column",
+            ),
+            class_name="official-document-layout",
+        ),
+        page_section(
+            "Referencias",
+            rx.grid(
+                rx.foreach(AppState.knowledge_evidence, tracking_evidence_card),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            rx.text(AppState.knowledge_notice, class_name="muted small"),
+            subtitle="Referencias livianas: documento, pagina, seccion, fragmento y cita breve.",
+        ),
+        on_mount=AppState.load_knowledge,
+        active_page=PAGE_DOCUMENT,
+    )
 
 @rx.page(route="/library", title="Biblioteca Oficial - DatosEnOrden")
 def library() -> rx.Component:
@@ -4439,7 +4739,7 @@ def reports() -> rx.Component:
             "Expedientes relacionados",
             rx.grid(
                 next_step_card("Abrir expediente", "Ver contexto, relaciones y evidencia asociada.", "Ir al expediente", _investigation_href(DEMO_INVESTIGATION_TARGET)),
-                next_step_card("Ver documento oficial", "Leer el resumen ciudadano en la Biblioteca.", "Ir a Biblioteca", "/library"),
+                next_step_card("Ver documento oficial", "Leer el documento junto a sus referencias.", "Ver documento", "/official-document"),
                 next_step_card("Seguir proyecto", "Revisar timeline, estados y cambios.", "Ir a Seguimiento", "/tracking"),
                 columns="3",
                 spacing="3",
@@ -4658,7 +4958,7 @@ def investigation() -> rx.Component:
                         "Siguientes pasos",
                         rx.grid(
                             next_step_card("Leer reporte ciudadano", "Ver una explicacion en formato articulo.", "Ir a Reportes", "/reports"),
-                            next_step_card("Ver documento oficial", "Revisar el resumen ciudadano y preguntas clave.", "Ir a Biblioteca", "/library"),
+                            next_step_card("Ver documento oficial", "Revisar el documento junto a sus referencias.", "Ver documento", "/official-document"),
                             next_step_card("Seguir proyecto", "Ver la historia en el tiempo y sus hitos.", "Ir a Seguimiento", "/tracking"),
                             columns="3",
                             spacing="3",
@@ -4886,6 +5186,7 @@ style = {
     },
     ".page-investigation .hero": {"border_left": "4px solid rgba(45, 212, 191, 0.55)"},
     ".page-library .hero": {"border_left": "4px solid rgba(167, 139, 250, 0.58)"},
+    ".page-document .hero": {"border_left": "4px solid rgba(228, 228, 231, 0.58)"},
     ".page-tracking .hero": {"border_left": "4px solid rgba(74, 222, 128, 0.56)"},
     ".page-reports .hero": {"border_left": "4px solid rgba(251, 146, 60, 0.58)"},
     ".page-ecosystem .hero": {"border_left": "4px solid rgba(96, 165, 250, 0.58)"},
@@ -4893,6 +5194,7 @@ style = {
     ".page-home .title": {"color": "#f4f4f5"},
     ".page-investigation .title": {"color": "#ccfbf1"},
     ".page-library .title": {"color": "#ddd6fe"},
+    ".page-document .title": {"color": "#f4f4f5"},
     ".page-tracking .title": {"color": "#bbf7d0"},
     ".page-reports .title": {"color": "#fed7aa"},
     ".page-ecosystem .title": {"color": "#bfdbfe"},
@@ -4907,6 +5209,7 @@ style = {
     ".section-title": {"font_size": "20px", "font_weight": "700", "margin_bottom": "12px", "color": "#f4f4f5"},
     ".page-reports .section-title": {"font_size": "24px", "font_weight": "800", "color": "#fed7aa"},
     ".page-library .section-title": {"color": "#ddd6fe"},
+    ".page-document .section-title": {"color": "#f4f4f5"},
     ".page-tracking .section-title": {"color": "#bbf7d0"},
     ".page-investigation .section-title": {"color": "#ccfbf1"},
     ".page-ecosystem .section-title": {"color": "#bfdbfe"},
@@ -4932,6 +5235,10 @@ style = {
     ".page-library .page-section": {
         "padding": "22px 0",
         "border_top": "1px solid rgba(167, 139, 250, 0.14)",
+    },
+    ".page-document .page-section": {
+        "padding": "18px 0",
+        "border_top": "1px solid rgba(228, 228, 231, 0.12)",
     },
     ".page-tracking .page-section": {
         "padding": "20px 0",
@@ -5135,6 +5442,77 @@ style = {
         "padding": "8px",
         "background": "#1f1f24",
     },
+    ".official-document-layout": {
+        "display": "grid",
+        "grid_template_columns": "minmax(0, 1.35fr) minmax(360px, 0.85fr)",
+        "gap": "24px",
+        "align_items": "start",
+    },
+    ".document-main-column": {"min_width": "0"},
+    ".document-side-column": {"display": "grid", "gap": "12px", "min_width": "0"},
+    ".official-document-viewer": {
+        "border": "1px solid rgba(228, 228, 231, 0.18)",
+        "border_radius": "8px",
+        "padding": "18px",
+        "background": "#101014",
+        "display": "grid",
+        "gap": "14px",
+    },
+    ".shell.theme-light .official-document-viewer": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.22)"},
+    ".document-page-nav": {"border_bottom": "1px solid rgba(161, 161, 170, 0.16)", "padding_bottom": "10px"},
+    ".page-chip": {
+        "border": "1px solid rgba(161, 161, 170, 0.24)",
+        "border_radius": "6px",
+        "background": "#1f1f24",
+        "color": "#e4e4e7",
+        "font_weight": "700",
+    },
+    ".page-chip-active": {"border_color": "#2dd4bf", "background": "rgba(45, 212, 191, 0.14)", "color": "#ccfbf1"},
+    ".document-current-anchor": {
+        "border": "1px solid rgba(45, 212, 191, 0.18)",
+        "border_radius": "8px",
+        "padding": "12px",
+        "background": "rgba(45, 212, 191, 0.06)",
+        "display": "grid",
+        "gap": "6px",
+    },
+    ".document-page-label": {"font_weight": "800", "color": "#f4f4f5"},
+    ".document-highlight": {"color": "#d4d4d8", "line_height": "1.5"},
+    ".document-page": {"display": "grid", "gap": "12px"},
+    ".document-fragment": {
+        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border_radius": "8px",
+        "padding": "14px",
+        "background": "#18181b",
+        "display": "grid",
+        "gap": "10px",
+    },
+    ".document-fragment-active": {"border_color": "rgba(45, 212, 191, 0.7)", "box_shadow": "0 0 0 1px rgba(45, 212, 191, 0.18)"},
+    ".document-fragment-text": {"font_size": "16px", "line_height": "1.65", "color": "#f4f4f5"},
+    ".fragment-supports": {"border_top": "1px solid rgba(161, 161, 170, 0.14)", "padding_top": "8px", "display": "grid", "gap": "6px"},
+    ".official-reference-card": {
+        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border_radius": "8px",
+        "padding": "12px",
+        "background": "#18181b",
+        "display": "grid",
+        "gap": "8px",
+        "margin_bottom": "10px",
+    },
+    ".reference-button": {
+        "width": "fit-content",
+        "border_radius": "6px",
+        "background": "rgba(45, 212, 191, 0.12)",
+        "border": "1px solid rgba(45, 212, 191, 0.26)",
+        "color": "#ccfbf1",
+        "font_weight": "800",
+    },
+    ".shell.theme-light .document-fragment, .shell.theme-light .official-reference-card": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
+    ".shell.theme-light .document-fragment-text, .shell.theme-light .document-page-label": {"color": "#18181b"},
+    ".shell.theme-light .document-highlight": {"color": "#374151"},
+    ".shell.theme-light .page-chip": {"background": "#ffffff", "color": "#18181b"},
+    ".shell.theme-light .page-chip-active": {"background": "rgba(13, 148, 136, 0.12)", "color": "#0f766e"},
+    ".shell.theme-light .reference-button": {"background": "rgba(13, 148, 136, 0.1)", "color": "#0f766e"},
     ".knowledge-point": {
         "border": "1px solid rgba(45, 212, 191, 0.16)",
         "border_left": "3px solid rgba(45, 212, 191, 0.42)",
@@ -5466,6 +5844,7 @@ style = {
         ".search-bar": {"flex_direction": "column", "align_items": "stretch"},
         ".search-button": {"width": "100%"},
         ".home-lower-layout": {"grid_template_columns": "1fr"},
+        ".official-document-layout": {"grid_template_columns": "1fr"},
     },
 }
 
