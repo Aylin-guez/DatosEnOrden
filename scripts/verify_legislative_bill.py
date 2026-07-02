@@ -44,11 +44,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         entity_count = session.scalar(
             select(func.count()).select_from(Entity).where(Entity.external_id == external_id)
-        )
+        ) or 0
         claim_count = 0
         evidence_count = 0
         source_record_count = 0
         document_count = 0
+        exists = entity is not None and dataset is not None
+        resolved = entity is not None and entity.external_id == external_id
         if entity is not None:
             claim_count = session.scalar(
                 select(func.count()).select_from(Claim).where(Claim.subject_entity_id == entity.id)
@@ -61,9 +63,6 @@ def main(argv: list[str] | None = None) -> int:
                 select(func.count()).select_from(Evidence).where(Evidence.dataset_id == dataset.id)
             ) or 0
             document_count = evidence_count
-
-    exists = entity is not None and dataset is not None
-    resolved = entity is not None and entity.external_id == external_id
 
     print("verify_legislative_bill:")
     print(f"  bulletin={bulletin_id}")

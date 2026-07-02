@@ -39,9 +39,12 @@ def main(argv: list[str] | None = None) -> int:
 
     _print_batch_preview(batch, dry_run=args.dry_run)
 
+    import_job_id = ""
     with SessionLocal() as session:
         try:
             import_job = GraphLoader(session).load(batch, dry_run=args.dry_run)
+            if import_job is not None:
+                import_job_id = str(import_job.id)
         except Exception as exc:  # noqa: BLE001
             print(f"error: failed to load legislative graph batch: {type(exc).__name__}: {exc}", file=sys.stderr)
             return 1
@@ -50,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  bulletin={bulletin_id}")
     print(f"  dry_run={args.dry_run}")
     print(f"  loaded={not args.dry_run}")
-    print(f"  import_job_id={'' if import_job is None else import_job.id}")
+    print(f"  import_job_id={import_job_id}")
     return 0
 
 
