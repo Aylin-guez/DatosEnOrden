@@ -35,11 +35,10 @@ from datosenorden.maintenance.investigation_report import export_investigation_r
 from datosenorden.maintenance.investigation_view import build_investigation_view
 from datosenorden.maintenance.investigation_view import investigation_explanation_text
 from datosenorden.maintenance.investigation_timeline import build_investigation_timeline
-from datosenorden.maintenance.knowledge_engine import build_knowledge_demo
-from datosenorden.maintenance.knowledge_engine import build_knowledge_digest
-from datosenorden.maintenance.knowledge_engine import knowledge_digest_to_dict
 from datosenorden.maintenance.knowledge_engine import list_knowledge_documents as _list_knowledge_documents
 from datosenorden.maintenance.knowledge_engine import official_document_to_dict
+from datosenorden.studio.publication_engine import document_view_payload
+from datosenorden.studio.publication_engine import publish_document
 from datosenorden.maintenance.guided_questions import get_guided_questions as _get_guided_questions
 from datosenorden.maintenance.institution_profile import build_institution_profile
 from datosenorden.maintenance.platform_config import get_default_platform_config
@@ -393,12 +392,12 @@ def export_tracking_demo_report() -> str:
 
 
 def get_knowledge_demo() -> dict[str, Any]:
-    return _jsonify(knowledge_digest_to_dict(build_knowledge_demo()))
+    return _jsonify(document_view_payload(publish_document()))
 
 
 def get_knowledge_digest(document_id: str) -> dict[str, Any]:
     try:
-        return _jsonify(knowledge_digest_to_dict(build_knowledge_digest(document_id)))
+        return _jsonify(document_view_payload(publish_document(document_id)))
     except ValueError:
         return {}
 
