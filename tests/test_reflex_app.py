@@ -144,11 +144,19 @@ def test_load_home_populates_connection_preview(monkeypatch) -> None:
 
 
 
-def test_home_has_actualidad_documentada_section() -> None:
+def test_home_is_public_topic_entry() -> None:
     source = inspect.getsource(reflex_app.home)
 
-    assert "Actualidad Documentada" in source
-    assert "Temas oficiales actualmente analizados por DatosEnOrden." in source
+    assert "Todo lo importante sobre un tema publico, explicado desde documentos oficiales." in source
+    assert "Explorar tema destacado" in source
+    assert 'rx.redirect("/topic")' in source
+    assert "Ver documento oficial" in source
+    assert "Tema destacado" in source
+    assert "Ley de Presupuestos del Sector Publico 2013" in source
+    assert "Que encontraras dentro de un tema" in source
+    assert "Lecturas documentadas recientes" in source
+    assert "Fuentes oficiales y trazabilidad" in source
+    assert "DatosEnOrden Studio" in source
     assert "current_topic_card" in source
 
 
