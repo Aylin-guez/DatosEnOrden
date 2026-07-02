@@ -7,6 +7,7 @@ from types import MappingProxyType
 from types import SimpleNamespace
 
 import reflex_app.reflex_app as reflex_app
+from datosenorden.studio import document_reading_pipeline
 
 
 @dataclass
@@ -82,6 +83,22 @@ def test_load_home_populates_connection_preview(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         reflex_app,
+        "get_current_topics",
+        lambda limit=3: [
+            {
+                "id": "topic-demo",
+                "title": "Fortalecimiento Hospitalario Arauco",
+                "subtitle": "Tema oficial actualmente analizado.",
+                "summary": "Lectura documentada demo.",
+                "organization": "Documento oficial",
+                "status": "Analizado",
+                "updated_at": "2026-04-12",
+                "href": "/official-document",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        reflex_app,
         "get_guided_questions",
         lambda: {
             "questions": [
@@ -123,7 +140,25 @@ def test_load_home_populates_connection_preview(monkeypatch) -> None:
     assert state.total_relationships == 3
     assert state.guided_question_rows[0]["id"] == "who_sells_to_this_body"
     assert state.guided_category_rows[0]["id"] == "public_organizations"
+    assert state.current_topic_rows[0]["title"] == "Fortalecimiento Hospitalario Arauco"
 
+
+
+def test_home_has_actualidad_documentada_section() -> None:
+    source = inspect.getsource(reflex_app.home)
+
+    assert "Actualidad Documentada" in source
+    assert "Temas oficiales actualmente analizados por DatosEnOrden." in source
+    assert "current_topic_card" in source
+
+
+def test_current_topic_card_links_to_documented_reading() -> None:
+    source = inspect.getsource(reflex_app.current_topic_card)
+
+    assert "Documento oficial" in source
+    assert "Ultima actualizacion" in source
+    assert "Ver lectura documentada" in source
+    assert "row[\"href\"]" in source
 
 def test_load_investigation_without_selection_uses_guided_empty_state(monkeypatch) -> None:
     calls: list[str] = []
@@ -882,6 +917,88 @@ def test_official_document_route_and_nav_are_visible() -> None:
     assert "Referencias documentales" in page_source
 
 
+def test_topic_route_uses_requested_sections_and_navigation() -> None:
+    shell_source = inspect.getsource(reflex_app.shell)
+    page_source = inspect.getsource(reflex_app.topic)
+    nav_source = inspect.getsource(reflex_app.topic_nav)
+
+    assert 'rx.link("Tema", href="/topic"' in shell_source
+    assert '@rx.page(route="/topic"' in page_source
+    assert "Documento oficial" in page_source
+    assert "¿Qué propone?" in page_source
+    assert "¿Qué cambia?" in page_source
+    assert "¿Qué NO cambia?" in page_source
+    assert "¿Qué sigue?" in page_source
+    assert "Evidencia" in page_source
+    assert "Lecturas Documentadas" in page_source
+    assert "Expediente" in page_source
+    assert "Seguimiento" in page_source
+    assert "Votaciones" in page_source
+    assert "Documento original" in page_source
+    assert "Tema" in nav_source
+    assert "Lectura" in nav_source
+    assert "Documento" in nav_source
+    assert "Fragmento" in nav_source
+
+
+def test_load_topic_reuses_existing_knowledge_and_investigation(monkeypatch) -> None:
+    state = SimpleNamespace(
+        error_message="",
+        knowledge_document={
+            "title": "Mensaje o mocion: Ley de Presupuestos del sector público para el año 2013.",
+            "source": "Senado de la Republica de Chile",
+            "document_type": "legislative_mensaje_mocion",
+            "published_at": "2026-07-02",
+            "official_status": "REAL_OFFICIAL_SOURCE",
+            "official_url": "https://senado.cl/doc",
+        },
+        knowledge_title="Lectura documentada",
+        knowledge_summary="Resumen desde documento.",
+        knowledge_key_points=[{"title": "Punto", "detail": "Detalle", "page": 1, "fragment_id": "frag-1", "reference_label": "Pagina 1"}],
+        knowledge_claims=[{"claim": "Afirmacion", "review_note": "Revisar", "page": 1, "fragment_id": "frag-1", "reference_label": "Pagina 1"}],
+        knowledge_notice="No afirma irregularidad.",
+        knowledge_evidence=[{"source": "Senado", "label": "Fragmento 1", "excerpt": "Texto", "url": "https://senado.cl/doc#frag-1"}],
+        knowledge_fragments=[{"text": "uno dos tres"}],
+        knowledge_coverage_text="Fragmentos utilizados: 1 de 1",
+    )
+    state.load_knowledge = lambda: None
+    monkeypatch.setattr(
+        reflex_app,
+        "get_investigation",
+        lambda target: {
+            "entity": {"name": "Boletin 8575-05"},
+            "narrative_summary": "Expediente legislativo existente.",
+            "official_status": "dato oficial cargado",
+            "official_source": "Datos Abiertos Legislativos",
+            "compact_metrics": {"evidence_count": 224, "relationship_count": 0},
+            "timeline": [
+                {
+                    "event_date": "2012-11-20",
+                    "dataset": "DATOS ABIERTOS LEGISLATIVOS",
+                    "dataset_name": "congreso-votaciones-boletin",
+                    "title": "Votacion asociada al boletin.",
+                    "explanation": "Fuente publica.",
+                }
+            ],
+            "legislative": {
+                "votes_found": 224,
+                "source": "Datos Abiertos Legislativos",
+                "source_records": [{"source": "Datos Abiertos Legislativos Congreso Nacional", "retrieved_at": "2026-07-02T09:13:11"}],
+            },
+        },
+    )
+
+    reflex_app.AppState.load_topic.fn(state)
+
+    assert state.topic_title == reflex_app.TOPIC_BUDGET_2013_TITLE
+    assert state.topic_document_count == 1
+    assert state.topic_vote_count == 224
+    assert state.topic_proposes_rows == state.knowledge_key_points[:3]
+    assert state.topic_changes_rows == state.knowledge_claims[:3]
+    assert state.topic_evidence_rows == state.knowledge_evidence[:6]
+    assert state.topic_timeline_rows[0]["title"] == "Votacion asociada al boletin."
+
+
 def test_official_document_components_link_references_to_anchors() -> None:
     viewer_source = inspect.getsource(reflex_app.official_document_viewer)
     reference_source = inspect.getsource(reflex_app.reference_button)
@@ -893,22 +1010,23 @@ def test_official_document_components_link_references_to_anchors() -> None:
     assert "highlight" in viewer_source
     assert "reading_context_bar" in viewer_source
     assert "AppState.select_document_anchor" in reference_source
-    assert "Este parrafo tambien aparece en" in fragment_source
+    assert "Navegacion relacionada" in fragment_source
     assert "document-fragment-active" in fragment_source
-    assert "Resumen relacionado" in guide_source
-    assert "Pregunta relacionada" in guide_source
-    assert "Claim relacionado" in guide_source
+    assert "Punto documentado" in guide_source
+    assert "Pregunta derivada del texto" in guide_source
+    assert "Afirmacion trazable" in guide_source
     assert "Evidencia utilizada" in guide_source
 
 
 def test_official_document_v2_uses_human_questions_and_reading_metrics() -> None:
-    question_source = inspect.getsource(reflex_app._human_question_label)
+    pipeline_source = inspect.getsource(document_reading_pipeline)
     context_source = inspect.getsource(reflex_app.reading_context_bar)
 
-    assert "Que intenta hacer este documento?" in question_source
-    assert "Que informacion importante contiene?" in question_source
-    assert "Que informacion NO aparece aqui?" in question_source
-    assert "fragmentos utilizados" in context_source
+    assert 'enriched["display_question"] = str(row.get("question", ""))' in pipeline_source
+    assert "document_coverage" in pipeline_source
+    assert "Fragmentos utilizados:" in pipeline_source
+    assert "Cobertura documental" in context_source
+    assert "knowledge_coverage_text" in context_source
     assert "preguntas respondidas" in context_source
     assert "afirmaciones verificables" in context_source
     assert "referencias documentales" in context_source
@@ -926,6 +1044,19 @@ def test_select_document_anchor_updates_reading_context() -> None:
         knowledge_evidence=[
             {"page": 18, "fragment_id": "frag-a", "reference_label": "Pagina 18", "excerpt": "A"},
             {"page": 19, "fragment_id": "frag-b", "reference_label": "Pagina 19", "excerpt": "B"},
+        ],
+        knowledge_fragment_contexts=[
+            {
+                "page": 19,
+                "fragment_id": "frag-b",
+                "reference_label": "Pagina 19",
+                "excerpt": "B",
+                "summary": [{"fragment_id": "frag-b", "title": "Punto"}],
+                "questions": [{"fragment_id": "frag-b", "display_question": "Pregunta"}],
+                "claims": [{"fragment_id": "frag-b", "claim": "Claim"}],
+                "evidence": [{"page": 19, "fragment_id": "frag-b", "reference_label": "Pagina 19", "excerpt": "B"}],
+                "connections": [{"label": "Expediente", "href": "/investigation?id=demo", "target_id": "demo"}],
+            }
         ],
         knowledge_expediente_target="SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
     )

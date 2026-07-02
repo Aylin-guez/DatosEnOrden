@@ -19,6 +19,7 @@ from datosenorden.web.app_services import get_demo_status
 from datosenorden.web.app_services import get_tracking_demo
 from datosenorden.web.app_services import get_tracking_items
 from datosenorden.web.app_services import get_knowledge_demo
+from datosenorden.web.app_services import get_current_topics
 from datosenorden.web.app_services import get_knowledge_documents
 from datosenorden.web.app_services import get_discovery_cases
 from datosenorden.web.app_services import get_guided_discovery_options
@@ -59,6 +60,7 @@ PAGE_INVESTIGATION = "investigation"
 PAGE_TRACKING = "tracking"
 PAGE_KNOWLEDGE = "knowledge"
 PAGE_LIBRARY = "library"
+PAGE_TOPIC = "topic"
 PAGE_DOCUMENT = "official_document"
 PAGE_REPORTS = "reports"
 PAGE_DASHBOARD = "dashboard"
@@ -71,6 +73,8 @@ INVESTIGATION_STATUS_ERROR = "error"
 INVESTIGATION_STATUS_EMPTY = "empty"
 DEMO_INVESTIGATION_TARGET = "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
 DEMO_INVESTIGATION_URL = f"http://localhost:3000/investigation?id={quote_plus(DEMO_INVESTIGATION_TARGET)}"
+TOPIC_BUDGET_2013_TITLE = "Ley de Presupuestos del Sector Público 2013"
+TOPIC_BUDGET_2013_TARGET = "cl-congreso-boletin-8575-05"
 SOURCE_COVERAGE_TEMPLATE = [
     {"source": "ChileCompra", "status": "activo con datos", "contribution": "Compras publicas, proveedores, contratos y evidencia de adquisiciones."},
     {"source": "DIPRES", "status": "prototipo con datos", "contribution": "Presupuestos, anos fiscales y contexto de gasto publico."},
@@ -329,89 +333,83 @@ def _json_list(value: object) -> list:
     return safe if isinstance(safe, list) else []
 
 
+def _topic_read_time(fragments: list[dict]) -> str:
+    words = sum(len(str(_field(row, "text", "")).split()) for row in fragments)
+    minutes = max(1, round(words / 220)) if words else 1
+    return f"{minutes} min"
 
-def _reference_rows(rows: list[dict], evidence_by_id: dict[str, dict]) -> list[dict]:
-    enriched: list[dict] = []
-    for index, row in enumerate(rows, start=1):
-        evidence = evidence_by_id.get(str(row.get("evidence_id", "")), {})
-        page = int(row.get("page", evidence.get("page", 1)) or 1)
-        fragment_id = str(row.get("fragment_id", evidence.get("fragment_id", "")))
-        reference_label = str(row.get("reference_label", evidence.get("reference_label", ""))) or f"Pagina {page}"
-        display_question = _human_question_label(str(row.get("question", "")), index)
-        enriched.append(
+
+def _topic_latest_record_date(source_records: list[dict]) -> str:
+    dates = sorted(str(_field(row, "retrieved_at", ""))[:10] for row in source_records if str(_field(row, "retrieved_at", "")))
+    return dates[-1] if dates else ""
+
+
+def _topic_organizations(
+    document: dict,
+    source_records: list[dict],
+    investigation: dict,
+) -> list[str]:
+    values = [
+        str(_field(document, "source", "")),
+        str(_field(investigation, "official_source", "")),
+    ]
+    values.extend(str(_field(row, "source", "")) for row in source_records[:3])
+    seen: list[str] = []
+    for value in values:
+        cleaned = value.strip()
+        if cleaned and cleaned not in seen:
+            seen.append(cleaned)
+    return seen
+
+
+def _topic_no_change_rows(claims: list[dict], notice: str) -> list[dict]:
+    rows = [
+        {
+            "claim": str(_field(row, "review_note", "")),
+            "review_note": str(_field(row, "reference_label", "")),
+            "fragment_id": str(_field(row, "fragment_id", "")),
+            "page": int(_field(row, "page", 1) or 1),
+            "reference_label": str(_field(row, "reference_label", "")),
+        }
+        for row in claims[:2]
+        if str(_field(row, "review_note", "")).strip()
+    ]
+    if notice:
+        rows.append(
             {
-                **dict(row),
-                "page": page,
-                "fragment_id": fragment_id,
-                "reference_label": reference_label,
-                "quoted_text": str(evidence.get("quoted_text", evidence.get("excerpt", ""))),
-                "display_question": display_question,
+                "claim": notice,
+                "review_note": "Aviso de lectura documentada",
+                "fragment_id": "",
+                "page": 1,
+                "reference_label": "Lectura documentada",
             }
         )
-    return enriched
+    return rows
 
 
-def _human_question_label(question: str, index: int) -> str:
-    labels = (
-        "Que intenta hacer este documento?",
-        "Que informacion importante contiene?",
-        "Con que expediente o seguimiento se conecta?",
-        "Que parte deberia revisar primero?",
-        "Que informacion NO aparece aqui?",
-    )
-    return labels[index - 1] if 0 < index <= len(labels) else question
-
-
-def _rows_for_fragment(rows: list[dict], fragment_id: str) -> list[dict]:
-    return [dict(row) for row in rows if str(row.get("fragment_id", "")) == fragment_id]
-
-
-def _first_evidence_for_page(rows: list[dict], page: int) -> dict:
-    return next((dict(row) for row in rows if int(row.get("page", 0) or 0) == page), {})
-
-
-def _claim_reference_row(row: dict, evidence_by_id: dict[str, dict]) -> dict:
-    evidence_ids = [str(ref) for ref in row.get("evidence_ids", [])]
-    first_evidence = evidence_by_id.get(evidence_ids[0], {}) if evidence_ids else {}
-    page = int(first_evidence.get("page", 1) or 1)
-    fragment_id = str(first_evidence.get("fragment_id", ""))
-    reference_label = str(first_evidence.get("reference_label", "")) or f"Pagina {page}"
-    return {
-        **dict(row),
-        "evidence_text": " | ".join(evidence_ids),
-        "citation_text": " | ".join(str(ref) for ref in row.get("citation_ids", [])),
-        "page": page,
-        "fragment_id": fragment_id,
-        "reference_label": reference_label,
-        "quoted_text": str(first_evidence.get("quoted_text", first_evidence.get("excerpt", ""))),
-    }
-
-
-def _document_fragment_rows(
-    fragments: list[dict],
-    key_points: list[dict],
-    questions: list[dict],
-    claims: list[dict],
-) -> list[dict]:
-    supported_by: dict[str, list[str]] = {}
-    for row in key_points:
-        supported_by.setdefault(str(row.get("fragment_id", "")), []).append(f"Punto importante: {row.get('title', '')}")
-    for row in questions:
-        supported_by.setdefault(str(row.get("fragment_id", "")), []).append(f"Pregunta frecuente: {row.get('question', '')}")
-    for row in claims:
-        supported_by.setdefault(str(row.get("fragment_id", "")), []).append(f"Resumen ciudadano: {row.get('claim', '')}")
-    enriched: list[dict] = []
-    for fragment in fragments:
-        fragment_id = str(fragment.get("id", ""))
-        supports = [item for item in supported_by.get(fragment_id, []) if item.strip()]
-        enriched.append(
+def _topic_timeline_rows(rows: list[dict]) -> list[dict]:
+    formatted: list[dict] = []
+    for row in rows[:5]:
+        formatted.append(
             {
-                **dict(fragment),
-                "supports": supports,
-                "supports_text": " | ".join(supports) if supports else "Sin afirmaciones asociadas en esta demo.",
+                "date": str(_field(row, "event_date", "")),
+                "status": str(_field(row, "dataset", "")),
+                "title": str(_field(row, "title", "")),
+                "description": str(_field(row, "explanation", "")),
+                "source": str(_field(row, "dataset_name", _field(row, "dataset", ""))),
+                "origin": "timeline",
             }
         )
-    return enriched
+    return formatted
+
+
+def _topic_tracking_summary(rows: list[dict], investigation: dict) -> str:
+    if rows:
+        first = rows[0]
+        return f"Primer hito visible: {first.get('date', '')} - {first.get('title', '')}"
+    return str(investigation.get("summary", ""))
+
+
 
 def _display_label(value: object) -> str:
     labels = {
@@ -607,13 +605,13 @@ def _safe_public_values(obj: object) -> list[object]:
     ]
 
 
-def page_section(title: str, *children, subtitle: str | None = None, class_name: str = "") -> rx.Component:
+def page_section(title: str, *children, subtitle: str | None = None, class_name: str = "", element_id: str = "") -> rx.Component:
     body = [rx.text(title, class_name="section-title")]
     if subtitle is not None:
         body.append(rx.text(subtitle, class_name="section-subtitle"))
     body.extend(children)
     section_class = "page-section" if not class_name else f"page-section {class_name}"
-    return rx.vstack(*body, spacing="3", align="stretch", class_name=section_class)
+    return rx.vstack(*body, spacing="3", align="stretch", class_name=section_class, id=element_id)
 
 
 def _clear_investigation_state(self) -> None:
@@ -993,6 +991,7 @@ class AppState(rx.State):
     connection_rows_preview: list[dict] = []
     discovery_case_rows: list[dict] = []
     discovery_case_preview: list[dict] = []
+    current_topic_rows: list[dict] = []
     guided_question_rows: list[dict] = []
     guided_category_rows: list[dict] = []
     selected_guided_category_id: str = ""
@@ -1130,11 +1129,35 @@ class AppState(rx.State):
     knowledge_selected_claims: list[dict] = []
     knowledge_selected_evidence: list[dict] = []
     knowledge_selected_connections: list[dict] = []
+    knowledge_fragment_contexts: list[dict] = []
     knowledge_fragment_count: int = 0
+    knowledge_total_fragment_count: int = 0
     knowledge_question_count: int = 0
     knowledge_claim_count: int = 0
     knowledge_reference_count: int = 0
+    knowledge_coverage_text: str = ""
+    knowledge_reference_text: str = ""
     knowledge_error: str = ""
+    topic_title: str = TOPIC_BUDGET_2013_TITLE
+    topic_status: str = ""
+    topic_read_time: str = ""
+    topic_document_count: int = 0
+    topic_updated_at: str = ""
+    topic_organizations_text: str = ""
+    topic_official_document: dict = {}
+    topic_proposes_rows: list[dict] = []
+    topic_changes_rows: list[dict] = []
+    topic_no_changes_rows: list[dict] = []
+    topic_timeline_rows: list[dict] = []
+    topic_evidence_rows: list[dict] = []
+    topic_reading_rows: list[dict] = []
+    topic_expediente_title: str = ""
+    topic_expediente_summary: str = ""
+    topic_expediente_metrics: str = ""
+    topic_tracking_summary: str = ""
+    topic_vote_summary: str = ""
+    topic_vote_count: int = 0
+    topic_original_url: str = ""
     investigation_status_message: str = ""
     investigation_status: str = INVESTIGATION_STATUS_IDLE
     requested_investigation_target: str = ""
@@ -1191,6 +1214,7 @@ class AppState(rx.State):
                 for row in discovery.get("cases", [])
             ]
             self.discovery_case_preview = self.discovery_case_rows[:3]
+            self.current_topic_rows = _json_list(get_current_topics(limit=3))
             self.guided_question_rows = [
                 {
                     **row,
@@ -1498,39 +1522,39 @@ class AppState(rx.State):
             self.knowledge_document = document
             self.knowledge_title = str(_field(document, "title", ""))
             self.knowledge_summary = str(_field(demo, "citizen_summary", ""))
-            evidence_rows = _json_list(demo.get("evidence", []))
-            evidence_by_id = {str(row.get("id", "")): row for row in evidence_rows}
             self.knowledge_pages = _json_list(demo.get("pages", []))
             self.knowledge_citations = _json_list(demo.get("citations", []))
-            self.knowledge_key_points = _reference_rows(_json_list(demo.get("key_points", [])), evidence_by_id)
-            self.knowledge_questions = _reference_rows(_json_list(demo.get("citizen_questions", [])), evidence_by_id)
-            self.knowledge_claims = [
-                _claim_reference_row(row, evidence_by_id)
-                for row in _json_list(demo.get("claims", []))
-            ]
-            self.knowledge_evidence = evidence_rows
-            self.knowledge_fragments = _document_fragment_rows(
-                _json_list(demo.get("fragments", [])),
-                self.knowledge_key_points,
-                self.knowledge_questions,
-                self.knowledge_claims,
-            )
-            first_anchor = self.knowledge_evidence[0] if self.knowledge_evidence else {}
-            self.knowledge_selected_page = int(first_anchor.get("page", 18) or 18)
-            self.knowledge_selected_fragment_id = str(first_anchor.get("fragment_id", ""))
-            self.knowledge_selected_reference_label = str(first_anchor.get("reference_label", "")) or f"Pagina {self.knowledge_selected_page}"
-            self.knowledge_selected_excerpt = str(first_anchor.get("excerpt", ""))
+            self.knowledge_key_points = _json_list(demo.get("key_points", []))
+            self.knowledge_questions = _json_list(demo.get("citizen_questions", demo.get("questions", [])))
+            self.knowledge_claims = _json_list(demo.get("claims", []))
+            self.knowledge_evidence = _json_list(demo.get("references", demo.get("evidence", [])))
+            self.knowledge_fragments = _json_list(demo.get("fragments", []))
+            self.knowledge_fragment_contexts = _json_list(demo.get("fragment_contexts", []))
+            selected_context = _json_dict(demo.get("selected_context", {}))
+            self.knowledge_selected_page = int(selected_context.get("page", demo.get("default_page", 18)) or 18)
+            self.knowledge_selected_fragment_id = str(selected_context.get("fragment_id", demo.get("default_fragment_id", "")))
+            self.knowledge_selected_reference_label = str(selected_context.get("reference_label", "")) or f"Pagina {self.knowledge_selected_page}"
+            self.knowledge_selected_excerpt = str(selected_context.get("excerpt", ""))
+            self.knowledge_selected_summary = _json_list(selected_context.get("summary", []))
+            self.knowledge_selected_questions = _json_list(selected_context.get("questions", []))
+            self.knowledge_selected_claims = _json_list(selected_context.get("claims", []))
+            self.knowledge_selected_evidence = _json_list(selected_context.get("evidence", []))
+            self.knowledge_selected_connections = _json_list(selected_context.get("connections", []))
             self.knowledge_connections = [
                 {"label": str(key), "value": str(value)}
                 for key, value in _json_dict(demo.get("connections", {})).items()
             ]
             self.knowledge_notice = str(_field(demo, "notice", ""))
-            self.knowledge_expediente_target = str(_field(document, "related_expediente_target", DEMO_INVESTIGATION_TARGET))
-            self.knowledge_fragment_count = len({str(row.get("fragment_id", "")) for row in self.knowledge_evidence if row.get("fragment_id", "")})
-            self.knowledge_question_count = len(self.knowledge_questions)
-            self.knowledge_claim_count = len(self.knowledge_claims)
-            self.knowledge_reference_count = len(self.knowledge_evidence)
-            self._set_document_reading_context(self.knowledge_selected_fragment_id)
+            self.knowledge_expediente_target = str(_field(demo, "related_expediente", _field(document, "related_expediente_target", DEMO_INVESTIGATION_TARGET)))
+            metrics = {str(row.get("id", "")): int(row.get("value", 0) or 0) for row in _json_list(demo.get("metrics", []))}
+            coverage = _json_dict(demo.get("document_coverage", {}))
+            self.knowledge_fragment_count = metrics.get("fragments", 0)
+            self.knowledge_total_fragment_count = int(coverage.get("total_fragments", len(self.knowledge_fragments)) or len(self.knowledge_fragments))
+            self.knowledge_question_count = metrics.get("questions", 0)
+            self.knowledge_claim_count = metrics.get("claims", 0)
+            self.knowledge_reference_count = metrics.get("references", 0)
+            self.knowledge_coverage_text = str(coverage.get("label", "")) or f"Fragmentos utilizados: {self.knowledge_fragment_count} de {self.knowledge_total_fragment_count}"
+            self.knowledge_reference_text = str(coverage.get("references_label", "")) or f"Referencias: {self.knowledge_reference_count}"
         except Exception as exc:  # noqa: BLE001
             self.knowledge_documents = []
             self.knowledge_document = {}
@@ -1555,12 +1579,67 @@ class AppState(rx.State):
             self.knowledge_selected_claims = []
             self.knowledge_selected_evidence = []
             self.knowledge_selected_connections = []
+            self.knowledge_fragment_contexts = []
             self.knowledge_fragment_count = 0
+            self.knowledge_total_fragment_count = 0
             self.knowledge_question_count = 0
             self.knowledge_claim_count = 0
             self.knowledge_reference_count = 0
+            self.knowledge_coverage_text = ""
+            self.knowledge_reference_text = ""
             self.knowledge_error = f"{type(exc).__name__}: {exc}"
             self.error_message = self.knowledge_error
+
+    def load_topic(self) -> None:
+        self.error_message = ""
+        self.load_knowledge()
+        document = _json_dict(self.knowledge_document)
+        investigation = _json_dict(get_investigation(TOPIC_BUDGET_2013_TARGET))
+        legislative = _json_dict(investigation.get("legislative", {}))
+        compact_metrics = _json_dict(investigation.get("compact_metrics", {}))
+        source_records = _json_list(legislative.get("source_records", []))
+        organizations = _topic_organizations(document, source_records, investigation)
+        self.topic_title = TOPIC_BUDGET_2013_TITLE
+        self.topic_status = str(document.get("official_status", "")) or str(investigation.get("official_status", ""))
+        self.topic_read_time = _topic_read_time(self.knowledge_fragments)
+        self.topic_document_count = 1 if document else 0
+        self.topic_updated_at = str(document.get("published_at", "")) or _topic_latest_record_date(source_records)
+        self.topic_organizations_text = " | ".join(organizations)
+        self.topic_official_document = {
+            "title": str(document.get("title", self.topic_title)),
+            "source": str(document.get("source", "")),
+            "document_type": str(document.get("document_type", "")),
+            "published_at": str(document.get("published_at", "")),
+            "summary": str(self.knowledge_summary),
+            "official_url": str(document.get("official_url", "")),
+        }
+        self.topic_proposes_rows = self.knowledge_key_points[:3]
+        self.topic_changes_rows = self.knowledge_claims[:3]
+        self.topic_no_changes_rows = _topic_no_change_rows(self.knowledge_claims, self.knowledge_notice)
+        self.topic_timeline_rows = _topic_timeline_rows(_json_list(investigation.get("timeline", [])))
+        self.topic_evidence_rows = self.knowledge_evidence[:6]
+        self.topic_reading_rows = [
+            {
+                "title": self.knowledge_title or self.topic_title,
+                "summary": self.knowledge_summary,
+                "href": "/official-document",
+                "coverage": self.knowledge_coverage_text,
+            }
+        ]
+        self.topic_expediente_title = str(_field(investigation.get("entity", {}), "name", "Boletin 8575-05"))
+        self.topic_expediente_summary = str(investigation.get("narrative_summary", investigation.get("summary", "")))
+        self.topic_expediente_metrics = (
+            f"Evidencia: {int(compact_metrics.get('evidence_count', 0) or 0)} | "
+            f"Relaciones: {int(compact_metrics.get('relationship_count', 0) or 0)}"
+        )
+        self.topic_tracking_summary = _topic_tracking_summary(self.topic_timeline_rows, investigation)
+        self.topic_vote_count = int(legislative.get("votes_found", 0) or 0)
+        self.topic_vote_summary = (
+            f"{self.topic_vote_count} votaciones registradas en {legislative.get('source', 'Datos Abiertos Legislativos')}."
+            if self.topic_vote_count
+            else "La vista de expediente no expone votaciones para este tema."
+        )
+        self.topic_original_url = str(document.get("official_url", ""))
 
     def load_reports(self) -> None:
         self.error_message = ""
@@ -1618,31 +1697,24 @@ class AppState(rx.State):
         self.knowledge_selected_page = int(page or 1)
         selected_fragment = str(fragment_id or "")
         if not selected_fragment:
-            first_on_page = _first_evidence_for_page(self.knowledge_evidence, self.knowledge_selected_page)
-            selected_fragment = str(first_on_page.get("fragment_id", ""))
-        self.knowledge_selected_fragment_id = selected_fragment
-        self.knowledge_selected_reference_label = f"Pagina {self.knowledge_selected_page}"
-        self.knowledge_selected_excerpt = ""
-        for row in self.knowledge_evidence:
-            if str(row.get("fragment_id", "")) == self.knowledge_selected_fragment_id:
-                self.knowledge_selected_page = int(row.get("page", self.knowledge_selected_page) or self.knowledge_selected_page)
-                self.knowledge_selected_reference_label = str(row.get("reference_label", "")) or f"Pagina {self.knowledge_selected_page}"
-                self.knowledge_selected_excerpt = str(row.get("excerpt", ""))
-                break
-        self._set_document_reading_context(self.knowledge_selected_fragment_id)
+            page_context = next((row for row in self.knowledge_fragment_contexts if int(row.get("page", 0) or 0) == self.knowledge_selected_page), {})
+            selected_fragment = str(page_context.get("fragment_id", ""))
+        self._set_document_reading_context(selected_fragment)
 
     def _set_document_reading_context(self, fragment_id: str) -> None:
         selected = str(fragment_id or "")
-        self.knowledge_selected_summary = _rows_for_fragment(self.knowledge_key_points, selected)
-        self.knowledge_selected_questions = _rows_for_fragment(self.knowledge_questions, selected)
-        self.knowledge_selected_claims = _rows_for_fragment(self.knowledge_claims, selected)
-        self.knowledge_selected_evidence = _rows_for_fragment(self.knowledge_evidence, selected)
-        self.knowledge_selected_connections = [
-            {"label": "Expediente", "href": _investigation_href(self.knowledge_expediente_target or DEMO_INVESTIGATION_TARGET)},
-            {"label": "Seguimiento", "href": "/tracking"},
-            {"label": "Reporte ciudadano", "href": "/reports"},
-            {"label": "Biblioteca", "href": "/library"},
-        ]
+        context = next((row for row in self.knowledge_fragment_contexts if str(row.get("fragment_id", "")) == selected), {})
+        if not context:
+            context = self.knowledge_fragment_contexts[0] if self.knowledge_fragment_contexts else {}
+        self.knowledge_selected_fragment_id = str(context.get("fragment_id", selected))
+        self.knowledge_selected_page = int(context.get("page", self.knowledge_selected_page) or self.knowledge_selected_page)
+        self.knowledge_selected_reference_label = str(context.get("reference_label", "")) or f"Pagina {self.knowledge_selected_page}"
+        self.knowledge_selected_excerpt = str(context.get("excerpt", ""))
+        self.knowledge_selected_summary = _json_list(context.get("summary", []))
+        self.knowledge_selected_questions = _json_list(context.get("questions", []))
+        self.knowledge_selected_claims = _json_list(context.get("claims", []))
+        self.knowledge_selected_evidence = _json_list(context.get("evidence", []))
+        self.knowledge_selected_connections = _json_list(context.get("connections", []))
 
     def open_report_investigation(self):
         return rx.redirect(_investigation_href(self.citizen_report_subject or DEMO_INVESTIGATION_TARGET))
@@ -1935,6 +2007,7 @@ class AppState(rx.State):
 def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
     nav_items = rx.hstack(
         rx.link("Inicio", href="/", class_name=_nav_class(active_page == PAGE_HOME)),
+        rx.link("Tema", href="/topic", class_name=_nav_class(active_page == PAGE_TOPIC)),
         rx.link("Descubre", href="/discover", class_name=_nav_class(active_page == PAGE_DISCOVER)),
         rx.link("Expediente", href="/investigation", class_name=_nav_class(active_page == PAGE_INVESTIGATION)),
         rx.link("Reportes", href="/reports", class_name=_nav_class(active_page == PAGE_REPORTS)),
@@ -2650,6 +2723,83 @@ def help_card(title: str, body: str) -> rx.Component:
     )
 
 
+def current_topic_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["status"], class_name="badge badge-teal"),
+            rx.text("Documento oficial", class_name="mini-pill evidence-trust"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["subtitle"], class_name="muted small"),
+        rx.text(row["summary"], class_name="source-fact"),
+        rx.hstack(
+            rx.text(row["organization"], class_name="mini-pill"),
+            rx.text(f"Ultima actualizacion: {row['updated_at']}", class_name="mini-pill mini-pill-purple"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.button("Ver lectura documentada", on_click=rx.redirect(row["href"]), class_name="button"),
+        class_name="current-topic-card",
+    )
+
+
+def topic_nav() -> rx.Component:
+    return rx.hstack(
+        rx.link("Tema", href="/topic", class_name="document-inline-link"),
+        rx.text("↓", class_name="muted small"),
+        rx.link("Lectura", href="#topic-reading", class_name="document-inline-link"),
+        rx.text("↓", class_name="muted small"),
+        rx.link("Documento", href="#topic-document", class_name="document-inline-link"),
+        rx.text("↓", class_name="muted small"),
+        rx.link("Fragmento", href="#topic-evidence", class_name="document-inline-link"),
+        spacing="2",
+        wrap="wrap",
+        class_name="topic-nav",
+    )
+
+
+def topic_official_document_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["source"], class_name="badge badge-teal"),
+            rx.text(row["document_type"], class_name="mini-pill mini-pill-purple"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["summary"], class_name="story-summary"),
+        rx.text(row["official_url"], class_name="mono id-line"),
+        rx.hstack(
+            rx.button("Abrir lectura", on_click=rx.redirect("/official-document"), class_name="button"),
+            rx.link("Documento original", href=row["official_url"], class_name="button button-secondary"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        class_name="card tracking-document-card",
+    )
+
+
+def topic_reading_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["summary"], class_name="muted small"),
+        rx.text(row["coverage"], class_name="mini-pill"),
+        rx.button("Abrir lectura documentada", on_click=rx.redirect(row["href"]), class_name="button button-secondary"),
+        class_name="card report-section-card",
+    )
+
+
+def topic_summary_card(title: str, body: rx.Var | str, helper: rx.Var | str = "") -> rx.Component:
+    return rx.box(
+        rx.text(title, class_name="card-title"),
+        rx.text(body, class_name="muted"),
+        rx.cond(helper != "", rx.text(helper, class_name="source-fact")),
+        class_name="card report-card",
+    )
+
+
 def next_step_card(title: str, body: str, label: str, href: str) -> rx.Component:
     return rx.box(
         rx.text(title, class_name="card-title"),
@@ -2986,8 +3136,12 @@ def document_metric(label: str, value: rx.Var | int) -> rx.Component:
 
 def reading_context_bar() -> rx.Component:
     return rx.box(
-        rx.text("Documento leido parcialmente", class_name="document-reading-status"),
-        document_metric("fragmentos utilizados", AppState.knowledge_fragment_count),
+        rx.text("Cobertura documental", class_name="document-reading-status"),
+        rx.box(
+            rx.text(AppState.knowledge_coverage_text, class_name="document-metric-value"),
+            rx.text(AppState.knowledge_reference_text, class_name="document-metric-label"),
+            class_name="document-metric",
+        ),
         document_metric("preguntas respondidas", AppState.knowledge_question_count),
         document_metric("afirmaciones verificables", AppState.knowledge_claim_count),
         document_metric("referencias documentales", AppState.knowledge_reference_count),
@@ -3006,7 +3160,7 @@ def document_fragment_card(row: dict) -> rx.Component:
         ),
         rx.text(row["text"], class_name="document-fragment-text"),
         rx.box(
-            rx.text("Este parrafo tambien aparece en", class_name="document-cross-label"),
+            rx.text("Navegacion relacionada", class_name="document-cross-label"),
             rx.hstack(
                 rx.link("Expediente", href="/investigation", class_name="document-inline-link"),
                 rx.link("Seguimiento", href="/tracking", class_name="document-inline-link"),
@@ -3117,32 +3271,32 @@ def reading_connection(row: dict) -> rx.Component:
 def reading_guide_panel() -> rx.Component:
     return rx.box(
         rx.text(AppState.knowledge_selected_reference_label, class_name="document-page-marker"),
-        rx.text("Guia de lectura", class_name="reading-guide-title"),
+        rx.text("Lectura documentada", class_name="reading-guide-title"),
         rx.text(AppState.knowledge_selected_excerpt, class_name="reading-guide-summary"),
         rx.box(
-            rx.text("Resumen relacionado", class_name="reading-guide-heading"),
+            rx.text("Punto documentado", class_name="reading-guide-heading"),
             rx.cond(
                 AppState.knowledge_selected_summary,
                 rx.foreach(AppState.knowledge_selected_summary, guide_point),
-                rx.text("Este fragmento no tiene un punto destacado asociado.", class_name="muted small"),
+                rx.text("Este fragmento no tiene un punto destacado.", class_name="muted small"),
             ),
             class_name="reading-guide-section",
         ),
         rx.box(
-            rx.text("Pregunta relacionada", class_name="reading-guide-heading"),
+            rx.text("Pregunta derivada del texto", class_name="reading-guide-heading"),
             rx.cond(
                 AppState.knowledge_selected_questions,
                 rx.foreach(AppState.knowledge_selected_questions, guide_question),
-                rx.text("No hay pregunta asociada a este fragmento.", class_name="muted small"),
+                rx.text("No hay pregunta derivada de este fragmento.", class_name="muted small"),
             ),
             class_name="reading-guide-section",
         ),
         rx.box(
-            rx.text("Claim relacionado", class_name="reading-guide-heading"),
+            rx.text("Afirmacion trazable", class_name="reading-guide-heading"),
             rx.cond(
                 AppState.knowledge_selected_claims,
                 rx.foreach(AppState.knowledge_selected_claims, guide_claim),
-                rx.text("No hay claim asociado a este fragmento.", class_name="muted small"),
+                rx.text("No hay afirmacion trazable para este fragmento.", class_name="muted small"),
             ),
             class_name="reading-guide-section",
         ),
@@ -3151,12 +3305,12 @@ def reading_guide_panel() -> rx.Component:
             rx.cond(
                 AppState.knowledge_selected_evidence,
                 rx.foreach(AppState.knowledge_selected_evidence, guide_evidence),
-                rx.text("No hay evidencia asociada a este fragmento.", class_name="muted small"),
+                rx.text("No hay evidencia seleccionada para este fragmento.", class_name="muted small"),
             ),
             class_name="reading-guide-section",
         ),
         rx.box(
-            rx.text("Este parrafo tambien aparece en", class_name="reading-guide-heading"),
+            rx.text("Navegacion relacionada", class_name="reading-guide-heading"),
             rx.hstack(rx.foreach(AppState.knowledge_selected_connections, reading_connection), spacing="2", wrap="wrap"),
             class_name="reading-guide-section",
         ),
@@ -4019,6 +4173,20 @@ def home() -> rx.Component:
             class_name="hero",
         ),
         page_section(
+            "Actualidad Documentada",
+            rx.cond(
+                AppState.current_topic_rows,
+                rx.grid(
+                    rx.foreach(AppState.current_topic_rows, current_topic_card),
+                    columns="3",
+                    spacing="3",
+                    class_name="responsive-grid",
+                ),
+                rx.text("Todavia no hay temas documentados publicados.", class_name="muted small"),
+            ),
+            subtitle="Temas oficiales actualmente analizados por DatosEnOrden.",
+        ),
+        page_section(
             "Entradas principales",
             rx.grid(
                 next_step_card("Leer un reporte ciudadano", "Una lectura tipo articulo que resume el caso, sus fuentes y sus siguientes pasos.", "Leer reporte", "/reports"),
@@ -4396,6 +4564,133 @@ def result_card(row: dict) -> rx.Component:
     return workspace_match_card(row)
 
 
+@rx.page(route="/topic", title="Tema - Ley de Presupuestos 2013 - DatosEnOrden")
+def topic() -> rx.Component:
+    return shell(
+        rx.box(
+            rx.text("Tema", class_name="document-kicker"),
+            rx.text(AppState.topic_title, class_name="document-title"),
+            rx.text(
+                "Un tema reúne documentos, lecturas, evidencia, expediente, seguimiento y votaciones alrededor de un asunto público.",
+                class_name="document-subtitle",
+            ),
+            topic_nav(),
+            rx.hstack(
+                metric("Estado", AppState.topic_status),
+                metric("Tiempo estimado", AppState.topic_read_time),
+                metric("Documentos", AppState.topic_document_count),
+                metric("Ultima actualización", AppState.topic_updated_at),
+                spacing="3",
+                wrap="wrap",
+            ),
+            rx.text(AppState.topic_organizations_text, class_name="document-meta-reference"),
+            class_name="document-hero topic-hero",
+        ),
+        page_section(
+            "Documento oficial",
+            topic_official_document_card(AppState.topic_official_document),
+            subtitle="El documento protagonista del tema.",
+            element_id="topic-document",
+        ),
+        page_section(
+            "¿Qué propone?",
+            rx.grid(
+                rx.foreach(AppState.topic_proposes_rows, knowledge_key_point_card),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Puntos destacados reutilizados desde la lectura documentada.",
+        ),
+        page_section(
+            "¿Qué cambia?",
+            rx.grid(
+                rx.foreach(AppState.topic_changes_rows, guide_claim),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Afirmaciones trazables ya presentes en Knowledge.",
+        ),
+        page_section(
+            "¿Qué NO cambia?",
+            rx.grid(
+                rx.foreach(AppState.topic_no_changes_rows, guide_claim),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Limitaciones y notas de revisión existentes.",
+        ),
+        page_section(
+            "¿Qué sigue?",
+            rx.cond(
+                AppState.topic_timeline_rows,
+                rx.grid(
+                    rx.foreach(AppState.topic_timeline_rows, tracking_event_card),
+                    columns="1",
+                    spacing="3",
+                    class_name="timeline-list",
+                ),
+                rx.text("No hay hitos de timeline visibles para este tema.", class_name="muted small"),
+            ),
+            subtitle="Timeline existente del expediente legislativo.",
+        ),
+        page_section(
+            "Evidencia",
+            rx.grid(
+                rx.foreach(AppState.topic_evidence_rows, tracking_evidence_card),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            rx.button("Abrir documento y fragmentos", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
+            subtitle="Fragmentos reutilizados desde la lectura documentada.",
+            class_name="topic-evidence-section",
+            element_id="topic-evidence",
+        ),
+        page_section(
+            "Lecturas Documentadas",
+            rx.grid(
+                rx.foreach(AppState.topic_reading_rows, topic_reading_card),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Lista inicial de lecturas disponibles para este tema.",
+            class_name="topic-reading-section",
+            element_id="topic-reading",
+        ),
+        page_section(
+            "Expediente",
+            topic_summary_card(AppState.topic_expediente_title, AppState.topic_expediente_summary, AppState.topic_expediente_metrics),
+            rx.button("Abrir expediente", on_click=rx.redirect(_investigation_href(TOPIC_BUDGET_2013_TARGET)), class_name="button button-secondary"),
+            subtitle="Resumen de expediente reutilizado.",
+        ),
+        page_section(
+            "Seguimiento",
+            topic_summary_card("Timeline del expediente", AppState.topic_tracking_summary, AppState.topic_vote_summary),
+            subtitle="Resumen del seguimiento disponible para el boletín cargado.",
+        ),
+        page_section(
+            "Votaciones",
+            topic_summary_card("Votaciones", AppState.topic_vote_summary, AppState.topic_expediente_metrics),
+            subtitle="Resumen de votaciones expuesto por el expediente legislativo.",
+        ),
+        page_section(
+            "Documento original",
+            rx.box(
+                rx.text(AppState.topic_original_url, class_name="mono id-line"),
+                rx.link("Abrir fuente original", href=AppState.topic_original_url, class_name="button"),
+                class_name="card report-section-card",
+            ),
+            subtitle="Enlace al documento oficial descargado.",
+        ),
+        on_mount=AppState.load_topic,
+        active_page=PAGE_TOPIC,
+    )
+
+
 @rx.page(route="/tracking", title="Seguimiento - DatosEnOrden")
 def tracking() -> rx.Component:
     return shell(
@@ -4615,10 +4910,10 @@ def official_document() -> rx.Component:
     return shell(
         rx.box(
             rx.box(
-                rx.text("Documento Oficial", class_name="document-kicker"),
+                rx.text("Lectura documentada", class_name="document-kicker"),
                 rx.text(AppState.knowledge_title, class_name="document-title"),
                 rx.text(
-                    "Lectura publica con paginas, fragmentos y referencias navegables. El documento permanece a la vista; la guia solo acompana.",
+                    "Resumen, preguntas y afirmaciones trazables construidas desde el texto extraido del documento oficial.",
                     class_name="document-subtitle",
                 ),
                 class_name="document-hero-copy",
@@ -4652,7 +4947,7 @@ def official_document() -> rx.Component:
         ),
         rx.box(
             rx.text("Referencias documentales", class_name="section-title"),
-            rx.text("Todas las referencias usan el mismo documento, pagina, seccion, fragmento y cita breve.", class_name="section-subtitle"),
+            rx.text("Cada referencia conserva fragment_id, pagina normalizada y extracto verificable del documento.", class_name="section-subtitle"),
             rx.box(
                 rx.foreach(AppState.knowledge_evidence, guide_evidence),
                 class_name="reference-strip",
@@ -5377,6 +5672,16 @@ style = {
         "padding": "20px 0",
         "border_top": "1px solid rgba(161, 161, 170, 0.14)",
     },
+    ".current-topic-card": {
+        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border_radius": "8px",
+        "padding": "16px",
+        "background": "#18181b",
+        "display": "grid",
+        "gap": "10px",
+        "align_content": "start",
+    },
+    ".shell.theme-light .current-topic-card": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
     ".card": {
         "border": "1px solid rgba(161, 161, 170, 0.16)",
         "border_radius": "16px",
