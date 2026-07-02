@@ -58,23 +58,39 @@ Fragmento
 
 El modelo evita duplicar documentos: las afirmaciones solo guardan IDs, pagina, fragmento y cita breve.
 
-## UI V1
+## UI V2: document-first
 
-La nueva seccion visible es `/official-document`, rotulada como `Documento Oficial`. Muestra:
+La seccion visible `/official-document`, rotulada como `Documento Oficial`, funciona como experiencia de lectura. El documento domina el ancho y la guia de lectura acompana en una columna lateral.
 
-- titulo
-- organismo/fuente
+La pantalla muestra:
+
+- titulo editorial del documento
+- fuente/organismo
 - fecha
 - estado
 - referencia local
-- boton `Ver documento`
-- resumen ciudadano
-- puntos importantes
-- preguntas
-- afirmaciones verificables
-- referencias
+- barra de estado de lectura
+- paginas y fragmentos del documento
+- resumen relacionado al fragmento seleccionado
+- pregunta relacionada
+- claim relacionado
+- evidencia utilizada
+- enlaces a Expediente, Seguimiento, Reporte ciudadano y Biblioteca
 
-El documento ocupa la columna principal. El resumen y las preguntas acompanian en una columna secundaria.
+La navegacion ocurre sin recargar la pagina: seleccionar una pregunta, punto, claim, referencia, pagina o fragmento actualiza `page`, `fragment_id`, resaltado y panel lateral.
+
+## Preparacion para Document Experience Engine
+
+No se implementa un motor nuevo en esta fase. La organizacion queda preparada para que mas adelante exista un componente reutilizable llamado `Document Experience Engine`.
+
+El limite propuesto es:
+
+- Knowledge Engine sigue generando y organizando conocimiento.
+- Evidence conserva referencias y citas breves.
+- La UI de documento consume estructuras ya normalizadas: paginas, fragmentos, anclas, citas y conexiones.
+- Un futuro Document Experience Engine podria empaquetar seleccion, contexto lateral, metricas de lectura y navegacion entre fragmentos para reutilizarlo en DatosEnOrden Studio.
+
+La fase V2 solo desacopla la presentacion: la experiencia de lectura depende de `document_id`, `page`, `fragment_id`, `citation_id` y listas de relaciones ya calculadas, sin schema nuevo.
 
 ## Limites deliberados
 

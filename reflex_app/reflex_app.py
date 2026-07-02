@@ -332,11 +332,12 @@ def _json_list(value: object) -> list:
 
 def _reference_rows(rows: list[dict], evidence_by_id: dict[str, dict]) -> list[dict]:
     enriched: list[dict] = []
-    for row in rows:
+    for index, row in enumerate(rows, start=1):
         evidence = evidence_by_id.get(str(row.get("evidence_id", "")), {})
         page = int(row.get("page", evidence.get("page", 1)) or 1)
         fragment_id = str(row.get("fragment_id", evidence.get("fragment_id", "")))
         reference_label = str(row.get("reference_label", evidence.get("reference_label", ""))) or f"Pagina {page}"
+        display_question = _human_question_label(str(row.get("question", "")), index)
         enriched.append(
             {
                 **dict(row),
@@ -344,9 +345,29 @@ def _reference_rows(rows: list[dict], evidence_by_id: dict[str, dict]) -> list[d
                 "fragment_id": fragment_id,
                 "reference_label": reference_label,
                 "quoted_text": str(evidence.get("quoted_text", evidence.get("excerpt", ""))),
+                "display_question": display_question,
             }
         )
     return enriched
+
+
+def _human_question_label(question: str, index: int) -> str:
+    labels = (
+        "Que intenta hacer este documento?",
+        "Que informacion importante contiene?",
+        "Con que expediente o seguimiento se conecta?",
+        "Que parte deberia revisar primero?",
+        "Que informacion NO aparece aqui?",
+    )
+    return labels[index - 1] if 0 < index <= len(labels) else question
+
+
+def _rows_for_fragment(rows: list[dict], fragment_id: str) -> list[dict]:
+    return [dict(row) for row in rows if str(row.get("fragment_id", "")) == fragment_id]
+
+
+def _first_evidence_for_page(rows: list[dict], page: int) -> dict:
+    return next((dict(row) for row in rows if int(row.get("page", 0) or 0) == page), {})
 
 
 def _claim_reference_row(row: dict, evidence_by_id: dict[str, dict]) -> dict:
@@ -1104,6 +1125,15 @@ class AppState(rx.State):
     knowledge_selected_fragment_id: str = ""
     knowledge_selected_reference_label: str = "Pagina 18"
     knowledge_selected_excerpt: str = ""
+    knowledge_selected_summary: list[dict] = []
+    knowledge_selected_questions: list[dict] = []
+    knowledge_selected_claims: list[dict] = []
+    knowledge_selected_evidence: list[dict] = []
+    knowledge_selected_connections: list[dict] = []
+    knowledge_fragment_count: int = 0
+    knowledge_question_count: int = 0
+    knowledge_claim_count: int = 0
+    knowledge_reference_count: int = 0
     knowledge_error: str = ""
     investigation_status_message: str = ""
     investigation_status: str = INVESTIGATION_STATUS_IDLE
@@ -1496,6 +1526,11 @@ class AppState(rx.State):
             ]
             self.knowledge_notice = str(_field(demo, "notice", ""))
             self.knowledge_expediente_target = str(_field(document, "related_expediente_target", DEMO_INVESTIGATION_TARGET))
+            self.knowledge_fragment_count = len({str(row.get("fragment_id", "")) for row in self.knowledge_evidence if row.get("fragment_id", "")})
+            self.knowledge_question_count = len(self.knowledge_questions)
+            self.knowledge_claim_count = len(self.knowledge_claims)
+            self.knowledge_reference_count = len(self.knowledge_evidence)
+            self._set_document_reading_context(self.knowledge_selected_fragment_id)
         except Exception as exc:  # noqa: BLE001
             self.knowledge_documents = []
             self.knowledge_document = {}
@@ -1515,6 +1550,15 @@ class AppState(rx.State):
             self.knowledge_selected_fragment_id = ""
             self.knowledge_selected_reference_label = "Pagina 18"
             self.knowledge_selected_excerpt = ""
+            self.knowledge_selected_summary = []
+            self.knowledge_selected_questions = []
+            self.knowledge_selected_claims = []
+            self.knowledge_selected_evidence = []
+            self.knowledge_selected_connections = []
+            self.knowledge_fragment_count = 0
+            self.knowledge_question_count = 0
+            self.knowledge_claim_count = 0
+            self.knowledge_reference_count = 0
             self.knowledge_error = f"{type(exc).__name__}: {exc}"
             self.error_message = self.knowledge_error
 
@@ -1572,14 +1616,33 @@ class AppState(rx.State):
 
     def select_document_anchor(self, page: int, fragment_id: str) -> None:
         self.knowledge_selected_page = int(page or 1)
-        self.knowledge_selected_fragment_id = str(fragment_id or "")
+        selected_fragment = str(fragment_id or "")
+        if not selected_fragment:
+            first_on_page = _first_evidence_for_page(self.knowledge_evidence, self.knowledge_selected_page)
+            selected_fragment = str(first_on_page.get("fragment_id", ""))
+        self.knowledge_selected_fragment_id = selected_fragment
         self.knowledge_selected_reference_label = f"Pagina {self.knowledge_selected_page}"
         self.knowledge_selected_excerpt = ""
         for row in self.knowledge_evidence:
             if str(row.get("fragment_id", "")) == self.knowledge_selected_fragment_id:
+                self.knowledge_selected_page = int(row.get("page", self.knowledge_selected_page) or self.knowledge_selected_page)
                 self.knowledge_selected_reference_label = str(row.get("reference_label", "")) or f"Pagina {self.knowledge_selected_page}"
                 self.knowledge_selected_excerpt = str(row.get("excerpt", ""))
-                return
+                break
+        self._set_document_reading_context(self.knowledge_selected_fragment_id)
+
+    def _set_document_reading_context(self, fragment_id: str) -> None:
+        selected = str(fragment_id or "")
+        self.knowledge_selected_summary = _rows_for_fragment(self.knowledge_key_points, selected)
+        self.knowledge_selected_questions = _rows_for_fragment(self.knowledge_questions, selected)
+        self.knowledge_selected_claims = _rows_for_fragment(self.knowledge_claims, selected)
+        self.knowledge_selected_evidence = _rows_for_fragment(self.knowledge_evidence, selected)
+        self.knowledge_selected_connections = [
+            {"label": "Expediente", "href": _investigation_href(self.knowledge_expediente_target or DEMO_INVESTIGATION_TARGET)},
+            {"label": "Seguimiento", "href": "/tracking"},
+            {"label": "Reporte ciudadano", "href": "/reports"},
+            {"label": "Biblioteca", "href": "/library"},
+        ]
 
     def open_report_investigation(self):
         return rx.redirect(_investigation_href(self.citizen_report_subject or DEMO_INVESTIGATION_TARGET))
@@ -2913,21 +2976,48 @@ def reference_button(row: dict) -> rx.Component:
     )
 
 
+def document_metric(label: str, value: rx.Var | int) -> rx.Component:
+    return rx.box(
+        rx.text(value, class_name="document-metric-value"),
+        rx.text(label, class_name="document-metric-label"),
+        class_name="document-metric",
+    )
+
+
+def reading_context_bar() -> rx.Component:
+    return rx.box(
+        rx.text("Documento leido parcialmente", class_name="document-reading-status"),
+        document_metric("fragmentos utilizados", AppState.knowledge_fragment_count),
+        document_metric("preguntas respondidas", AppState.knowledge_question_count),
+        document_metric("afirmaciones verificables", AppState.knowledge_claim_count),
+        document_metric("referencias documentales", AppState.knowledge_reference_count),
+        class_name="reading-context-bar",
+    )
+
+
 def document_fragment_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.text(f"Pagina {row['page']}", class_name="mini-pill evidence-trust"),
-            rx.text(row["section_title"], class_name="context-title"),
+            rx.text(f"Pagina {row['page']}", class_name="document-page-marker"),
+            rx.text(row["section_title"], class_name="document-section-title"),
             justify="between",
             align="start",
             wrap="wrap",
         ),
         rx.text(row["text"], class_name="document-fragment-text"),
         rx.box(
-            rx.text("Este parrafo respalda", class_name="mini-pill"),
-            rx.text(row["supports_text"], class_name="muted small"),
+            rx.text("Este parrafo tambien aparece en", class_name="document-cross-label"),
+            rx.hstack(
+                rx.link("Expediente", href="/investigation", class_name="document-inline-link"),
+                rx.link("Seguimiento", href="/tracking", class_name="document-inline-link"),
+                rx.link("Reporte ciudadano", href="/reports", class_name="document-inline-link"),
+                rx.link("Biblioteca", href="/library", class_name="document-inline-link"),
+                spacing="2",
+                wrap="wrap",
+            ),
             class_name="fragment-supports",
         ),
+        on_click=AppState.select_document_anchor(row["page"], row["id"]),
         class_name=rx.cond(
             row["id"] == AppState.knowledge_selected_fragment_id,
             "document-fragment document-fragment-active",
@@ -2950,61 +3040,129 @@ def document_page_button(row: dict) -> rx.Component:
 
 def official_document_viewer(document_id: str, page: int, fragment_id: str, highlight: str) -> rx.Component:
     return rx.box(
-        rx.hstack(
-            rx.text("Documento", class_name="mini-pill evidence-trust"),
-            rx.text(document_id, class_name="mono id-line"),
-            justify="between",
-            align="center",
-            wrap="wrap",
-        ),
-        rx.hstack(
-            rx.foreach(AppState.knowledge_pages, document_page_button),
-            spacing="2",
-            wrap="wrap",
-            class_name="document-page-nav",
-        ),
+        reading_context_bar(),
         rx.box(
-            rx.text(f"Pagina seleccionada: {page}", class_name="document-page-label"),
-            rx.text(highlight, class_name="document-highlight"),
-            rx.text(fragment_id, class_name="mono id-line"),
-            class_name="document-current-anchor",
-        ),
-        rx.box(
-            rx.foreach(AppState.knowledge_fragments, document_fragment_card),
-            class_name="document-page",
+            rx.hstack(
+                rx.text("Documento", class_name="document-label"),
+                rx.text(document_id, class_name="mono id-line"),
+                justify="between",
+                align="center",
+                wrap="wrap",
+            ),
+            rx.hstack(
+                rx.foreach(AppState.knowledge_pages, document_page_button),
+                spacing="2",
+                wrap="wrap",
+                class_name="document-page-nav",
+            ),
+            rx.box(
+                rx.text(f"Pagina {page}", class_name="document-page-label"),
+                rx.text(highlight, class_name="document-highlight"),
+                rx.text(fragment_id, class_name="mono id-line"),
+                class_name="document-current-anchor",
+            ),
+            rx.box(
+                rx.foreach(AppState.knowledge_fragments, document_fragment_card),
+                class_name="document-page",
+            ),
+            class_name="document-paper",
         ),
         class_name="official-document-viewer",
     )
 
 
-def official_summary_reference_card(row: dict) -> rx.Component:
+def guide_point(row: dict) -> rx.Component:
     return rx.box(
-        rx.text(row["title"], class_name="card-title"),
-        rx.text(row["detail"], class_name="muted small"),
-        rx.text(row["quoted_text"], class_name="source-fact"),
+        rx.text(row["title"], class_name="guide-title"),
+        rx.text(row["detail"], class_name="guide-copy"),
         reference_button(row),
-        class_name="official-reference-card",
+        on_click=AppState.select_document_anchor(row["page"], row["fragment_id"]),
+        class_name="guide-entry",
     )
 
 
-def official_question_reference_card(row: dict) -> rx.Component:
+def guide_question(row: dict) -> rx.Component:
     return rx.box(
-        rx.text(row["question"], class_name="card-title"),
-        rx.text(row["why_it_matters"], class_name="muted small"),
-        rx.text(row["quoted_text"], class_name="source-fact"),
+        rx.text(row["display_question"], class_name="guide-title"),
+        rx.text(row["why_it_matters"], class_name="guide-copy"),
         reference_button(row),
-        class_name="official-reference-card",
+        on_click=AppState.select_document_anchor(row["page"], row["fragment_id"]),
+        class_name="guide-entry",
     )
 
 
-def official_claim_reference_card(row: dict) -> rx.Component:
+def guide_claim(row: dict) -> rx.Component:
     return rx.box(
-        rx.text(row["claim"], class_name="card-title"),
-        rx.text(row["review_note"], class_name="muted small"),
-        rx.text(row["quoted_text"], class_name="source-fact"),
+        rx.text(row["claim"], class_name="guide-title"),
+        rx.text(row["review_note"], class_name="guide-copy"),
         reference_button(row),
-        class_name="official-reference-card",
+        on_click=AppState.select_document_anchor(row["page"], row["fragment_id"]),
+        class_name="guide-entry",
     )
+
+
+def guide_evidence(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text(row["label"], class_name="guide-title"),
+        rx.text(row["quoted_text"], class_name="guide-copy"),
+        rx.text(row["url"], class_name="mono id-line"),
+        class_name="guide-evidence",
+    )
+
+
+def reading_connection(row: dict) -> rx.Component:
+    return rx.link(row["label"], href=row["href"], class_name="document-inline-link")
+
+
+def reading_guide_panel() -> rx.Component:
+    return rx.box(
+        rx.text(AppState.knowledge_selected_reference_label, class_name="document-page-marker"),
+        rx.text("Guia de lectura", class_name="reading-guide-title"),
+        rx.text(AppState.knowledge_selected_excerpt, class_name="reading-guide-summary"),
+        rx.box(
+            rx.text("Resumen relacionado", class_name="reading-guide-heading"),
+            rx.cond(
+                AppState.knowledge_selected_summary,
+                rx.foreach(AppState.knowledge_selected_summary, guide_point),
+                rx.text("Este fragmento no tiene un punto destacado asociado.", class_name="muted small"),
+            ),
+            class_name="reading-guide-section",
+        ),
+        rx.box(
+            rx.text("Pregunta relacionada", class_name="reading-guide-heading"),
+            rx.cond(
+                AppState.knowledge_selected_questions,
+                rx.foreach(AppState.knowledge_selected_questions, guide_question),
+                rx.text("No hay pregunta asociada a este fragmento.", class_name="muted small"),
+            ),
+            class_name="reading-guide-section",
+        ),
+        rx.box(
+            rx.text("Claim relacionado", class_name="reading-guide-heading"),
+            rx.cond(
+                AppState.knowledge_selected_claims,
+                rx.foreach(AppState.knowledge_selected_claims, guide_claim),
+                rx.text("No hay claim asociado a este fragmento.", class_name="muted small"),
+            ),
+            class_name="reading-guide-section",
+        ),
+        rx.box(
+            rx.text("Evidencia utilizada", class_name="reading-guide-heading"),
+            rx.cond(
+                AppState.knowledge_selected_evidence,
+                rx.foreach(AppState.knowledge_selected_evidence, guide_evidence),
+                rx.text("No hay evidencia asociada a este fragmento.", class_name="muted small"),
+            ),
+            class_name="reading-guide-section",
+        ),
+        rx.box(
+            rx.text("Este parrafo tambien aparece en", class_name="reading-guide-heading"),
+            rx.hstack(rx.foreach(AppState.knowledge_selected_connections, reading_connection), spacing="2", wrap="wrap"),
+            class_name="reading-guide-section",
+        ),
+        class_name="reading-guide-panel",
+    )
+
 
 def tracking_evidence_card(row: dict) -> rx.Component:
     return rx.box(
@@ -4456,36 +4614,25 @@ def knowledge() -> rx.Component:
 def official_document() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Documento Oficial", class_name="title"),
-            rx.text(
-                "Documento local de demostracion explicado junto a sus paginas, fragmentos y referencias trazables.",
-                class_name="subtitle",
+            rx.box(
+                rx.text("Documento Oficial", class_name="document-kicker"),
+                rx.text(AppState.knowledge_title, class_name="document-title"),
+                rx.text(
+                    "Lectura publica con paginas, fragmentos y referencias navegables. El documento permanece a la vista; la guia solo acompana.",
+                    class_name="document-subtitle",
+                ),
+                class_name="document-hero-copy",
             ),
-            rx.text("Demo local. Sin scraping, sin IA y sin PDFs pesados.", class_name="badge badge-purple launch-notice"),
             rx.hstack(
-                rx.button("Ver documento", on_click=AppState.select_document_anchor(AppState.knowledge_selected_page, AppState.knowledge_selected_fragment_id), class_name="button"),
-                rx.button("Abrir expediente", on_click=AppState.open_knowledge_investigation, class_name="button button-secondary"),
-                rx.button("Ver Biblioteca", on_click=rx.redirect("/library"), class_name="button button-secondary"),
-                spacing="3",
+                rx.text(AppState.knowledge_document["source"], class_name="document-meta-pill"),
+                rx.text(AppState.knowledge_document["published_at"], class_name="document-meta-pill"),
+                rx.text(AppState.knowledge_document["official_status"], class_name="document-meta-pill"),
+                rx.text(AppState.knowledge_document["official_url"], class_name="document-meta-reference"),
+                spacing="2",
                 wrap="wrap",
-                class_name="hero-actions",
+                class_name="document-meta-row",
             ),
-            class_name="hero",
-        ),
-        page_section(
-            "Ficha del documento",
-            rx.grid(
-                rx.box(rx.text("Titulo", class_name="mini-pill"), rx.text(AppState.knowledge_title, class_name="card-title"), class_name="context-item"),
-                rx.box(rx.text("Organismo", class_name="mini-pill"), rx.text(AppState.knowledge_document["source"], class_name="context-title"), class_name="context-item"),
-                rx.box(rx.text("Fecha", class_name="mini-pill"), rx.text(AppState.knowledge_document["published_at"], class_name="context-title"), class_name="context-item"),
-                rx.box(rx.text("Estado", class_name="mini-pill"), rx.text(AppState.knowledge_document["official_status"], class_name="context-title"), class_name="context-item"),
-                columns="4",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            rx.text(AppState.knowledge_document["official_url"], class_name="mono id-line"),
-            rx.button("Ver documento", on_click=AppState.select_document_anchor(AppState.knowledge_selected_page, AppState.knowledge_selected_fragment_id), class_name="button"),
-            subtitle="La ficha identifica el documento antes de mostrar cualquier lectura ciudadana.",
+            class_name="document-hero",
         ),
         rx.box(
             rx.box(
@@ -4498,41 +4645,19 @@ def official_document() -> rx.Component:
                 class_name="document-main-column",
             ),
             rx.box(
-                page_section(
-                    "Resumen ciudadano",
-                    rx.text(AppState.knowledge_summary, class_name="story-summary"),
-                    rx.text(AppState.knowledge_selected_reference_label, class_name="mini-pill evidence-trust"),
-                    subtitle="El resumen acompana al documento; la referencia visible abre el fragmento respaldante.",
-                ),
-                page_section(
-                    "Puntos importantes",
-                    rx.foreach(AppState.knowledge_key_points, official_summary_reference_card),
-                    subtitle="Cada punto apunta a una pagina y fragmento.",
-                ),
-                page_section(
-                    "Preguntas",
-                    rx.foreach(AppState.knowledge_questions, official_question_reference_card),
-                    subtitle="Preguntas frecuentes conectadas al texto original.",
-                ),
-                page_section(
-                    "Afirmaciones verificables",
-                    rx.foreach(AppState.knowledge_claims, official_claim_reference_card),
-                    subtitle="Las afirmaciones conservan evidencia y cita breve.",
-                ),
+                reading_guide_panel(),
                 class_name="document-side-column",
             ),
             class_name="official-document-layout",
         ),
-        page_section(
-            "Referencias",
-            rx.grid(
-                rx.foreach(AppState.knowledge_evidence, tracking_evidence_card),
-                columns="2",
-                spacing="3",
-                class_name="responsive-grid",
+        rx.box(
+            rx.text("Referencias documentales", class_name="section-title"),
+            rx.text("Todas las referencias usan el mismo documento, pagina, seccion, fragmento y cita breve.", class_name="section-subtitle"),
+            rx.box(
+                rx.foreach(AppState.knowledge_evidence, guide_evidence),
+                class_name="reference-strip",
             ),
-            rx.text(AppState.knowledge_notice, class_name="muted small"),
-            subtitle="Referencias livianas: documento, pagina, seccion, fragmento y cita breve.",
+            class_name="document-reference-section",
         ),
         on_mount=AppState.load_knowledge,
         active_page=PAGE_DOCUMENT,
@@ -5442,77 +5567,132 @@ style = {
         "padding": "8px",
         "background": "#1f1f24",
     },
-    ".official-document-layout": {
-        "display": "grid",
-        "grid_template_columns": "minmax(0, 1.35fr) minmax(360px, 0.85fr)",
-        "gap": "24px",
-        "align_items": "start",
-    },
-    ".document-main-column": {"min_width": "0"},
-    ".document-side-column": {"display": "grid", "gap": "12px", "min_width": "0"},
-    ".official-document-viewer": {
-        "border": "1px solid rgba(228, 228, 231, 0.18)",
-        "border_radius": "8px",
-        "padding": "18px",
-        "background": "#101014",
+    ".document-hero": {
+        "padding": "20px 0 10px",
         "display": "grid",
         "gap": "14px",
+        "border_bottom": "1px solid rgba(228, 228, 231, 0.12)",
     },
-    ".shell.theme-light .official-document-viewer": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.22)"},
-    ".document-page-nav": {"border_bottom": "1px solid rgba(161, 161, 170, 0.16)", "padding_bottom": "10px"},
-    ".page-chip": {
-        "border": "1px solid rgba(161, 161, 170, 0.24)",
-        "border_radius": "6px",
-        "background": "#1f1f24",
-        "color": "#e4e4e7",
-        "font_weight": "700",
+    ".document-hero-copy": {"display": "grid", "gap": "8px", "max_width": "1040px"},
+    ".document-kicker": {"font_size": "13px", "font_weight": "800", "letter_spacing": "0.08em", "text_transform": "uppercase", "color": "#2dd4bf"},
+    ".document-title": {"font_size": "34px", "font_weight": "850", "line_height": "1.12", "color": "#f4f4f5", "max_width": "1080px"},
+    ".document-subtitle": {"font_size": "16px", "line_height": "1.55", "color": "#a1a1aa", "max_width": "860px"},
+    ".document-meta-row": {"align_items": "center"},
+    ".document-meta-pill": {
+        "border": "1px solid rgba(161, 161, 170, 0.22)",
+        "border_radius": "999px",
+        "padding": "5px 10px",
+        "font_size": "12px",
+        "color": "#d4d4d8",
+        "background": "rgba(24, 24, 27, 0.72)",
     },
-    ".page-chip-active": {"border_color": "#2dd4bf", "background": "rgba(45, 212, 191, 0.14)", "color": "#ccfbf1"},
-    ".document-current-anchor": {
-        "border": "1px solid rgba(45, 212, 191, 0.18)",
+    ".document-meta-reference": {"font_family": "Consolas, monospace", "font_size": "12px", "color": "#a1a1aa", "overflow_wrap": "anywhere"},
+    ".official-document-layout": {
+        "display": "grid",
+        "grid_template_columns": "minmax(0, 1.95fr) minmax(340px, 0.72fr)",
+        "gap": "28px",
+        "align_items": "start",
+        "padding": "22px 0",
+    },
+    ".document-main-column": {"min_width": "0"},
+    ".document-side-column": {"min_width": "0", "position": "sticky", "top": "88px"},
+    ".official-document-viewer": {"display": "grid", "gap": "14px"},
+    ".reading-context-bar": {
+        "border": "1px solid rgba(161, 161, 170, 0.16)",
         "border_radius": "8px",
         "padding": "12px",
-        "background": "rgba(45, 212, 191, 0.06)",
+        "background": "#18181b",
+        "display": "grid",
+        "grid_template_columns": "minmax(190px, 1fr) repeat(4, minmax(110px, auto))",
+        "gap": "10px",
+        "align_items": "center",
+    },
+    ".document-reading-status": {"font_weight": "800", "color": "#ccfbf1"},
+    ".document-metric": {"display": "grid", "gap": "2px"},
+    ".document-metric-value": {"font_size": "20px", "font_weight": "850", "color": "#f4f4f5"},
+    ".document-metric-label": {"font_size": "11px", "color": "#a1a1aa", "text_transform": "uppercase", "letter_spacing": "0.04em"},
+    ".document-paper": {
+        "border": "1px solid rgba(228, 228, 231, 0.16)",
+        "border_radius": "8px",
+        "padding": "28px",
+        "background": "#f8fafc",
+        "color": "#18181b",
+        "display": "grid",
+        "gap": "18px",
+        "box_shadow": "0 18px 60px rgba(0, 0, 0, 0.18)",
+    },
+    ".document-label": {"font_size": "12px", "font_weight": "850", "letter_spacing": "0.08em", "text_transform": "uppercase", "color": "#0f766e"},
+    ".document-page-nav": {"border_bottom": "1px solid rgba(113, 113, 122, 0.18)", "padding_bottom": "12px"},
+    ".page-chip": {
+        "border": "1px solid rgba(113, 113, 122, 0.22)",
+        "border_radius": "6px",
+        "background": "#ffffff",
+        "color": "#18181b",
+        "font_weight": "800",
+    },
+    ".page-chip-active": {"border_color": "#0f766e", "background": "rgba(13, 148, 136, 0.1)", "color": "#0f766e"},
+    ".document-current-anchor": {
+        "border_left": "4px solid #0f766e",
+        "padding": "10px 12px",
+        "background": "rgba(13, 148, 136, 0.08)",
         "display": "grid",
         "gap": "6px",
     },
-    ".document-page-label": {"font_weight": "800", "color": "#f4f4f5"},
-    ".document-highlight": {"color": "#d4d4d8", "line_height": "1.5"},
-    ".document-page": {"display": "grid", "gap": "12px"},
+    ".document-page-label": {"font_weight": "850", "color": "#18181b"},
+    ".document-highlight": {"color": "#374151", "line_height": "1.55"},
+    ".document-page": {"display": "grid", "gap": "18px"},
     ".document-fragment": {
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
-        "border_radius": "8px",
-        "padding": "14px",
-        "background": "#18181b",
+        "border": "1px solid rgba(113, 113, 122, 0.16)",
+        "border_radius": "6px",
+        "padding": "18px 18px 16px",
+        "background": "#ffffff",
         "display": "grid",
-        "gap": "10px",
+        "gap": "12px",
+        "cursor": "pointer",
     },
-    ".document-fragment-active": {"border_color": "rgba(45, 212, 191, 0.7)", "box_shadow": "0 0 0 1px rgba(45, 212, 191, 0.18)"},
-    ".document-fragment-text": {"font_size": "16px", "line_height": "1.65", "color": "#f4f4f5"},
-    ".fragment-supports": {"border_top": "1px solid rgba(161, 161, 170, 0.14)", "padding_top": "8px", "display": "grid", "gap": "6px"},
-    ".official-reference-card": {
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
-        "border_radius": "8px",
-        "padding": "12px",
-        "background": "#18181b",
+    ".document-fragment-active": {"border_color": "rgba(13, 148, 136, 0.72)", "box_shadow": "0 0 0 2px rgba(13, 148, 136, 0.12)"},
+    ".document-page-marker": {"font_size": "12px", "font_weight": "850", "color": "#0f766e"},
+    ".document-section-title": {"font_size": "15px", "font_weight": "850", "color": "#18181b"},
+    ".document-fragment-text": {"font_size": "18px", "line_height": "1.75", "color": "#18181b"},
+    ".fragment-supports": {"border_top": "1px solid rgba(113, 113, 122, 0.14)", "padding_top": "10px", "display": "grid", "gap": "8px"},
+    ".document-cross-label": {"font_size": "12px", "font_weight": "800", "color": "#52525b"},
+    ".document-inline-link": {
+        "border_bottom": "1px solid rgba(13, 148, 136, 0.45)",
+        "color": "#0f766e",
+        "font_weight": "800",
+        "font_size": "13px",
+    },
+    ".reading-guide-panel": {
+        "border_left": "1px solid rgba(161, 161, 170, 0.18)",
+        "padding_left": "20px",
         "display": "grid",
-        "gap": "8px",
-        "margin_bottom": "10px",
+        "gap": "16px",
     },
+    ".reading-guide-title": {"font_size": "24px", "font_weight": "850", "color": "#f4f4f5"},
+    ".reading-guide-summary": {"font_size": "15px", "line_height": "1.55", "color": "#d4d4d8"},
+    ".reading-guide-section": {"display": "grid", "gap": "9px", "padding_top": "12px", "border_top": "1px solid rgba(161, 161, 170, 0.14)"},
+    ".reading-guide-heading": {"font_size": "12px", "font_weight": "850", "letter_spacing": "0.06em", "text_transform": "uppercase", "color": "#a1a1aa"},
+    ".guide-entry": {"display": "grid", "gap": "7px", "padding": "3px 0", "cursor": "pointer"},
+    ".guide-title": {"font_size": "15px", "font_weight": "850", "color": "#f4f4f5", "line_height": "1.35"},
+    ".guide-copy": {"font_size": "13px", "line_height": "1.5", "color": "#a1a1aa"},
+    ".guide-evidence": {"display": "grid", "gap": "6px"},
     ".reference-button": {
         "width": "fit-content",
         "border_radius": "6px",
         "background": "rgba(45, 212, 191, 0.12)",
         "border": "1px solid rgba(45, 212, 191, 0.26)",
         "color": "#ccfbf1",
-        "font_weight": "800",
+        "font_weight": "850",
+        "font_size": "12px",
     },
-    ".shell.theme-light .document-fragment, .shell.theme-light .official-reference-card": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
-    ".shell.theme-light .document-fragment-text, .shell.theme-light .document-page-label": {"color": "#18181b"},
-    ".shell.theme-light .document-highlight": {"color": "#374151"},
-    ".shell.theme-light .page-chip": {"background": "#ffffff", "color": "#18181b"},
-    ".shell.theme-light .page-chip-active": {"background": "rgba(13, 148, 136, 0.12)", "color": "#0f766e"},
-    ".shell.theme-light .reference-button": {"background": "rgba(13, 148, 136, 0.1)", "color": "#0f766e"},
+    ".document-reference-section": {"padding": "18px 0 8px", "border_top": "1px solid rgba(228, 228, 231, 0.12)", "display": "grid", "gap": "12px"},
+    ".reference-strip": {"display": "grid", "grid_template_columns": "repeat(4, minmax(0, 1fr))", "gap": "18px"},
+    ".shell.theme-light .document-title, .shell.theme-light .reading-guide-title, .shell.theme-light .guide-title": {"color": "#18181b"},
+    ".shell.theme-light .document-subtitle, .shell.theme-light .reading-guide-summary, .shell.theme-light .guide-copy": {"color": "#52525b"},
+    ".shell.theme-light .reading-context-bar": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
+    ".shell.theme-light .document-reading-status": {"color": "#0f766e"},
+    ".shell.theme-light .document-metric-value": {"color": "#18181b"},
+    ".shell.theme-light .reading-guide-panel": {"border_left": "1px solid rgba(113, 113, 122, 0.2)"},
     ".knowledge-point": {
         "border": "1px solid rgba(45, 212, 191, 0.16)",
         "border_left": "3px solid rgba(45, 212, 191, 0.42)",
@@ -5845,6 +6025,9 @@ style = {
         ".search-button": {"width": "100%"},
         ".home-lower-layout": {"grid_template_columns": "1fr"},
         ".official-document-layout": {"grid_template_columns": "1fr"},
+        ".document-side-column": {"position": "static"},
+        ".reading-context-bar": {"grid_template_columns": "1fr 1fr", "align_items": "start"},
+        ".reference-strip": {"grid_template_columns": "1fr"},
     },
 }
 

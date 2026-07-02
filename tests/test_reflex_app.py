@@ -876,20 +876,69 @@ def test_official_document_route_and_nav_are_visible() -> None:
     page_source = inspect.getsource(reflex_app.official_document)
     assert '@rx.page(route="/official-document"' in page_source
     assert "official_document_viewer" in page_source
-    assert "Resumen ciudadano" in page_source
-    assert "Puntos importantes" in page_source
-    assert "Preguntas" in page_source
-    assert "Referencias" in page_source
+    assert "reading_guide_panel" in page_source
+    assert "document-main-column" in page_source
+    assert "document-side-column" in page_source
+    assert "Referencias documentales" in page_source
 
 
 def test_official_document_components_link_references_to_anchors() -> None:
     viewer_source = inspect.getsource(reflex_app.official_document_viewer)
     reference_source = inspect.getsource(reflex_app.reference_button)
     fragment_source = inspect.getsource(reflex_app.document_fragment_card)
+    guide_source = inspect.getsource(reflex_app.reading_guide_panel)
 
     assert "document_id" in viewer_source
     assert "fragment_id" in viewer_source
     assert "highlight" in viewer_source
+    assert "reading_context_bar" in viewer_source
     assert "AppState.select_document_anchor" in reference_source
-    assert "Este parrafo respalda" in fragment_source
+    assert "Este parrafo tambien aparece en" in fragment_source
     assert "document-fragment-active" in fragment_source
+    assert "Resumen relacionado" in guide_source
+    assert "Pregunta relacionada" in guide_source
+    assert "Claim relacionado" in guide_source
+    assert "Evidencia utilizada" in guide_source
+
+
+def test_official_document_v2_uses_human_questions_and_reading_metrics() -> None:
+    question_source = inspect.getsource(reflex_app._human_question_label)
+    context_source = inspect.getsource(reflex_app.reading_context_bar)
+
+    assert "Que intenta hacer este documento?" in question_source
+    assert "Que informacion importante contiene?" in question_source
+    assert "Que informacion NO aparece aqui?" in question_source
+    assert "fragmentos utilizados" in context_source
+    assert "preguntas respondidas" in context_source
+    assert "afirmaciones verificables" in context_source
+    assert "referencias documentales" in context_source
+
+
+def test_select_document_anchor_updates_reading_context() -> None:
+    state = SimpleNamespace(
+        knowledge_selected_page=18,
+        knowledge_selected_fragment_id="frag-a",
+        knowledge_selected_reference_label="",
+        knowledge_selected_excerpt="",
+        knowledge_key_points=[{"fragment_id": "frag-b", "title": "Punto"}],
+        knowledge_questions=[{"fragment_id": "frag-b", "display_question": "Pregunta"}],
+        knowledge_claims=[{"fragment_id": "frag-b", "claim": "Claim"}],
+        knowledge_evidence=[
+            {"page": 18, "fragment_id": "frag-a", "reference_label": "Pagina 18", "excerpt": "A"},
+            {"page": 19, "fragment_id": "frag-b", "reference_label": "Pagina 19", "excerpt": "B"},
+        ],
+        knowledge_expediente_target="SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+    )
+    state._set_document_reading_context = lambda fragment_id: reflex_app.AppState._set_document_reading_context(state, fragment_id)
+
+    reflex_app.AppState.select_document_anchor.fn(state, 19, "frag-b")
+
+    assert state.knowledge_selected_page == 19
+    assert state.knowledge_selected_fragment_id == "frag-b"
+    assert state.knowledge_selected_reference_label == "Pagina 19"
+    assert state.knowledge_selected_excerpt == "B"
+    assert state.knowledge_selected_summary[0]["title"] == "Punto"
+    assert state.knowledge_selected_questions[0]["display_question"] == "Pregunta"
+    assert state.knowledge_selected_claims[0]["claim"] == "Claim"
+    assert state.knowledge_selected_evidence[0]["excerpt"] == "B"
+    assert state.knowledge_selected_connections[0]["label"] == "Expediente"
