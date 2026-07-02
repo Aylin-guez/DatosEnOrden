@@ -183,7 +183,7 @@ class LegislativePlatformMapper:
                 "abstention": vote.abstention_total,
                 "excused": vote.excused_total,
             },
-            "session": asdict(vote.session) if vote.session else None,
+            "session": _json_safe(asdict(vote.session)) if vote.session else None,
         }
 
 
