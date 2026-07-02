@@ -935,6 +935,10 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert "Seguimiento" in page_source
     assert "Votaciones" in page_source
     assert "Documento original" in page_source
+    assert "Estado de disponibilidad" in page_source
+    assert "topic_status_card" in page_source
+    assert "topic_answer_card" in page_source
+    assert "topic_evidence_card" in page_source
     assert "Tema" in nav_source
     assert "Lectura" in nav_source
     assert "Documento" in nav_source
@@ -957,7 +961,7 @@ def test_load_topic_reuses_existing_knowledge_and_investigation(monkeypatch) -> 
         knowledge_key_points=[{"title": "Punto", "detail": "Detalle", "page": 1, "fragment_id": "frag-1", "reference_label": "Pagina 1"}],
         knowledge_claims=[{"claim": "Afirmacion", "review_note": "Revisar", "page": 1, "fragment_id": "frag-1", "reference_label": "Pagina 1"}],
         knowledge_notice="No afirma irregularidad.",
-        knowledge_evidence=[{"source": "Senado", "label": "Fragmento 1", "excerpt": "Texto", "url": "https://senado.cl/doc#frag-1"}],
+        knowledge_evidence=[{"source": "Senado", "label": "Fragmento 1", "excerpt": "Texto", "url": "https://senado.cl/doc#frag-1", "fragment_id": "frag-1", "page": 1}],
         knowledge_fragments=[{"text": "uno dos tres"}],
         knowledge_coverage_text="Fragmentos utilizados: 1 de 1",
     )
@@ -972,6 +976,13 @@ def test_load_topic_reuses_existing_knowledge_and_investigation(monkeypatch) -> 
             "official_source": "Datos Abiertos Legislativos",
             "compact_metrics": {"evidence_count": 224, "relationship_count": 0},
             "timeline": [
+                {
+                    "event_date": "2012-11-20",
+                    "dataset": "DATOS ABIERTOS LEGISLATIVOS",
+                    "dataset_name": "congreso-votaciones-boletin",
+                    "title": "Votacion asociada al boletin.",
+                    "explanation": "Fuente publica.",
+                },
                 {
                     "event_date": "2012-11-20",
                     "dataset": "DATOS ABIERTOS LEGISLATIVOS",
@@ -994,9 +1005,12 @@ def test_load_topic_reuses_existing_knowledge_and_investigation(monkeypatch) -> 
     assert state.topic_document_count == 1
     assert state.topic_vote_count == 224
     assert state.topic_proposes_rows == state.knowledge_key_points[:3]
-    assert state.topic_changes_rows == state.knowledge_claims[:3]
-    assert state.topic_evidence_rows == state.knowledge_evidence[:6]
-    assert state.topic_timeline_rows[0]["title"] == "Votacion asociada al boletin."
+    assert state.topic_changes_rows[0]["claim"] == "Afirmacion"
+    assert state.topic_evidence_rows[0]["href"] == "/official-document?fragment_id=frag-1&page=1"
+    assert state.topic_timeline_rows[0]["title"] == "Votacion asociada al boletin. (2 registros agrupados)"
+    assert state.topic_status_rows[0]["label"] == "Documento oficial disponible"
+    assert state.topic_status_rows[2]["ready"] is True
+    assert state.topic_hero_answer_rows[0]["title"] == "Qué es"
 
 
 def test_official_document_components_link_references_to_anchors() -> None:
