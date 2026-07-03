@@ -4,6 +4,10 @@ DatosEnOrden es una infraestructura open source para transformar datos públicos
 
 El proyecto no busca interpretar políticamente los datos. Su responsabilidad es ordenar evidencia, preservar trazabilidad y separar claramente los hechos verificables de cualquier análisis u opinión posterior.
 
+## Identidad del proyecto
+
+DatosEnOrden se define como una memoria viva del Estado basada en documentos oficiales. La identidad permanente del proyecto está documentada en la [Constitución DEO](docs/DEO_CONSTITUTION.md).
+
 ## Principios
 
 - Evidencia primero.
@@ -12,6 +16,10 @@ El proyecto no busca interpretar políticamente los datos. Su responsabilidad es
 - Opiniones separadas de los datos.
 - Código y metodología públicos.
 - Arquitectura preparada para crecer.
+
+## Arquitectura de Integración de Fuentes
+
+La incorporación de nuevas fuentes oficiales sigue un estándar repetible: ficha de fuente, adapter acotado, watcher cuando corresponde, evento, tema, documento fuente, evidencia y lectura ciudadana. Ver [Source Factory](docs/SOURCE_FACTORY.md) y el [Workflow de integración de fuentes](docs/SOURCE_INTEGRATION_WORKFLOW.md).
 
 ## Estado
 
