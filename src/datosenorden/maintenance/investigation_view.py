@@ -103,6 +103,28 @@ class InvestigationEvidenceGroup:
 
 
 @dataclass(frozen=True)
+class InvestigationSourceRecordItem:
+    id: str
+    external_id: str
+    record_type: str
+    source: str
+    dataset: str
+    official_url: str
+    retrieved_at: str
+
+
+@dataclass(frozen=True)
+class InvestigationLegislativeVoteItem:
+    dataset: str
+    vote_id: str
+    date: date | None
+    source: str
+    official_url: str
+    evidence_count: int
+    evidence_links: tuple[InvestigationEvidenceLink, ...]
+
+
+@dataclass(frozen=True)
 class InvestigationMetrics:
     contracts: int
     suppliers: int
@@ -130,9 +152,13 @@ class InvestigationView:
     registry_items: tuple[InvestigationRegistryItem, ...]
     evidence_groups: tuple[InvestigationEvidenceGroup, ...]
     explanation: str
+    source_records: tuple[InvestigationSourceRecordItem, ...] = ()
+    legislative_vote_items: tuple[InvestigationLegislativeVoteItem, ...] = ()
 
 
 def build_investigation_view(session: Session, entity_id: str) -> InvestigationView | None:
+    if not _is_uuid(entity_id):
+        return None
     profile = get_entity_profile(session, entity_id)
     if profile is None:
         return None
@@ -149,6 +175,8 @@ def build_investigation_view(session: Session, entity_id: str) -> InvestigationV
     lobby_items = _lobby_items(source_record_claims, evidence_by_claim, selected_entity_id=entity.id)
     role_items = _role_items(claims, evidence_by_claim)
     registry_items = _registry_items(claims, evidence_by_claim)
+    source_records = _source_record_items(session, source_record_ids)
+    legislative_vote_items = _legislative_vote_items(claims, evidence_by_claim)
     timeline = build_entity_timeline(session, entity_id)
     graph = build_entity_graph(session, entity_id, depth=1)
     graph_explanation = _graph_explanation_text(graph)
@@ -181,11 +209,21 @@ def build_investigation_view(session: Session, entity_id: str) -> InvestigationV
         registry_items=registry_items,
         evidence_groups=evidence_groups,
         explanation=_investigation_explanation_text(),
+        source_records=source_records,
+        legislative_vote_items=legislative_vote_items,
     )
 
 
 def investigation_summary_text(view: InvestigationView) -> str:
     return view.summary
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        UUID(str(value))
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 def investigation_explanation_text() -> str:
@@ -263,6 +301,42 @@ def _dataset_badges_for_claims(claims: tuple[Claim, ...]) -> tuple[str, ...]:
         seen.add(dataset_name)
         badges.append(dataset_display_name(dataset_name))
     return tuple(badges)
+
+
+def _source_record_items(session: Session, source_record_ids: tuple[UUID, ...]) -> tuple[InvestigationSourceRecordItem, ...]:
+    if not source_record_ids:
+        return ()
+    rows = session.scalars(
+        select(SourceRecord)
+        .where(SourceRecord.id.in_(source_record_ids))
+        .options(joinedload(SourceRecord.source), joinedload(SourceRecord.dataset))
+        .order_by(SourceRecord.retrieved_at.asc(), SourceRecord.external_id.asc(), SourceRecord.id.asc())
+    ).all()
+    return tuple(
+        InvestigationSourceRecordItem(
+            id=str(row.id),
+            external_id=row.external_id,
+            record_type=row.record_type,
+            source=row.source.name if row.source is not None else "",
+            dataset=dataset_display_name(str(row.dataset.name)) if row.dataset is not None else "",
+            official_url=_official_url_from_source_record(row),
+            retrieved_at=row.retrieved_at.isoformat() if row.retrieved_at is not None else "",
+        )
+        for row in rows
+    )
+
+
+def _official_url_from_source_record(row: SourceRecord) -> str:
+    payload = row.raw_payload or {}
+    if row.record_type == "legislature:vote":
+        vote_id = str(payload.get("source_id", "") or row.external_id).removeprefix("camara-votacion-")
+        if vote_id:
+            return f"https://opendata.camara.cl/services/getVotacion_Detalle?prmVotacionID={vote_id}"
+    if isinstance(payload, dict):
+        request = payload.get("request", {})
+        if isinstance(request, dict) and request.get("url"):
+            return str(request["url"])
+    return ""
 
 
 def _evidence_links_by_claim(session: Session, claim_ids: tuple[str, ...]) -> dict[str, tuple[InvestigationEvidenceLink, ...]]:
@@ -574,6 +648,31 @@ def _registry_items(
                 ownership_percentage=_object_value_text(claim, "percentage_participation", default=""),
                 evidence_count=len(evidence_by_claim.get(str(claim.id), ())),
                 evidence_links=evidence_by_claim.get(str(claim.id), ()),
+            )
+        )
+    return tuple(items)
+
+
+def _legislative_vote_items(
+    claims: tuple[Claim, ...],
+    evidence_by_claim: dict[str, tuple[InvestigationEvidenceLink, ...]],
+) -> tuple[InvestigationLegislativeVoteItem, ...]:
+    items: list[InvestigationLegislativeVoteItem] = []
+    for claim in claims:
+        if claim.predicate != "LEGISLATIVE_BILL_HAS_VOTE":
+            continue
+        dataset = _dataset_group(str(claim.source_record.dataset.name))
+        links = evidence_by_claim.get(str(claim.id), ())
+        official_url = links[0].url if links else _official_url_from_source_record(claim.source_record)
+        items.append(
+            InvestigationLegislativeVoteItem(
+                dataset=dataset_display_name(dataset or str(claim.source_record.dataset.name)),
+                vote_id=_object_value_text(claim, "vote_id", default=claim.source_record.external_id),
+                date=claim.valid_from,
+                source="Datos Abiertos Legislativos",
+                official_url=official_url,
+                evidence_count=len(links),
+                evidence_links=links,
             )
         )
     return tuple(items)

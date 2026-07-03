@@ -147,16 +147,16 @@ def test_load_home_populates_connection_preview(monkeypatch) -> None:
 def test_home_is_public_topic_entry() -> None:
     source = inspect.getsource(reflex_app.home)
 
-    assert "Todo lo importante sobre un tema publico, explicado desde documentos oficiales." in source
-    assert "Explorar tema destacado" in source
+    assert "Observa que esta cambiando en el Estado y entiende cada tema desde documentos oficiales." in source
+    assert "Ver lectura documentada" in source
     assert 'rx.redirect("/topic")' in source
-    assert "Ver documento oficial" in source
-    assert "Tema destacado" in source
+    assert "Ver documento fuente" in source
+    assert "Lectura destacada" in source
     assert "Ley de Presupuestos del Sector Publico 2013" in source
-    assert "Que encontraras dentro de un tema" in source
-    assert "Lecturas documentadas recientes" in source
-    assert "Fuentes oficiales y trazabilidad" in source
-    assert "DatosEnOrden Studio" in source
+    assert "Que responde cada lectura" in source
+    assert "Mas lecturas" in source
+    assert "Fuentes que sostienen la lectura" in source
+    assert "Proyecto DatosEnOrden" in source
     assert "current_topic_card" in source
 
 
@@ -286,12 +286,12 @@ def test_nav_expediente_points_to_empty_investigation_and_search_is_header_actio
     source = inspect.getsource(reflex_app.shell)
 
     assert 'rx.link("Expediente", href="/investigation"' in source
-    assert 'rx.link("Biblioteca", href="/library"' in source
-    assert 'rx.link("Seguimiento", href="/tracking"' in source
-    assert 'rx.link("Reportes", href="/reports"' in source
+    assert 'rx.link("Mas lecturas", href="/library"' in source
+    assert 'rx.link("Cronologia", href="/tracking"' in source
+    assert 'rx.link("Informes", href="/reports"' in source
     assert 'rx.link("Proyecto", href="/project"' in source
     assert 'rx.link("Buscar", href="/search"' not in source
-    assert source.index('rx.link("Expediente"') < source.index('rx.link("Reportes"') < source.index('rx.link("Biblioteca"') < source.index('rx.link("Seguimiento"')
+    assert source.index('rx.link("Expediente"') < source.index('rx.link("Informes"') < source.index('rx.link("Mas lecturas"') < source.index('rx.link("Cronologia"')
     assert "header_search" in source
     assert "toggle_header_search" in source
 
@@ -774,7 +774,7 @@ def test_tracking_route_is_registered() -> None:
     source = inspect.getsource(reflex_app.tracking)
 
     assert 'route="/tracking"' in source
-    assert "Sigue la historia de una propuesta publica" in source
+    assert "Cronologia" in source
 
 
 def test_load_reports_populates_demo(monkeypatch) -> None:
@@ -832,7 +832,7 @@ def test_reports_route_is_registered() -> None:
     source = inspect.getsource(reflex_app.reports)
 
     assert 'route="/reports"' in source
-    assert "Reportes ciudadanos" in source
+    assert "Informes ciudadanos" in source
 
 
 def test_library_and_project_routes_are_registered() -> None:
@@ -840,7 +840,7 @@ def test_library_and_project_routes_are_registered() -> None:
     project_source = inspect.getsource(reflex_app.project)
 
     assert 'route="/library"' in library_source
-    assert "Biblioteca Oficial" in library_source
+    assert "Mas lecturas" in library_source
     assert "Preguntas importantes" in library_source
     assert 'route="/project"' in project_source
     assert "Estado del proyecto" in project_source
@@ -913,7 +913,7 @@ def test_load_dashboard_populates_summary_metrics(monkeypatch) -> None:
 def test_official_document_route_and_nav_are_visible() -> None:
     source = inspect.getsource(reflex_app.shell)
 
-    assert 'rx.link("Documento Oficial", href="/official-document"' in source
+    assert 'rx.link("Documento Fuente", href="/official-document"' in source
     assert "PAGE_DOCUMENT" in source
 
     page_source = inspect.getsource(reflex_app.official_document)
@@ -922,7 +922,7 @@ def test_official_document_route_and_nav_are_visible() -> None:
     assert "reading_guide_panel" in page_source
     assert "document-main-column" in page_source
     assert "document-side-column" in page_source
-    assert "Referencias documentales" in page_source
+    assert "Evidencia dentro del documento" in page_source
 
 
 def test_topic_route_uses_requested_sections_and_navigation() -> None:
@@ -930,7 +930,7 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     page_source = inspect.getsource(reflex_app.topic)
     nav_source = inspect.getsource(reflex_app.topic_nav)
 
-    assert 'rx.link("Tema", href="/topic"' in shell_source
+    assert 'rx.link("Lectura", href="/topic"' in shell_source
     assert '@rx.page(route="/topic"' in page_source
     assert "Documento oficial" in page_source
     assert "¿Qué propone?" in page_source
@@ -940,14 +940,14 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert "Evidencia" in page_source
     assert "Lecturas Documentadas" in page_source
     assert "Expediente" in page_source
-    assert "Seguimiento" in page_source
+    assert "Cronologia" in page_source
     assert "Votaciones" in page_source
     assert "Documento original" in page_source
     assert "Estado de disponibilidad" in page_source
     assert "topic_status_card" in page_source
     assert "topic_answer_card" in page_source
     assert "topic_evidence_card" in page_source
-    assert "Tema" in nav_source
+    assert "Lectura" in nav_source
     assert "Lectura" in nav_source
     assert "Documento" in nav_source
     assert "Fragmento" in nav_source
@@ -1016,10 +1016,45 @@ def test_load_topic_reuses_existing_knowledge_and_investigation(monkeypatch) -> 
     assert state.topic_changes_rows[0]["claim"] == "Afirmacion"
     assert state.topic_evidence_rows[0]["href"] == "/official-document?fragment_id=frag-1&page=1"
     assert state.topic_timeline_rows[0]["title"] == "Votacion asociada al boletin. (2 registros agrupados)"
-    assert state.topic_status_rows[0]["label"] == "Documento oficial disponible"
+    assert state.topic_status_rows[0]["label"] == "Documento fuente disponible"
     assert state.topic_status_rows[2]["ready"] is True
     assert state.topic_hero_answer_rows[0]["title"] == "Qué es"
 
+
+def test_load_topic_does_not_crash_when_external_target_is_missing(monkeypatch) -> None:
+    calls: list[str] = []
+    state = SimpleNamespace(
+        error_message="",
+        knowledge_document={
+            "title": "Mensaje o mocion: Ley de Presupuestos del sector publico para el ano 2013.",
+            "source": "Senado de la Republica de Chile",
+            "document_type": "legislative_mensaje_mocion",
+            "published_at": "2026-07-02",
+            "official_status": "REAL_OFFICIAL_SOURCE",
+            "official_url": "https://senado.cl/doc",
+        },
+        knowledge_title="Lectura documentada",
+        knowledge_summary="Resumen desde documento.",
+        knowledge_key_points=[],
+        knowledge_claims=[],
+        knowledge_notice="No afirma irregularidad.",
+        knowledge_evidence=[],
+        knowledge_fragments=[],
+        knowledge_coverage_text="Fragmentos utilizados: 0 de 0",
+    )
+    state.load_knowledge = lambda: None
+    monkeypatch.setattr(
+        reflex_app,
+        "get_investigation",
+        lambda target: calls.append(str(target)) or {"found": False, "warning": "No se encontro una entidad local."},
+    )
+
+    reflex_app.AppState.load_topic.fn(state)
+
+    assert calls == [reflex_app.TOPIC_BUDGET_2013_TARGET]
+    assert state.topic_title == reflex_app.TOPIC_BUDGET_2013_TITLE
+    assert state.topic_status_rows[1]["ready"] is False
+    assert state.topic_vote_count == 0
 
 def test_official_document_components_link_references_to_anchors() -> None:
     viewer_source = inspect.getsource(reflex_app.official_document_viewer)

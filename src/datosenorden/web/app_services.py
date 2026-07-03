@@ -3,8 +3,12 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime
+import json
+from pathlib import Path
 from typing import Any, Iterator
+from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from datosenorden.db.session import SessionLocal
@@ -39,6 +43,8 @@ from datosenorden.maintenance.knowledge_engine import list_knowledge_documents a
 from datosenorden.maintenance.knowledge_engine import official_document_to_dict
 from datosenorden.studio.publication_engine import document_view_payload
 from datosenorden.studio.publication_engine import publish_document
+from datosenorden.studio.actualidad_engine import get_current_topic as _get_current_topic
+from datosenorden.studio.actualidad_engine import list_current_topics as _list_current_topics
 from datosenorden.maintenance.guided_questions import get_guided_questions as _get_guided_questions
 from datosenorden.maintenance.institution_profile import build_institution_profile
 from datosenorden.maintenance.platform_config import get_default_platform_config
@@ -57,6 +63,23 @@ from datosenorden.maintenance.tracking import get_tracking_item as _get_tracking
 from datosenorden.maintenance.tracking import get_tracking_timeline as _get_tracking_timeline
 from datosenorden.maintenance.tracking import list_tracking_items as _list_tracking_items
 from datosenorden.maintenance.tracking import tracking_to_dict
+from datosenorden.models import Entity
+
+
+LEGISLATIVE_PROJECT_ENTITY_TYPE = "PUBLIC_PROJECT"
+LEGISLATIVE_SOURCE_LABEL = "Datos Abiertos Legislativos"
+REAL_DOCUMENT_PUBLICATION_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "data"
+    / "official_documents"
+    / "published"
+    / "senado-docto-9000-mensaje_mocion"
+    / "publication.json"
+)
+LEGISLATIVE_LIMITATION_TEXT = (
+    "Este expediente contiene votaciones oficiales asociadas al boletín, "
+    "pero aún no incorpora el texto completo del proyecto."
+)
 
 
 def search_entities(query: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -157,18 +180,18 @@ def _investigation_match_method(platform_resolution: ResolutionResult, fallback_
 
 def get_investigation(entity_id: str) -> dict[str, Any]:
     resolved = resolve_investigation_target(entity_id)
-    if not resolved.get("found", False):
-        resolved = {
-            "found": True,
-            "entity_id": entity_id,
-            "entity_name": entity_id,
-            "matched_by": "input",
-            "warning": str(resolved.get("warning", "")),
-            "canonical": resolved.get("canonical", {}),
-        }
-
-    resolved_id = str(resolved["entity_id"])
     with _session_scope() as session:
+        resolved_id = resolve_entity_uuid_for_investigation(session, str(resolved.get("entity_id") or entity_id))
+        if resolved_id is None:
+            resolved_id = resolve_entity_uuid_for_investigation(session, str(entity_id))
+        if resolved_id is None:
+            return {
+                "found": False,
+                "entity_id": str(entity_id),
+                "resolution": resolved,
+                "warning": _investigation_not_found_warning(resolved, entity_id),
+            }
+        resolved = {**resolved, "found": True, "entity_id": resolved_id}
         view = build_investigation_view(session, resolved_id)
     if view is None:
         return {"found": False, "entity_id": resolved_id, "resolution": resolved}
@@ -207,9 +230,73 @@ def get_investigation(entity_id: str) -> dict[str, Any]:
             "relationship_counts": _jsonify(profile.relationship_counts),
         },
     }
+    if _is_legislative_bill_view(view):
+        payload.update(_legislative_payload(view))
     payload["knowledge"] = get_investigation_knowledge(payload)
     return payload
 
+
+def _is_uuid(value: str) -> bool:
+    try:
+        UUID(str(value))
+    except (TypeError, ValueError):
+        return False
+    return True
+
+def resolve_entity_uuid_for_investigation(session: Session, target: str) -> str | None:
+    cleaned = str(target or "").strip()
+    if not cleaned:
+        return None
+    if _is_uuid(cleaned):
+        return cleaned
+
+    for candidate in _investigation_uuid_candidates(cleaned):
+        if _is_uuid(candidate):
+            return candidate
+        entity_id = _entity_uuid_by_external_id_or_name(session, candidate)
+        if entity_id:
+            return entity_id
+    return None
+
+
+def _investigation_uuid_candidates(target: str) -> tuple[str, ...]:
+    candidates: list[str] = [target]
+    resolved = resolve_investigation_target(target)
+    if resolved.get("found", False):
+        candidates.append(str(resolved.get("entity_id", "")))
+        canonical = resolved.get("canonical", {})
+        if isinstance(canonical, dict):
+            candidates.append(str(canonical.get("canonical_entity_id", "")))
+            candidates.append(str(canonical.get("original_entity_id", "")))
+    platform_resolution = _resolve_entity_for_investigation(target)
+    if platform_resolution.found and platform_resolution.entity is not None:
+        candidates.append(str(platform_resolution.entity.id))
+        candidates.append(str(platform_resolution.entity.canonical_name))
+        candidates.extend(str(identifier.value) for identifier in platform_resolution.entity.identifiers)
+        candidates.extend(str(alias.value) for alias in platform_resolution.entity.aliases)
+    return tuple(dict.fromkeys(candidate.strip() for candidate in candidates if candidate and candidate.strip()))
+
+
+def _entity_uuid_by_external_id_or_name(session: Session, value: str) -> str | None:
+    if not hasattr(session, "scalar"):
+        return None
+    cleaned = str(value or "").strip()
+    if not cleaned:
+        return None
+    entity_id = session.scalar(select(Entity.id).where(Entity.external_id == cleaned).limit(1))
+    if entity_id is not None:
+        return str(entity_id)
+    entity_id = session.scalar(select(Entity.id).where(func.lower(Entity.name) == cleaned.lower()).limit(1))
+    if entity_id is not None:
+        return str(entity_id)
+    return None
+
+
+def _investigation_not_found_warning(resolved: dict[str, Any], target: str) -> str:
+    warning = str(resolved.get("warning", "")).strip()
+    if warning:
+        return warning
+    return f"No se encontro una entidad local para abrir el expediente: {target}"
 
 def get_investigation_knowledge(investigation: dict[str, Any]) -> dict[str, Any]:
     return investigation_knowledge_to_dict(build_investigation_knowledge(investigation))
@@ -291,18 +378,30 @@ def search_workspace(query: str) -> dict[str, Any]:
     for row in workspace.get("matches", []):
         canonical = resolve_canonical_expediente_target(str(row.get("entity_id", "")))
         record_context = get_record_context(str(row.get("entity_id", "")))
-        matches.append(
-            {
-                **row,
-                "canonical_entity_id": canonical.get("canonical_entity_id", row.get("entity_id", "")),
-                "canonical_entity_name": canonical.get("canonical_entity_name", row.get("entity_name", "")),
-                "canonical_entity_type": canonical.get("canonical_entity_type", row.get("entity_type", "")),
-                "is_record": bool(canonical.get("is_record", False)),
-                "record_label": canonical.get("record_label", ""),
-                "relation_to_original": canonical.get("relation_to_original", ""),
-                "related_label": record_context.get("related_label", ""),
-            }
-        )
+        enriched = {
+            **row,
+            "canonical_entity_id": canonical.get("canonical_entity_id", row.get("entity_id", "")),
+            "canonical_entity_name": canonical.get("canonical_entity_name", row.get("entity_name", "")),
+            "canonical_entity_type": canonical.get("canonical_entity_type", row.get("entity_type", "")),
+            "is_record": bool(canonical.get("is_record", False)),
+            "record_label": canonical.get("record_label", ""),
+            "relation_to_original": canonical.get("relation_to_original", ""),
+            "related_label": record_context.get("related_label", ""),
+        }
+        if _is_legislative_search_row(enriched):
+            enriched.update(
+                {
+                    "result_type": "Proyecto legislativo / Boletin",
+                    "entity_type_label": "Proyecto legislativo / Boletin",
+                    "source_hint": "dato oficial cargado",
+                    "official_status": "dato oficial cargado",
+                    "source_label": LEGISLATIVE_SOURCE_LABEL,
+                    "datasets": [LEGISLATIVE_SOURCE_LABEL],
+                    "action_label": "Abrir expediente",
+                    "action_href": f"/investigation?id={enriched.get('canonical_entity_id') or enriched.get('entity_id')}",
+                }
+            )
+        matches.append(enriched)
     workspace["matches"] = matches
     return workspace
 
@@ -320,7 +419,9 @@ def get_investigation_graph(entity_id: str) -> dict[str, Any]:
 
 
 def get_investigation_timeline(entity_id: str) -> dict[str, Any]:
-    return _jsonify(build_investigation_timeline(entity_id))
+    resolved = resolve_investigation_target(entity_id)
+    target = str(resolved.get("entity_id", entity_id)) if resolved.get("found", False) else entity_id
+    return _jsonify(build_investigation_timeline(target))
 
 
 def get_source_contributions(entity_id: str) -> dict[str, Any]:
@@ -392,6 +493,9 @@ def export_tracking_demo_report() -> str:
 
 
 def get_knowledge_demo() -> dict[str, Any]:
+    real_document = _load_real_document_publication()
+    if real_document:
+        return real_document
     return _jsonify(document_view_payload(publish_document()))
 
 
@@ -404,6 +508,29 @@ def get_knowledge_digest(document_id: str) -> dict[str, Any]:
 
 def get_knowledge_documents() -> list[dict[str, Any]]:
     return _jsonify([official_document_to_dict(document) for document in _list_knowledge_documents()])
+
+
+def _load_real_document_publication() -> dict[str, Any]:
+    if not REAL_DOCUMENT_PUBLICATION_PATH.exists():
+        return {}
+    try:
+        payload = json.loads(REAL_DOCUMENT_PUBLICATION_PATH.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    document_view = payload.get("document_view", {})
+    if not isinstance(document_view, dict) or not document_view:
+        return {}
+    return _jsonify(document_view)
+
+
+def get_current_topics(limit: int = 3) -> list[dict[str, Any]]:
+    return _jsonify(_list_current_topics(limit=limit))
+
+
+def get_current_topic(slug: str) -> dict[str, Any]:
+    return _jsonify(_get_current_topic(slug))
 
 
 def get_citizen_report_demo() -> dict[str, Any]:
@@ -466,7 +593,7 @@ def _entity_type_label(entity_type: str) -> str:
         "ADMINISTRATIVE_PROCEDURE": "Procedimiento administrativo",
         "ADMINISTRATIVE_RESOLUTION": "Resolucion administrativa",
         "MUNICIPALITY": "Municipio",
-        "PUBLIC_PROJECT": "Proyecto publico",
+        "PUBLIC_PROJECT": "Proyecto legislativo / Boletin",
         "SPENDING_ITEM": "Item de gasto",
     }
     return labels.get(entity_type, entity_type.replace("_", " ").title())
@@ -498,10 +625,51 @@ def _narrative_summary(view: Any) -> str:
         available.append("relaciones institucionales")
     if view.evidence_groups:
         available.append("evidencia asociada")
+    if _is_legislative_bill_view(view):
+        available.append("votaciones oficiales asociadas al boletin")
     if available:
         parts.append("Los registros disponibles incluyen " + ", ".join(available) + ".")
+    if _is_legislative_bill_view(view):
+        parts.append(LEGISLATIVE_LIMITATION_TEXT)
     parts.append("Esto no afirma causalidad, irregularidad ni responsabilidad; cada conexion debe revisarse en su evidencia original.")
     return " ".join(parts)
+
+
+def _is_legislative_search_row(row: dict[str, Any]) -> bool:
+    datasets = " ".join(str(item) for item in row.get("datasets", []))
+    return (
+        str(row.get("entity_type", "")) == LEGISLATIVE_PROJECT_ENTITY_TYPE
+        and ("Datos Abiertos Legislativos" in datasets or "congreso" in datasets.lower())
+    ) or str(row.get("entity_id", "")).startswith("cl-congreso-boletin-") or str(row.get("canonical_entity_id", "")).startswith("cl-congreso-boletin-")
+
+
+def _is_legislative_bill_view(view: Any) -> bool:
+    entity = view.profile.entity
+    return (
+        str(getattr(entity, "entity_type", "")) == LEGISLATIVE_PROJECT_ENTITY_TYPE
+        and str(getattr(entity, "external_id", "") or "").startswith("cl-congreso-boletin-")
+    )
+
+
+def _legislative_payload(view: Any) -> dict[str, Any]:
+    source_records = _jsonify(getattr(view, "source_records", ()))
+    vote_count = len(getattr(view, "legislative_vote_items", ()))
+    if not vote_count:
+        vote_count = len([event for event in getattr(getattr(view, "timeline", None), "events", ()) if getattr(event, "predicate", "") == "LEGISLATIVE_BILL_HAS_VOTE"])
+    return {
+        "entity_type_label": "Proyecto legislativo / Boletin",
+        "official_source": LEGISLATIVE_SOURCE_LABEL,
+        "official_status": "dato oficial cargado",
+        "legislative": {
+            "type": "Proyecto legislativo",
+            "source": LEGISLATIVE_SOURCE_LABEL,
+            "votes_found": vote_count,
+            "source_records_count": len(source_records),
+            "source_records": source_records,
+            "limitations": [LEGISLATIVE_LIMITATION_TEXT],
+        },
+        "limitations": [LEGISLATIVE_LIMITATION_TEXT],
+    }
 
 
 def _compact_metrics(view: Any) -> dict[str, int]:

@@ -169,7 +169,11 @@ def list_contracts(session: Session, limit: int | None = None) -> tuple[EntityLi
 
 
 def get_entity_profile(session: Session, entity_id: str) -> EntityProfile | None:
-    entity = session.get(Entity, UUID(entity_id))
+    try:
+        internal_id = UUID(str(entity_id))
+    except (TypeError, ValueError):
+        return None
+    entity = session.get(Entity, internal_id)
     if entity is None:
         return None
 

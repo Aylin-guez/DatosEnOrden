@@ -18,11 +18,13 @@ from datosenorden.maintenance.demo_pack import DemoStatusReport
 from datosenorden.maintenance.entity_explorer import EntitySearchResult
 from datosenorden.maintenance.investigation_view import InvestigationEvidenceGroup
 from datosenorden.maintenance.investigation_view import InvestigationEvidenceLink
+from datosenorden.maintenance.investigation_view import InvestigationLegislativeVoteItem
 from datosenorden.maintenance.investigation_view import InvestigationLobbyItem
 from datosenorden.maintenance.investigation_view import InvestigationMetrics
 from datosenorden.maintenance.investigation_view import InvestigationRegistryItem
 from datosenorden.maintenance.investigation_view import InvestigationProcurementItem
 from datosenorden.maintenance.investigation_view import InvestigationRoleItem
+from datosenorden.maintenance.investigation_view import InvestigationSourceRecordItem
 from datosenorden.maintenance.investigation_view import InvestigationView
 from datosenorden.maintenance.timeline_explorer import TimelineEvent
 
@@ -158,6 +160,83 @@ def _investigation_view() -> InvestigationView:
     )
 
 
+def _legislative_investigation_view() -> InvestigationView:
+    entity = _EntitySummary(
+        id="11111111-1111-1111-1111-111111111111",
+        entity_type="PUBLIC_PROJECT",
+        name="Boletin 8575-05",
+        external_id="cl-congreso-boletin-8575-05",
+    )
+    evidence_link = InvestigationEvidenceLink(
+        "Votacion camara-votacion-1 asociada al boletin 8575-05",
+        "https://opendata.camara.cl/services/getVotacion_Detalle?prmVotacionID=1",
+        date(2026, 1, 2),
+    )
+    timeline = SimpleNamespace(
+        events=(
+            TimelineEvent(
+                event_date=date(2026, 1, 2),
+                dataset="DATOS ABIERTOS LEGISLATIVOS",
+                dataset_name="congreso-votaciones-boletin",
+                title="Votacion asociada al boletin.",
+                explanation="Fuente legislativa.",
+                claim_id="22222222-2222-2222-2222-222222222222",
+                predicate="LEGISLATIVE_BILL_HAS_VOTE",
+                source_record_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                evidence_count=1,
+                relationship_count=0,
+            ),
+        )
+    )
+    return InvestigationView(
+        profile=SimpleNamespace(entity=entity, relationship_counts=(), direct_neighbors=()),
+        entity_type_label="Proyecto legislativo / Boletin",
+        summary="Vista legislativa minima.",
+        dataset_badges=("Datos Abiertos Legislativos",),
+        metrics=InvestigationMetrics(
+            contracts=0,
+            suppliers=0,
+            lobby_meetings=0,
+            public_roles=0,
+            evidence=1,
+            relationships=0,
+        ),
+        timeline=timeline,
+        graph=None,
+        graph_explanation="No hay grafo disponible para esta entidad.",
+        procurement_items=(),
+        lobby_items=(),
+        registry_items=(),
+        role_items=(),
+        evidence_groups=(
+            InvestigationEvidenceGroup(dataset="Datos Abiertos Legislativos", links=(evidence_link,)),
+        ),
+        explanation="No afirma causalidad.",
+        source_records=(
+            InvestigationSourceRecordItem(
+                id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                external_id="camara-votacion-1",
+                record_type="legislature:vote",
+                source="Datos Abiertos Legislativos Congreso Nacional",
+                dataset="Datos Abiertos Legislativos",
+                official_url=evidence_link.url,
+                retrieved_at="2026-01-02T00:00:00+00:00",
+            ),
+        ),
+        legislative_vote_items=(
+            InvestigationLegislativeVoteItem(
+                dataset="Datos Abiertos Legislativos",
+                vote_id="camara-votacion-1",
+                date=date(2026, 1, 2),
+                source="Datos Abiertos Legislativos",
+                official_url=evidence_link.url,
+                evidence_count=1,
+                evidence_links=(evidence_link,),
+            ),
+        ),
+    )
+
+
 def test_search_entities_handles_empty_query(monkeypatch) -> None:
     _patch_session(monkeypatch)
 
@@ -265,6 +344,104 @@ def test_get_investigation_returns_expected_top_level_sections_for_demo_entity(m
     assert investigation["evidence"][0]["links"][0]["published_at"] == "2026-01-01"
     assert "technical_details" in investigation
 
+
+def test_get_investigation_returns_minimal_legislative_bill_expediente(monkeypatch) -> None:
+    _patch_session(monkeypatch)
+    monkeypatch.setattr(
+        app_services,
+        "resolve_investigation_target",
+        lambda value: {
+            "found": True,
+            "entity_id": "11111111-1111-1111-1111-111111111111",
+            "entity_name": "Boletin 8575-05",
+            "matched_by": "external_id",
+        },
+    )
+    monkeypatch.setattr(app_services, "build_investigation_view", lambda session, entity_id: _legislative_investigation_view())
+
+    investigation = app_services.get_investigation("cl-congreso-boletin-8575-05")
+
+    assert investigation["found"] is True
+    assert investigation["entity"]["name"] == "Boletin 8575-05"
+    assert investigation["entity_type_label"] == "Proyecto legislativo / Boletin"
+    assert investigation["official_source"] == "Datos Abiertos Legislativos"
+    assert investigation["legislative"]["votes_found"] == 1
+    assert investigation["legislative"]["source_records_count"] == 1
+    assert investigation["compact_metrics"]["evidence_count"] == 1
+    assert "Este expediente contiene votaciones oficiales asociadas al boletín" in investigation["knowledge"]["limitations"][0]
+
+
+def test_get_investigation_existing_external_id_opens_internal_uuid(monkeypatch) -> None:
+    internal_id = "11111111-1111-1111-1111-111111111111"
+    captured: list[str] = []
+
+    class _ExternalIdSession:
+        def __enter__(self):  # noqa: ANN001
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ANN001
+            _ = (exc_type, exc, tb)
+            return False
+
+        def scalar(self, statement):  # noqa: ANN001
+            _ = statement
+            return internal_id
+
+    monkeypatch.setattr(app_services, "SessionLocal", lambda: _ExternalIdSession())
+    monkeypatch.setattr(
+        app_services,
+        "resolve_investigation_target",
+        lambda value: {
+            "found": True,
+            "entity_id": "cl-congreso-boletin-8575-05",
+            "entity_name": "Boletin 8575-05",
+            "matched_by": "external_id",
+        },
+    )
+
+    def build_view(session, entity_id):  # noqa: ANN001
+        _ = session
+        captured.append(entity_id)
+        return _legislative_investigation_view()
+
+    monkeypatch.setattr(app_services, "build_investigation_view", build_view)
+
+    investigation = app_services.get_investigation("cl-congreso-boletin-8575-05")
+
+    assert investigation["found"] is True
+    assert captured == [internal_id]
+    assert investigation["resolution"]["entity_id"] == internal_id
+
+def test_get_investigation_unresolved_external_id_does_not_call_uuid_profile(monkeypatch) -> None:
+    class _MissingExternalIdSession:
+        def __enter__(self):  # noqa: ANN001
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ANN001
+            _ = (exc_type, exc, tb)
+            return False
+
+        def scalar(self, statement):  # noqa: ANN001
+            _ = statement
+            return None
+
+    monkeypatch.setattr(app_services, "SessionLocal", lambda: _MissingExternalIdSession())
+    monkeypatch.setattr(
+        app_services,
+        "resolve_investigation_target",
+        lambda value: {"found": False, "entity_id": "", "warning": "No se encontro una entidad local."},
+    )
+    monkeypatch.setattr(
+        app_services,
+        "build_investigation_view",
+        lambda session, entity_id: (_ for _ in ()).throw(AssertionError("profile lookup should not run")),
+    )
+
+    investigation = app_services.get_investigation("cl-congreso-boletin-8575-05")
+
+    assert investigation["found"] is False
+    assert investigation["entity_id"] == "cl-congreso-boletin-8575-05"
+    assert "No se encontro" in investigation["warning"]
 
 def test_get_guided_questions_returns_rule_based_questions() -> None:
     payload = app_services.get_guided_questions()
