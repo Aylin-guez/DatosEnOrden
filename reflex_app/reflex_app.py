@@ -339,9 +339,20 @@ def _topic_read_time(fragments: list[dict]) -> str:
     return f"{minutes} min"
 
 
+def _format_chilean_date(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = date.fromisoformat(text[:10])
+    except ValueError:
+        return text
+    return parsed.strftime("%d-%m-%Y")
+
+
 def _topic_latest_record_date(source_records: list[dict]) -> str:
     dates = sorted(str(_field(row, "retrieved_at", ""))[:10] for row in source_records if str(_field(row, "retrieved_at", "")))
-    return dates[-1] if dates else ""
+    return _format_chilean_date(dates[-1]) if dates else ""
 
 
 def _topic_organizations(
@@ -438,7 +449,8 @@ def _topic_timeline_rows(rows: list[dict]) -> list[dict]:
         key = (date, title, source)
         if key not in grouped:
             grouped[key] = {
-                "date": date,
+                "date": _format_chilean_date(date),
+                "sort_date": date,
                 "status": str(_field(row, "dataset", "")),
                 "title": title,
                 "description": str(_field(row, "explanation", "")),
@@ -448,12 +460,12 @@ def _topic_timeline_rows(rows: list[dict]) -> list[dict]:
             }
         grouped[key]["count"] = int(grouped[key]["count"]) + 1
     formatted: list[dict] = []
-    for row in sorted(grouped.values(), key=lambda item: (str(item.get("date", "")), str(item.get("title", ""))))[:5]:
+    for row in sorted(grouped.values(), key=lambda item: (str(item.get("sort_date", "")), str(item.get("title", ""))))[:5]:
         count = int(row.get("count", 0) or 0)
         title = str(row.get("title", ""))
         formatted.append(
             {
-                **row,
+                **{key: value for key, value in row.items() if key != "sort_date"},
                 "title": f"{title} ({count} registros agrupados)" if count > 1 else title,
                 "origin": "timeline",
             }
@@ -1316,7 +1328,13 @@ class AppState(rx.State):
                 for row in discovery.get("cases", [])
             ]
             self.discovery_case_preview = self.discovery_case_rows[:3]
-            self.current_topic_rows = _json_list(get_current_topics(limit=3))
+            self.current_topic_rows = [
+                {
+                    **row,
+                    "updated_at": _format_chilean_date(row.get("updated_at", "")),
+                }
+                for row in _json_list(get_current_topics(limit=3))
+            ]
             self.guided_question_rows = [
                 {
                     **row,
@@ -1716,13 +1734,13 @@ class AppState(rx.State):
         self.topic_status = str(document.get("official_status", "")) or str(investigation.get("official_status", ""))
         self.topic_read_time = _topic_read_time(self.knowledge_fragments)
         self.topic_document_count = 1 if document else 0
-        self.topic_updated_at = str(document.get("published_at", "")) or _topic_latest_record_date(source_records)
+        self.topic_updated_at = _format_chilean_date(document.get("published_at", "")) or _topic_latest_record_date(source_records)
         self.topic_organizations_text = " | ".join(organizations)
         self.topic_official_document = {
             "title": str(document.get("title", self.topic_title)),
             "source": str(document.get("source", "")),
             "document_type": str(document.get("document_type", "")),
-            "published_at": str(document.get("published_at", "")),
+            "published_at": _format_chilean_date(document.get("published_at", "")),
             "summary": str(self.knowledge_summary),
             "official_url": str(document.get("official_url", "")),
         }
@@ -2871,6 +2889,26 @@ def current_topic_card(row: dict) -> rx.Component:
     )
 
 
+
+def home_pulse_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["status"], class_name="badge badge-teal"),
+            rx.text(row["updated_at"], class_name="mini-pill mini-pill-purple"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["summary"], class_name="muted small"),
+        rx.vstack(
+            rx.text(f"Fuente: {row['organization']}", class_name="source-fact"),
+            rx.text("Tema / lectura afectada: Lectura Documentada", class_name="source-fact"),
+            spacing="1",
+            align="stretch",
+        ),
+        rx.button("Leer con documento", on_click=rx.redirect(row["href"]), class_name="button"),
+        class_name="current-topic-card home-pulse-card topic-card-document",
+    )
 def topic_nav() -> rx.Component:
     return rx.hstack(
         rx.link("Documento", href="#topic-document", class_name="document-inline-link"),
@@ -2881,6 +2919,25 @@ def topic_nav() -> rx.Component:
         spacing="2",
         wrap="wrap",
         class_name="topic-nav",
+    )
+
+
+def topic_rail_link(label: str, href: str) -> rx.Component:
+    return rx.link(label, href=href, class_name="topic-rail-link")
+
+
+def topic_context_rail() -> rx.Component:
+    return rx.box(
+        rx.text("Ruta", class_name="topic-rail-label"),
+        topic_rail_link("Documento", "#topic-document"),
+        topic_rail_link("Resumen", "#topic-summary"),
+        topic_rail_link("Que propone", "#topic-proposes"),
+        topic_rail_link("Que cambia", "#topic-changes"),
+        topic_rail_link("Que NO cambia", "#topic-no-change"),
+        topic_rail_link("Cronologia", "#topic-timeline"),
+        topic_rail_link("Evidencia", "#topic-evidence"),
+        topic_rail_link("Expediente", "#topic-investigation"),
+        class_name="topic-context-rail",
     )
 
 
@@ -2949,12 +3006,7 @@ def topic_source_panel() -> rx.Component:
             class_name="topic-source-header",
         ),
         rx.text(AppState.topic_official_document["title"], class_name="card-title"),
-        rx.box(
-            rx.text("Fragmento seleccionado", class_name="document-page-marker"),
-            rx.text(AppState.knowledge_selected_reference_label, class_name="document-section-title"),
-            rx.text(AppState.knowledge_selected_excerpt, class_name="topic-source-excerpt"),
-            class_name="document-current-anchor topic-current-anchor",
-        ),
+        rx.text("Click en una evidencia resalta su fragmento dentro de este documento.", class_name="topic-source-guidance"),
         rx.box(
             rx.foreach(AppState.knowledge_fragments, document_fragment_card),
             class_name="document-page topic-document-page",
@@ -3272,12 +3324,12 @@ def guided_discovery_panel() -> rx.Component:
                     spacing="3",
                     class_name="responsive-grid",
                 ),
-                rx.text("TodavÃ­a no hay preguntas guiadas disponibles.", class_name="muted small"),
+                rx.text("Todavia no hay preguntas guiadas disponibles.", class_name="muted small"),
             ),
             subtitle="Consultas concretas que exploran datos locales.",
         ),
         page_section(
-            "Explora por categorÃ­a",
+            "Explora por categoria",
             rx.hstack(
                 rx.foreach(AppState.guided_category_rows, guided_category_button),
                 spacing="2",
@@ -3285,7 +3337,7 @@ def guided_discovery_panel() -> rx.Component:
                 class_name="chip-row",
             ),
             guided_category_panel(),
-            subtitle="Selecciona una categorÃ­a para ver ejemplos sin perder el contexto.",
+            subtitle="Selecciona una categoria para ver ejemplos sin perder el contexto.",
         ),
         spacing="4",
         align="stretch",
@@ -4446,18 +4498,18 @@ def single_investigation_product_view() -> rx.Component:
 def home() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Observa que esta cambiando en el Estado y entiende cada tema desde documentos oficiales.", class_name="title"),
+            rx.text("Pulso del Estado", class_name="title"),
             rx.text(
-                "DatosEnOrden convierte eventos, documentos fuente y evidencia en una lectura clara para ciudadanos.",
+                "Observacion publica basada en documentos oficiales: que cambio, que lectura afecta y que fuente lo sostiene.",
                 class_name="subtitle",
             ),
             rx.text(
-                "Empieza por el Pulso del Estado, abre una Lectura Documentada y vuelve siempre a la fuente que sostiene cada afirmacion.",
+                "Sistema Vivo mira el panorama; DatosEnOrden funciona como microscopio documental: cada afirmacion debe volver al documento fuente.",
                 class_name="story-summary",
             ),
             rx.hstack(
-                rx.button("Ver lectura documentada", on_click=rx.redirect("/topic"), class_name="button"),
-                rx.button("Ver documento fuente", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
+                rx.button("Abrir lectura principal", on_click=rx.redirect("/topic"), class_name="button"),
+                rx.button("Ver fuentes oficiales", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -4465,44 +4517,18 @@ def home() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Lectura destacada",
-            rx.box(
-                rx.hstack(
-                    rx.text("Ley de Presupuestos del Sector Publico 2013", class_name="card-title"),
-                    rx.text("Disponible", class_name="badge badge-teal"),
-                    justify="between",
-                    align="start",
-                    wrap="wrap",
-                ),
-                rx.text(
-                    "Una lectura unica para entender que significa este tema, que documento lo sostiene, que evidencia existe y como ha evolucionado.",
-                    class_name="story-summary",
-                ),
+            "Pulso del Estado",
+            rx.cond(
+                AppState.current_topic_rows,
                 rx.grid(
-                    topic_status_card({"label": "Documento fuente disponible", "status": "Disponible", "ready": True}),
-                    topic_status_card({"label": "Expediente disponible", "status": "Disponible", "ready": True}),
-                    topic_status_card({"label": "Votaciones disponibles", "status": "Disponible", "ready": True}),
-                    topic_status_card({"label": "Texto completo procesado", "status": "Disponible", "ready": True}),
-                    columns="4",
+                    rx.foreach(AppState.current_topic_rows, home_pulse_card),
+                    columns="3",
                     spacing="3",
-                    class_name="responsive-grid",
+                    class_name="responsive-grid home-pulse-grid",
                 ),
-                rx.hstack(
-                    metric("Tiempo estimado", "10 min"),
-                    metric("Documentos", "1"),
-                    metric("Lecturas", "1"),
-                    spacing="3",
-                    wrap="wrap",
-                ),
-                rx.hstack(
-                    rx.button("Entender la lectura", on_click=rx.redirect("/topic"), class_name="button"),
-                    rx.button("Ver documento fuente", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
-                    spacing="2",
-                    wrap="wrap",
-                ),
-                class_name="card topic-card-document featured-topic-card",
+                rx.text("Todavia no hay eventos publicos recientes para mostrar.", class_name="muted small"),
             ),
-            subtitle="Una puerta de entrada para comprender un asunto publico sin perder la fuente oficial.",
+            subtitle="Que cambio, que lectura se actualiza y donde revisar el documento que lo sostiene.",
         ),
         page_section(
             "Que responde cada lectura",
@@ -4520,17 +4546,18 @@ def home() -> rx.Component:
             subtitle="Una lectura ordena documentos, cronologia y trazabilidad sin separar la explicacion de sus fuentes.",
         ),
         page_section(
-            "Pulso del Estado",
+            "Microscopio documental",
             rx.grid(
-                help_card("Que cambio recientemente", "Eventos oficiales y cambios relevantes agrupados para abrir contexto."),
-                help_card("Que tema explica el cambio", "Cada evento debe llevar a una lectura, no a una pantalla aislada."),
-                help_card("Donde comprobarlo", "La fuente y la evidencia quedan visibles para revisar antes de compartir."),
+                help_card("Documento fuente", "El texto oficial queda cerca de la explicacion, no al final del recorrido."),
+                help_card("Evidencia accionable", "Cada evidencia debe llevar al fragmento citado dentro del documento."),
+                help_card("Lectura continua", "Resumen, cambios, cronologia y expediente se leen sin saltar entre paginas."),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Responde: que cambio recientemente y donde entenderlo sin perder la fuente oficial.",
-        ),        page_section(
+            subtitle="La vista macroscopica observa el pulso; DatosEnOrden revisa el documento en detalle.",
+        ),
+        page_section(
             "Mas lecturas",
             rx.cond(
                 AppState.current_topic_rows,
@@ -4853,7 +4880,6 @@ def topic() -> rx.Component:
                 "Documento Fuente visible, lectura ciudadana al lado y evidencia accionable sin perder trazabilidad.",
                 class_name="document-subtitle",
             ),
-            topic_nav(),
             rx.hstack(
                 metric("Estado", AppState.topic_status),
                 metric("Tiempo estimado", AppState.topic_read_time),
@@ -4867,6 +4893,7 @@ def topic() -> rx.Component:
         ),
         rx.box(
             topic_source_panel(),
+            topic_context_rail(),
             rx.box(topic_reading_flow(), class_name="topic-reading-column", id="topic-reading"),
             class_name="topic-document-first-layout",
         ),
@@ -5885,8 +5912,8 @@ style = {
     ".sidebar-ready-nav": {"min_width": "0"},
     ".topic-document-first-layout": {
         "display": "grid",
-        "grid_template_columns": "minmax(0, 0.92fr) minmax(0, 1fr)",
-        "gap": "18px",
+        "grid_template_columns": "minmax(0, 48fr) minmax(88px, 0.12fr) minmax(0, 52fr)",
+        "gap": "14px",
         "align_items": "start",
         "width": "100%",
         "padding": "0 0 22px",
@@ -5894,7 +5921,7 @@ style = {
     ".topic-source-panel": {
         "position": "sticky",
         "top": "72px",
-        "max_height": "calc(100vh - 88px)",
+        "max_height": "80vh",
         "overflow_y": "auto",
         "border": "1px solid rgba(45, 212, 191, 0.26)",
         "border_radius": "8px",
@@ -5907,9 +5934,15 @@ style = {
     ".shell.theme-light .topic-source-panel": {"background": "#ffffff", "color": "#18181b"},
     ".topic-source-header": {"align_items": "center"},
     ".topic-current-anchor": {"position": "sticky", "top": "0", "z_index": "3"},
+    ".topic-source-guidance": {"font_size": "13px", "line_height": "1.45", "color": "#a1a1aa", "border_left": "3px solid rgba(45, 212, 191, 0.34)", "padding_left": "10px"},
+    ".shell.theme-light .topic-source-guidance": {"color": "#52525b"},
     ".topic-source-excerpt": {"color": "#27272a", "font_size": "14px", "line_height": "1.55"},
     ".topic-document-page": {"gap": "12px"},
     ".topic-original-link": {"width": "fit-content"},
+    ".topic-context-rail": {"position": "sticky", "top": "72px", "max_height": "80vh", "display": "grid", "gap": "7px", "align_content": "start", "padding": "8px 6px", "border_left": "1px solid rgba(161, 161, 170, 0.16)", "border_right": "1px solid rgba(161, 161, 170, 0.10)"},
+    ".topic-rail-label": {"font_size": "11px", "font_weight": "850", "text_transform": "uppercase", "letter_spacing": "0.04em", "color": "#a1a1aa"},
+    ".topic-rail-link": {"font_size": "12px", "line_height": "1.25", "color": "#ccfbf1", "border_radius": "6px", "padding": "5px 6px", "background": "rgba(45, 212, 191, 0.07)"},
+    ".shell.theme-light .topic-rail-link": {"color": "#0f766e", "background": "rgba(45, 212, 191, 0.08)"},
     ".topic-reading-column": {"min_width": "0", "display": "grid", "gap": "16px"},
     ".topic-reading-flow": {"width": "100%"},
     ".topic-reading-section": {
@@ -6582,6 +6615,7 @@ style = {
         ".document-side-column": {"position": "static"},
         ".reading-context-bar": {"grid_template_columns": "1fr 1fr", "align_items": "start"},
         ".topic-document-first-layout": {"grid_template_columns": "1fr"},
+        ".topic-context-rail": {"display": "none"},
         ".topic-source-panel": {"position": "static", "max_height": "72vh"},
         ".topic-evidence-grid": {"grid_template_columns": "1fr"},
         ".reference-strip": {"grid_template_columns": "1fr"},
@@ -6590,3 +6624,4 @@ style = {
 
 
 app = rx.App(style=style)
+

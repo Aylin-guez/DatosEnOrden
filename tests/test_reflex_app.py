@@ -141,18 +141,19 @@ def test_load_home_populates_connection_preview(monkeypatch) -> None:
     assert state.guided_question_rows[0]["id"] == "who_sells_to_this_body"
     assert state.guided_category_rows[0]["id"] == "public_organizations"
     assert state.current_topic_rows[0]["title"] == "Fortalecimiento Hospitalario Arauco"
+    assert state.current_topic_rows[0]["updated_at"] == "12-04-2026"
 
 
 
 def test_home_is_public_topic_entry() -> None:
     source = inspect.getsource(reflex_app.home)
 
-    assert "Observa que esta cambiando en el Estado y entiende cada tema desde documentos oficiales." in source
-    assert "Ver lectura documentada" in source
+    assert "Pulso del Estado" in source
+    assert "Abrir lectura principal" in source
     assert 'rx.redirect("/topic")' in source
-    assert "Ver documento fuente" in source
-    assert "Lectura destacada" in source
-    assert "Ley de Presupuestos del Sector Publico 2013" in source
+    assert "Ver fuentes oficiales" in source
+    assert "home_pulse_card" in source
+    assert "Microscopio documental" in source
     assert "Que responde cada lectura" in source
     assert "Mas lecturas" in source
     assert "Fuentes que sostienen la lectura" in source
@@ -941,7 +942,8 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert "topic_source_panel" in page_source
     assert "topic_reading_flow" in page_source
     assert "Documento Fuente" in source_panel
-    assert "Fragmento seleccionado" in source_panel
+    assert "Fragmento seleccionado" not in source_panel
+    assert "topic-source-guidance" in source_panel
     assert "knowledge_fragments" in source_panel
     assert "document_fragment_card" in source_panel
     assert "Documento original" in source_panel
@@ -961,9 +963,16 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert "topic_evidence_card" in reading_source
     assert "id=row" in fragment_source
     assert "Navegacion relacionada" not in fragment_source
-    assert "Lectura" in nav_source
-    assert "Documento" in nav_source
-    assert "Evidencia" in nav_source
+    rail_source = inspect.getsource(reflex_app.topic_context_rail)
+    assert "topic_context_rail" in page_source
+    assert "Documento" in rail_source
+    assert "Resumen" in rail_source
+    assert "Que propone" in rail_source
+    assert "Que cambia" in rail_source
+    assert "Que NO cambia" in rail_source
+    assert "Cronologia" in rail_source
+    assert "Evidencia" in rail_source
+    assert "Expediente" in rail_source
 
 
 def test_load_topic_reuses_existing_knowledge_and_investigation(monkeypatch) -> None:
@@ -1029,6 +1038,8 @@ def test_load_topic_reuses_existing_knowledge_and_investigation(monkeypatch) -> 
     assert state.topic_changes_rows[0]["claim"] == "Afirmacion"
     assert state.topic_evidence_rows[0]["href"] == "/official-document?fragment_id=frag-1&page=1"
     assert state.topic_timeline_rows[0]["title"] == "Votacion asociada al boletin. (2 registros agrupados)"
+    assert state.topic_timeline_rows[0]["date"] == "20-11-2012"
+    assert state.topic_updated_at == "02-07-2026"
     assert state.topic_status_rows[0]["label"] == "Documento fuente disponible"
     assert state.topic_status_rows[2]["ready"] is True
     assert state.topic_hero_answer_rows[0]["title"] == "Qué es"
@@ -1143,3 +1154,4 @@ def test_select_document_anchor_updates_reading_context() -> None:
     assert state.knowledge_selected_claims[0]["claim"] == "Claim"
     assert state.knowledge_selected_evidence[0]["excerpt"] == "B"
     assert state.knowledge_selected_connections[0]["label"] == "Expediente"
+
