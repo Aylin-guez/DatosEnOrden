@@ -19,9 +19,11 @@ def main() -> int:
     checks.append(_import_check("reading pipeline", "datosenorden.studio.document_reading_pipeline", "publish_document_experience"))
     checks.append(_import_check("publication engine", "datosenorden.studio.publication_engine", "publish_document"))
     checks.append(_import_check("actualidad engine", "datosenorden.studio.actualidad_engine", "publish_current_topic"))
+    checks.append(_import_check("source watcher", "datosenorden.studio.source_watcher", "watch_legislative_source"))
     checks.append(_legislative_adapter_check())
     checks.append(_directory_check("data/real_imports", ROOT / "data" / "real_imports"))
     checks.append(_directory_check("documents", ROOT / "documents"))
+    checks.append(_directory_check("data/watch_runs", ROOT / "data" / "watch_runs"))
     checks.append(_official_documents_structure_check())
     checks.append(_real_imports_not_tracked_check())
     checks.append(_run_demo_check())
@@ -36,6 +38,7 @@ def _platform_compiles_check() -> tuple[str, bool, str]:
         ROOT / "src" / "datosenorden" / "studio" / "document_reading_pipeline.py",
         ROOT / "src" / "datosenorden" / "studio" / "publication_engine.py",
         ROOT / "src" / "datosenorden" / "studio" / "actualidad_engine.py",
+        ROOT / "src" / "datosenorden" / "studio" / "source_watcher.py",
         ROOT / "src" / "datosenorden" / "web" / "app_services.py",
     ]
     try:

@@ -7,6 +7,7 @@ assets/external/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pytest-tmp*/
 .ruff_cache/
 .mypy_cache/
 .coverage
@@ -17,6 +18,8 @@ build/
 data/raw/
 data/processed/
 data/tmp/
+data/real_imports/*
+!data/real_imports/.gitkeep
 docs/prompt/
 docs/prompts/
 private/
@@ -29,4 +32,20 @@ market_research/
 *.private
 *.log
 graph_exports/
+reports/*.html
+.generated_reports/
 mine/
+to-do.md
+private_engines/
+engines_private/
+data/official_documents/incoming/**
+data/official_documents/processing/**
+data/official_documents/published/**
+data/official_documents/archived/**
+!data/official_documents/**/README.md
+!data/official_documents/metadata.schema.json
+studio_private/
+client_configs/
+client_data/
+data/watch_runs/*
+!data/watch_runs/.gitkeep
