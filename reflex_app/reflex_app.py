@@ -1082,6 +1082,8 @@ class AppState(rx.State):
     theme_dark: bool = True
     header_search_open: bool = False
     header_search_query: str = ""
+    sidebar_collapsed: bool = False
+    topic_view_mode: str = "lectura"
 
     dataset_rows: list[dict] = []
     ecosystem_sources: list[dict] = []
@@ -1285,6 +1287,12 @@ class AppState(rx.State):
 
     def toggle_header_search(self) -> None:
         self.header_search_open = not self.header_search_open
+
+    def toggle_sidebar(self) -> None:
+        self.sidebar_collapsed = not self.sidebar_collapsed
+
+    def set_topic_view_mode(self, mode: str) -> None:
+        self.topic_view_mode = mode
 
     def set_header_search_query(self, value: str) -> None:
         self.header_search_query = value
@@ -2147,21 +2155,83 @@ class AppState(rx.State):
         )
 
 
+def _sidebar_nav_class(active: bool) -> str:
+    return "sidebar-nav-link sidebar-nav-link-active" if active else "sidebar-nav-link"
+
+
+def sidebar_nav_link(label: str, href: str, active: bool) -> rx.Component:
+    return rx.link(
+        rx.text(label[:1], class_name="sidebar-initial"),
+        rx.text(label, class_name="sidebar-label"),
+        href=href,
+        class_name=_sidebar_nav_class(active),
+    )
+
+
+def app_sidebar(active_page: str) -> rx.Component:
+    return rx.box(
+        rx.box(
+            rx.link("DEO", href="/", class_name="sidebar-brand"),
+            rx.button(
+                rx.cond(AppState.sidebar_collapsed, ">", "<"),
+                on_click=AppState.toggle_sidebar,
+                class_name="sidebar-collapse-button",
+            ),
+            class_name="sidebar-header",
+        ),
+        rx.vstack(
+            sidebar_nav_link("Inicio", "/", active_page == PAGE_HOME),
+            sidebar_nav_link("Lectura", "/topic", active_page == PAGE_TOPIC),
+            sidebar_nav_link("Descubre", "/discover", active_page == PAGE_DISCOVER),
+            sidebar_nav_link("Expediente", "/investigation", active_page == PAGE_INVESTIGATION),
+            sidebar_nav_link("Informes", "/reports", active_page == PAGE_REPORTS),
+            sidebar_nav_link("Mas lecturas", "/library", active_page == PAGE_LIBRARY),
+            sidebar_nav_link("Documento Fuente", "/official-document", active_page == PAGE_DOCUMENT),
+            sidebar_nav_link("Cronologia", "/tracking", active_page == PAGE_TRACKING),
+            sidebar_nav_link("Fuentes oficiales", "/ecosystem", active_page == PAGE_ECOSYSTEM),
+            sidebar_nav_link("Proyecto", "/project", active_page == PAGE_PROJECT),
+            spacing="1",
+            align="stretch",
+            class_name="sidebar-nav",
+        ),
+        class_name=rx.cond(AppState.sidebar_collapsed, "app-sidebar app-sidebar-collapsed", "app-sidebar"),
+    )
+
+
+def scroll_top_control() -> rx.Component:
+    return rx.box(
+        rx.script(
+            """
+            (() => {
+              if (window.__deoScrollTopReady) return;
+              window.__deoScrollTopReady = true;
+              const updateScrollTopButton = () => {
+                const button = document.getElementById('scroll-top-button');
+                if (!button) return;
+                button.classList.toggle('scroll-top-visible', window.scrollY > window.innerHeight * 0.9);
+              };
+              window.addEventListener('scroll', updateScrollTopButton, { passive: true });
+              window.addEventListener('resize', updateScrollTopButton);
+              setTimeout(updateScrollTopButton, 80);
+            })();
+            """
+        ),
+        rx.button(
+            "Volver arriba",
+            id="scroll-top-button",
+            on_click=rx.call_script("window.scrollTo({ top: 0, behavior: 'smooth' })"),
+            class_name="scroll-top-button",
+        ),
+    )
+
+
 def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
     nav_items = rx.hstack(
-        rx.link("Inicio", href="/", class_name=_nav_class(active_page == PAGE_HOME)),
+        rx.link("Pulso", href="/", class_name=_nav_class(active_page == PAGE_HOME)),
         rx.link("Lectura", href="/topic", class_name=_nav_class(active_page == PAGE_TOPIC)),
-        rx.link("Descubre", href="/discover", class_name=_nav_class(active_page == PAGE_DISCOVER)),
-        rx.link("Expediente", href="/investigation", class_name=_nav_class(active_page == PAGE_INVESTIGATION)),
-        rx.link("Informes", href="/reports", class_name=_nav_class(active_page == PAGE_REPORTS)),
-        rx.link("Mas lecturas", href="/library", class_name=_nav_class(active_page == PAGE_LIBRARY)),
-        rx.link("Documento Fuente", href="/official-document", class_name=_nav_class(active_page == PAGE_DOCUMENT)),
-        rx.link("Cronologia", href="/tracking", class_name=_nav_class(active_page == PAGE_TRACKING)),
-        rx.link("Fuentes oficiales", href="/ecosystem", class_name=_nav_class(active_page == PAGE_ECOSYSTEM)),
-        rx.link("Proyecto", href="/project", class_name=_nav_class(active_page == PAGE_PROJECT)),
         spacing="2",
         align="center",
-        class_name="nav-links sidebar-ready-nav",
+        class_name="nav-links sidebar-ready-nav top-minimal-nav",
     )
     header_search = rx.hstack(
         rx.button("Buscar", on_click=AppState.toggle_header_search, class_name="header-search-toggle"),
@@ -2184,34 +2254,53 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
         align="center",
         class_name="header-search",
     )
-    return rx.box(
-        rx.box(
-            rx.hstack(
-                rx.link("DatosEnOrden", href="/", class_name="brand"),
-                nav_items,
-                header_search,
-                rx.button(
-                    rx.cond(AppState.theme_dark, "Claro", "Oscuro"),
-                    on_click=AppState.toggle_theme,
-                    class_name="theme-toggle",
-                ),
-                justify="between",
-                align="center",
-                class_name="nav-inner",
-            ),
-            class_name="shell-header shell-header-sidebar-ready",
+    shell_class = rx.cond(
+        AppState.theme_dark,
+        rx.cond(
+            AppState.sidebar_collapsed,
+            f"shell theme-dark sidebar-collapsed {_page_class(active_page)}",
+            f"shell theme-dark {_page_class(active_page)}",
         ),
         rx.cond(
-            AppState.error_message != "",
-            rx.box(
-                rx.text("Estado de carga", class_name="eyebrow"),
-                rx.text(AppState.error_message, class_name="muted"),
-                class_name="card error shell-alert",
-            ),
+            AppState.sidebar_collapsed,
+            f"shell theme-light sidebar-collapsed {_page_class(active_page)}",
+            f"shell theme-light {_page_class(active_page)}",
         ),
-        rx.vstack(*children, spacing="5", align="stretch", class_name="page"),
-        app_footer(),
-        class_name=rx.cond(AppState.theme_dark, f"shell theme-dark {_page_class(active_page)}", f"shell theme-light {_page_class(active_page)}"),
+    )
+    return rx.box(
+        app_sidebar(active_page),
+        rx.box(
+            rx.box(
+                rx.hstack(
+                    rx.button("Menu", on_click=AppState.toggle_sidebar, class_name="sidebar-toggle"),
+                    rx.link("DatosEnOrden", href="/", class_name="brand"),
+                    nav_items,
+                    header_search,
+                    rx.button(
+                        rx.cond(AppState.theme_dark, "Claro", "Oscuro"),
+                        on_click=AppState.toggle_theme,
+                        class_name="theme-toggle",
+                    ),
+                    justify="between",
+                    align="center",
+                    class_name="nav-inner",
+                ),
+                class_name="shell-header shell-header-sidebar-ready",
+            ),
+            rx.cond(
+                AppState.error_message != "",
+                rx.box(
+                    rx.text("Estado de carga", class_name="eyebrow"),
+                    rx.text(AppState.error_message, class_name="muted"),
+                    class_name="card error shell-alert",
+                ),
+            ),
+            rx.vstack(*children, spacing="5", align="stretch", class_name="page"),
+            app_footer(),
+            class_name="shell-main",
+        ),
+        scroll_top_control(),
+        class_name=shell_class,
         **props,
     )
 
@@ -3152,6 +3241,109 @@ def topic_reading_flow() -> rx.Component:
         align="stretch",
         class_name="topic-reading-flow",
     )
+
+
+
+def topic_mode_button(label: str, mode: str) -> rx.Component:
+    return rx.button(
+        label,
+        on_click=AppState.set_topic_view_mode(mode),
+        class_name=rx.cond(AppState.topic_view_mode == mode, "topic-mode-button topic-mode-button-active", "topic-mode-button"),
+    )
+
+
+def topic_mode_selector() -> rx.Component:
+    return rx.hstack(
+        topic_mode_button("Lectura", "lectura"),
+        topic_mode_button("Documento", "documento"),
+        topic_mode_button("Sistema Vivo", "sistema_vivo"),
+        topic_mode_button("Evidencia", "evidencia"),
+        spacing="2",
+        wrap="wrap",
+        class_name="topic-mode-selector",
+    )
+
+
+def topic_reading_mode() -> rx.Component:
+    return rx.box(
+        topic_source_panel(),
+        topic_context_rail(),
+        rx.box(topic_reading_flow(), class_name="topic-reading-column", id="topic-reading"),
+        class_name="topic-document-first-layout topic-mode-shell topic-mode-reading",
+    )
+
+
+def topic_document_mode() -> rx.Component:
+    return rx.box(
+        topic_source_panel(),
+        class_name="topic-single-mode topic-mode-shell topic-mode-document",
+    )
+
+
+def topic_system_mode() -> rx.Component:
+    return rx.box(
+        rx.text("Sistema Vivo", class_name="section-title"),
+        rx.text(
+            "Modo preparado para observar continuidad, estado actual y siguientes hitos del mismo tema. La implementacion visual definitiva queda para una fase posterior.",
+            class_name="muted",
+        ),
+        rx.grid(
+            rx.foreach(AppState.topic_status_rows, topic_status_card),
+            columns="2",
+            spacing="3",
+            class_name="responsive-grid",
+        ),
+        rx.box(
+            rx.text("Cronologia disponible", class_name="card-title"),
+            rx.cond(
+                AppState.topic_timeline_rows,
+                rx.grid(
+                    rx.foreach(AppState.topic_timeline_rows, tracking_event_card),
+                    columns="1",
+                    spacing="3",
+                    class_name="timeline-list",
+                ),
+                rx.text("No hay hitos visibles para este tema.", class_name="muted small"),
+            ),
+            class_name="topic-reading-section topic-card-next",
+        ),
+        class_name="topic-system-placeholder topic-mode-shell",
+    )
+
+
+def topic_evidence_mode() -> rx.Component:
+    return rx.box(
+        topic_source_panel(),
+        rx.box(
+            rx.text("Evidencia", class_name="section-title"),
+            rx.text("Cada accion mueve el documento al fragmento citado sin salir de la lectura.", class_name="muted small"),
+            rx.grid(
+                rx.foreach(AppState.topic_evidence_rows, topic_evidence_card),
+                columns="1",
+                spacing="3",
+                class_name="topic-evidence-grid",
+            ),
+            class_name="topic-reading-section topic-card-evidence topic-evidence-mode-panel",
+        ),
+        class_name="topic-document-first-layout topic-mode-shell topic-mode-evidence",
+    )
+
+
+def topic_mode_body() -> rx.Component:
+    return rx.cond(
+        AppState.topic_view_mode == "documento",
+        topic_document_mode(),
+        rx.cond(
+            AppState.topic_view_mode == "sistema_vivo",
+            topic_system_mode(),
+            rx.cond(
+                AppState.topic_view_mode == "evidencia",
+                topic_evidence_mode(),
+                topic_reading_mode(),
+            ),
+        ),
+    )
+
 
 def next_step_card(title: str, body: str, label: str, href: str) -> rx.Component:
     return rx.box(
@@ -4494,30 +4686,26 @@ def single_investigation_product_view() -> rx.Component:
     )
 
 
-@rx.page(route="/", title="DatosEnOrden - Informacion publica con evidencia")
+@rx.page(route="/", title="DatosEnOrden - Pulso del Estado")
 def home() -> rx.Component:
     return shell(
         rx.box(
             rx.text("Pulso del Estado", class_name="title"),
             rx.text(
-                "Observacion publica basada en documentos oficiales: que cambio, que lectura afecta y que fuente lo sostiene.",
+                "Eventos recientes, lecturas afectadas y documentos oficiales que sostienen cada cambio.",
                 class_name="subtitle",
-            ),
-            rx.text(
-                "Sistema Vivo mira el panorama; DatosEnOrden funciona como microscopio documental: cada afirmacion debe volver al documento fuente.",
-                class_name="story-summary",
             ),
             rx.hstack(
                 rx.button("Abrir lectura principal", on_click=rx.redirect("/topic"), class_name="button"),
-                rx.button("Ver fuentes oficiales", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
+                rx.button("Ver todas las lecturas", on_click=rx.redirect("/library"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
             ),
-            class_name="hero",
+            class_name="hero home-pulse-hero",
         ),
         page_section(
-            "Pulso del Estado",
+            "Eventos recientes",
             rx.cond(
                 AppState.current_topic_rows,
                 rx.grid(
@@ -4531,34 +4719,7 @@ def home() -> rx.Component:
             subtitle="Que cambio, que lectura se actualiza y donde revisar el documento que lo sostiene.",
         ),
         page_section(
-            "Que responde cada lectura",
-            rx.grid(
-                help_card("Documento fuente", "El texto original y sus fragmentos citables."),
-                help_card("Que significa", "Una explicacion ciudadana construida desde la evidencia disponible."),
-                help_card("Que cambia", "Los cambios identificados cuando el documento entrega base suficiente."),
-                help_card("Que no dice", "Limites claros para no afirmar mas de lo que muestran las fuentes."),
-                help_card("Como evoluciona", "Hitos, cronologia y votaciones relacionadas."),
-                help_card("Evidencia", "Fragmentos que permiten revisar de donde sale cada afirmacion."),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Una lectura ordena documentos, cronologia y trazabilidad sin separar la explicacion de sus fuentes.",
-        ),
-        page_section(
-            "Microscopio documental",
-            rx.grid(
-                help_card("Documento fuente", "El texto oficial queda cerca de la explicacion, no al final del recorrido."),
-                help_card("Evidencia accionable", "Cada evidencia debe llevar al fragmento citado dentro del documento."),
-                help_card("Lectura continua", "Resumen, cambios, cronologia y expediente se leen sin saltar entre paginas."),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="La vista macroscopica observa el pulso; DatosEnOrden revisa el documento en detalle.",
-        ),
-        page_section(
-            "Mas lecturas",
+            "Lecturas",
             rx.cond(
                 AppState.current_topic_rows,
                 rx.grid(
@@ -4569,70 +4730,7 @@ def home() -> rx.Component:
                 ),
                 rx.text("Todavia no hay lecturas documentadas publicadas.", class_name="muted small"),
             ),
-            subtitle="Lecturas disponibles para entrar a un tema desde lenguaje ciudadano y evidencia verificable.",
-        ),
-        page_section(
-            "Fuentes que sostienen la lectura",
-            rx.grid(
-                rx.box(
-                    rx.text("Comprobar la fuente", class_name="card-title"),
-                    rx.text("Cada lectura mantiene enlaces hacia documento fuente, expediente, cronologia y fragmentos.", class_name="muted small"),
-                    rx.button("Ver fuentes oficiales", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
-                    class_name="card topic-card-evidence",
-                ),
-                rx.box(
-                    rx.text("Vistas avanzadas", class_name="card-title"),
-                    rx.text("Informes, mas lecturas, cronologia, fuentes oficiales y proyecto siguen disponibles como vistas avanzadas.", class_name="muted small"),
-                    rx.hstack(
-                        rx.link("Informes", href="/reports", class_name="document-inline-link"),
-                        rx.link("Mas lecturas", href="/library", class_name="document-inline-link"),
-                        rx.link("Cronologia", href="/tracking", class_name="document-inline-link"),
-                        rx.link("Proyecto", href="/project", class_name="document-inline-link"),
-                        spacing="2",
-                        wrap="wrap",
-                    ),
-                    class_name="card topic-card-next",
-                ),
-                rx.box(
-                    rx.text("Cobertura visible", class_name="card-title"),
-                    rx.hstack(
-                        metric("Fuentes", AppState.total_datasets),
-                        metric("Activas", AppState.active_datasets),
-                        metric("Evidencias", AppState.total_claims),
-                        spacing="3",
-                        wrap="wrap",
-                    ),
-                    class_name="card topic-card-proposes",
-                ),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="La explicacion mantiene trazabilidad hacia fuentes y documentos revisables.",
-        ),
-        page_section(
-            "Proyecto DatosEnOrden",
-            rx.box(
-                rx.text(
-                    "El proyecto prepara herramientas para observar documentos, cronologia y evidencia sin perder la fuente oficial.",
-                    class_name="muted small",
-                ),
-                rx.button("Ver proyecto", on_click=rx.redirect("/project"), class_name="button button-secondary"),
-                class_name="card studio-small-card",
-            ),
-            subtitle="Un acceso discreto para conocer el proyecto y sus proximos pasos.",
-        ),
-        page_section(
-            "Navegacion",
-            rx.grid(
-                next_step_card("Lectura Documentada", "Entrar al asunto publico destacado.", "Abrir lectura", "/topic"),
-                next_step_card("Documento", "Revisar el texto oficial procesado.", "Abrir documento", "/official-document"),
-                next_step_card("Cronologia", "Ver eventos y cambios relacionados.", "Ver cronologia", "/tracking"),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Accesos existentes para continuar la lectura sin perder contexto.",
+            subtitle="Accesos directos a las lecturas documentadas disponibles.",
         ),
         on_mount=AppState.load_home,
         active_page=PAGE_HOME,
@@ -4888,15 +4986,11 @@ def topic() -> rx.Component:
                 spacing="3",
                 wrap="wrap",
             ),
+            topic_mode_selector(),
             rx.text(AppState.topic_organizations_text, class_name="document-meta-reference"),
             class_name="document-hero topic-hero",
         ),
-        rx.box(
-            topic_source_panel(),
-            topic_context_rail(),
-            rx.box(topic_reading_flow(), class_name="topic-reading-column", id="topic-reading"),
-            class_name="topic-document-first-layout",
-        ),
+        topic_mode_body(),
         on_mount=AppState.load_topic,
         active_page=PAGE_TOPIC,
     )
@@ -5702,6 +5796,57 @@ style = {
     ".shell": {"min_height": "100vh", "padding": "0 0 28px"},
     ".shell.theme-dark": {"background": "#0f0f12", "color": "#f4f4f5"},
     ".shell.theme-light": {"background": "#f4f4f5", "color": "#18181b"},
+    ".shell-main": {"margin_left": "236px", "transition": "margin-left 220ms ease"},
+    ".shell.sidebar-collapsed .shell-main": {"margin_left": "72px"},
+    ".app-sidebar": {
+        "position": "fixed",
+        "top": "0",
+        "left": "0",
+        "bottom": "0",
+        "width": "236px",
+        "padding": "14px 10px",
+        "border_right": "1px solid rgba(161, 161, 170, 0.16)",
+        "background": "rgba(15, 15, 18, 0.96)",
+        "backdrop_filter": "blur(18px)",
+        "z_index": "45",
+        "display": "grid",
+        "grid_template_rows": "auto 1fr",
+        "gap": "14px",
+        "transition": "width 220ms ease",
+    },
+    ".shell.theme-light .app-sidebar": {"background": "rgba(255, 255, 255, 0.96)", "border_right": "1px solid rgba(113, 113, 122, 0.18)"},
+    ".app-sidebar-collapsed": {"width": "72px"},
+    ".sidebar-header": {"display": "flex", "align_items": "center", "justify_content": "space-between", "gap": "8px", "padding": "2px 2px 8px"},
+    ".sidebar-brand": {"font_weight": "900", "font_size": "14px", "color": "#ccfbf1", "letter_spacing": "0.08em"},
+    ".shell.theme-light .sidebar-brand": {"color": "#0f766e"},
+    ".sidebar-collapse-button, .sidebar-toggle": {
+        "border_radius": "6px",
+        "border": "1px solid rgba(161, 161, 170, 0.2)",
+        "background": "rgba(255, 255, 255, 0.06)",
+        "color": "#e4e4e7",
+        "font_weight": "850",
+        "min_width": "36px",
+    },
+    ".shell.theme-light .sidebar-collapse-button, .shell.theme-light .sidebar-toggle": {"background": "#ffffff", "color": "#18181b"},
+    ".sidebar-nav": {"overflow_y": "auto", "padding_right": "2px"},
+    ".sidebar-nav-link": {
+        "display": "grid",
+        "grid_template_columns": "28px minmax(0, 1fr)",
+        "align_items": "center",
+        "gap": "8px",
+        "padding": "9px 10px",
+        "border_radius": "8px",
+        "color": "#d4d4d8",
+        "font_weight": "750",
+        "font_size": "13px",
+    },
+    ".sidebar-nav-link-active": {"background": "rgba(45, 212, 191, 0.12)", "color": "#ccfbf1"},
+    ".shell.theme-light .sidebar-nav-link": {"color": "#3f3f46"},
+    ".shell.theme-light .sidebar-nav-link-active": {"background": "rgba(13, 148, 136, 0.12)", "color": "#0f766e"},
+    ".sidebar-initial": {"display": "inline-flex", "align_items": "center", "justify_content": "center", "width": "26px", "height": "26px", "border_radius": "6px", "background": "rgba(255, 255, 255, 0.06)", "font_weight": "900"},
+    ".app-sidebar-collapsed .sidebar-label": {"display": "none"},
+    ".app-sidebar-collapsed .sidebar-nav-link": {"grid_template_columns": "1fr", "justify_items": "center", "padding": "9px 6px"},
+    ".app-sidebar-collapsed .sidebar-brand": {"font_size": "12px"},
     ".shell-header": {
         "width": "100%",
         "border_bottom": "1px solid rgba(161, 161, 170, 0.18)",
@@ -5910,6 +6055,55 @@ style = {
     ".page-topic .nav-links": {"gap": "12px", "font_size": "13px"},
     ".page-topic .header-search-toggle, .page-topic .theme-toggle": {"padding": "6px 10px"},
     ".sidebar-ready-nav": {"min_width": "0"},
+    ".top-minimal-nav": {"flex": "0 1 auto"},
+    ".scroll-top-button": {
+        "position": "fixed",
+        "right": "24px",
+        "bottom": "24px",
+        "z_index": "60",
+        "opacity": "0",
+        "pointer_events": "none",
+        "transform": "translateY(14px)",
+        "transition": "opacity 180ms ease, transform 180ms ease",
+        "border_radius": "999px",
+        "border": "1px solid rgba(45, 212, 191, 0.34)",
+        "background": "rgba(15, 118, 110, 0.92)",
+        "color": "#ecfeff",
+        "font_weight": "850",
+        "box_shadow": "0 14px 40px rgba(0, 0, 0, 0.22)",
+    },
+    ".scroll-top-button.scroll-top-visible": {"opacity": "1", "pointer_events": "auto", "transform": "translateY(0)"},
+    ".home-pulse-hero": {"padding_bottom": "22px"},
+    ".topic-mode-selector": {
+        "padding": "6px",
+        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border_radius": "8px",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "width": "fit-content",
+    },
+    ".topic-mode-button": {
+        "border_radius": "6px",
+        "border": "1px solid transparent",
+        "background": "transparent",
+        "color": "#d4d4d8",
+        "font_weight": "800",
+    },
+    ".topic-mode-button-active": {"background": "rgba(45, 212, 191, 0.14)", "border_color": "rgba(45, 212, 191, 0.28)", "color": "#ccfbf1"},
+    ".shell.theme-light .topic-mode-selector": {"background": "rgba(255, 255, 255, 0.72)", "border_color": "rgba(113, 113, 122, 0.18)"},
+    ".shell.theme-light .topic-mode-button": {"color": "#3f3f46"},
+    ".shell.theme-light .topic-mode-button-active": {"background": "rgba(13, 148, 136, 0.12)", "border_color": "rgba(13, 148, 136, 0.24)", "color": "#0f766e"},
+    ".topic-mode-shell": {"min_width": "0"},
+    ".topic-single-mode": {"display": "grid", "gap": "14px", "max_width": "980px", "width": "100%", "margin": "0 auto", "padding": "0 0 22px"},
+    ".topic-single-mode .topic-source-panel": {"position": "relative", "top": "auto", "max_height": "80vh"},
+    ".topic-system-placeholder": {
+        "display": "grid",
+        "gap": "16px",
+        "padding": "18px",
+        "border": "1px solid rgba(74, 222, 128, 0.22)",
+        "border_radius": "8px",
+        "background": "#18181b",
+    },
+    ".topic-evidence-mode-panel": {"align_self": "start"},
     ".topic-document-first-layout": {
         "display": "grid",
         "grid_template_columns": "minmax(0, 48fr) minmax(88px, 0.12fr) minmax(0, 52fr)",
@@ -6602,6 +6796,9 @@ style = {
         "100%": {"background": "#ffffff"},
     },
     "@media (max-width: 900px)": {
+        ".shell-main": {"margin_left": "0"},
+        ".shell.sidebar-collapsed .shell-main": {"margin_left": "0"},
+        ".app-sidebar": {"display": "none"},
         ".nav-inner": {"flex_wrap": "wrap"},
         ".nav-links": {"justify_content": "flex-start"},
         ".investigation-layout": {"grid_template_columns": "1fr"},

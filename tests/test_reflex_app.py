@@ -149,16 +149,16 @@ def test_home_is_public_topic_entry() -> None:
     source = inspect.getsource(reflex_app.home)
 
     assert "Pulso del Estado" in source
+    assert "Eventos recientes" in source
     assert "Abrir lectura principal" in source
     assert 'rx.redirect("/topic")' in source
-    assert "Ver fuentes oficiales" in source
+    assert "Ver todas las lecturas" in source
     assert "home_pulse_card" in source
-    assert "Microscopio documental" in source
-    assert "Que responde cada lectura" in source
-    assert "Mas lecturas" in source
-    assert "Fuentes que sostienen la lectura" in source
-    assert "Proyecto DatosEnOrden" in source
     assert "current_topic_card" in source
+    assert "Microscopio documental" not in source
+    assert "Que responde cada lectura" not in source
+    assert "Fuentes que sostienen la lectura" not in source
+    assert "Proyecto DatosEnOrden" not in source
 
 
 def test_current_topic_card_links_to_documented_reading() -> None:
@@ -284,17 +284,20 @@ def test_loading_state_has_manual_fallback_actions() -> None:
 
 
 def test_nav_expediente_points_to_empty_investigation_and_search_is_header_action() -> None:
-    source = inspect.getsource(reflex_app.shell)
+    shell_source = inspect.getsource(reflex_app.shell)
+    sidebar_source = inspect.getsource(reflex_app.app_sidebar)
 
-    assert 'rx.link("Expediente", href="/investigation"' in source
-    assert 'rx.link("Mas lecturas", href="/library"' in source
-    assert 'rx.link("Cronologia", href="/tracking"' in source
-    assert 'rx.link("Informes", href="/reports"' in source
-    assert 'rx.link("Proyecto", href="/project"' in source
-    assert 'rx.link("Buscar", href="/search"' not in source
-    assert source.index('rx.link("Expediente"') < source.index('rx.link("Informes"') < source.index('rx.link("Mas lecturas"') < source.index('rx.link("Cronologia"')
-    assert "header_search" in source
-    assert "toggle_header_search" in source
+    assert 'rx.link("Pulso", href="/"' in shell_source
+    assert 'rx.link("Lectura", href="/topic"' in shell_source
+    assert 'sidebar_nav_link("Expediente", "/investigation"' in sidebar_source
+    assert 'sidebar_nav_link("Mas lecturas", "/library"' in sidebar_source
+    assert 'sidebar_nav_link("Cronologia", "/tracking"' in sidebar_source
+    assert 'sidebar_nav_link("Informes", "/reports"' in sidebar_source
+    assert 'sidebar_nav_link("Proyecto", "/project"' in sidebar_source
+    assert 'rx.link("Buscar", href="/search"' not in shell_source
+    assert "header_search" in shell_source
+    assert "toggle_header_search" in shell_source
+    assert "toggle_sidebar" in shell_source
 
 
 def test_router_query_value_reads_raw_path() -> None:
@@ -912,9 +915,9 @@ def test_load_dashboard_populates_summary_metrics(monkeypatch) -> None:
 
 
 def test_official_document_route_and_nav_are_visible() -> None:
-    source = inspect.getsource(reflex_app.shell)
+    source = inspect.getsource(reflex_app.app_sidebar)
 
-    assert 'rx.link("Documento Fuente", href="/official-document"' in source
+    assert 'sidebar_nav_link("Documento Fuente", "/official-document"' in source
     assert "PAGE_DOCUMENT" in source
 
     page_source = inspect.getsource(reflex_app.official_document)
@@ -938,9 +941,19 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert 'rx.link("Lectura", href="/topic"' in shell_source
     assert "sidebar-ready-nav" in shell_source
     assert '@rx.page(route="/topic"' in page_source
-    assert "topic-document-first-layout" in page_source
-    assert "topic_source_panel" in page_source
-    assert "topic_reading_flow" in page_source
+    assert "topic_mode_selector" in page_source
+    assert "topic_mode_body" in page_source
+    mode_source = inspect.getsource(reflex_app.topic_mode_body)
+    selector_source = inspect.getsource(reflex_app.topic_mode_selector)
+    reading_mode_source = inspect.getsource(reflex_app.topic_reading_mode)
+    evidence_mode_source = inspect.getsource(reflex_app.topic_evidence_mode)
+    assert "topic-document-first-layout" in reading_mode_source
+    assert "topic_source_panel" in reading_mode_source
+    assert "topic_source_panel" in evidence_mode_source
+    assert "topic_reading_flow" in reading_mode_source
+    assert "Sistema Vivo" in selector_source
+    assert "Documento" in selector_source
+    assert "Evidencia" in selector_source
     assert "Documento Fuente" in source_panel
     assert "Fragmento seleccionado" not in source_panel
     assert "topic-source-guidance" in source_panel
@@ -964,7 +977,7 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert "id=row" in fragment_source
     assert "Navegacion relacionada" not in fragment_source
     rail_source = inspect.getsource(reflex_app.topic_context_rail)
-    assert "topic_context_rail" in page_source
+    assert "topic_context_rail" in inspect.getsource(reflex_app.topic_reading_mode)
     assert "Documento" in rail_source
     assert "Resumen" in rail_source
     assert "Que propone" in rail_source
