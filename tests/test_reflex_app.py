@@ -929,28 +929,41 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     shell_source = inspect.getsource(reflex_app.shell)
     page_source = inspect.getsource(reflex_app.topic)
     nav_source = inspect.getsource(reflex_app.topic_nav)
+    source_panel = inspect.getsource(reflex_app.topic_source_panel)
+    reading_source = inspect.getsource(reflex_app.topic_reading_flow)
+    evidence_source = inspect.getsource(reflex_app.topic_evidence_card)
+    fragment_source = inspect.getsource(reflex_app.document_fragment_card)
 
     assert 'rx.link("Lectura", href="/topic"' in shell_source
+    assert "sidebar-ready-nav" in shell_source
     assert '@rx.page(route="/topic"' in page_source
-    assert "Documento oficial" in page_source
-    assert "¿Qué propone?" in page_source
-    assert "¿Qué cambia?" in page_source
-    assert "¿Qué NO cambia?" in page_source
-    assert "¿Qué sigue?" in page_source
-    assert "Evidencia" in page_source
-    assert "Lecturas Documentadas" in page_source
-    assert "Expediente" in page_source
-    assert "Cronologia" in page_source
-    assert "Votaciones" in page_source
-    assert "Documento original" in page_source
-    assert "Estado de disponibilidad" in page_source
-    assert "topic_status_card" in page_source
-    assert "topic_answer_card" in page_source
-    assert "topic_evidence_card" in page_source
-    assert "Lectura" in nav_source
+    assert "topic-document-first-layout" in page_source
+    assert "topic_source_panel" in page_source
+    assert "topic_reading_flow" in page_source
+    assert "Documento Fuente" in source_panel
+    assert "Fragmento seleccionado" in source_panel
+    assert "knowledge_fragments" in source_panel
+    assert "document_fragment_card" in source_panel
+    assert "Documento original" in source_panel
+    assert "Vista avanzada" not in source_panel
+    assert "Resumen" in reading_source
+    assert "Que propone" in reading_source
+    assert "Que cambia" in reading_source
+    assert "Que NO cambia" in reading_source
+    assert "Cronologia" in reading_source
+    assert "Evidencia" in reading_source
+    assert "Expediente" in reading_source
+    assert "rx.tabs" not in reading_source
+    assert "select_document_anchor" in evidence_source
+    assert "call_script" in evidence_source
+    assert "topic_status_card" in reading_source
+    assert "topic_answer_card" in reading_source
+    assert "topic_evidence_card" in reading_source
+    assert "id=row" in fragment_source
+    assert "Navegacion relacionada" not in fragment_source
     assert "Lectura" in nav_source
     assert "Documento" in nav_source
-    assert "Fragmento" in nav_source
+    assert "Evidencia" in nav_source
 
 
 def test_load_topic_reuses_existing_knowledge_and_investigation(monkeypatch) -> None:
@@ -1067,7 +1080,7 @@ def test_official_document_components_link_references_to_anchors() -> None:
     assert "highlight" in viewer_source
     assert "reading_context_bar" in viewer_source
     assert "AppState.select_document_anchor" in reference_source
-    assert "Navegacion relacionada" in fragment_source
+    assert "Navegacion relacionada" not in fragment_source
     assert "document-fragment-active" in fragment_source
     assert "Punto documentado" in guide_source
     assert "Pregunta derivada del texto" in guide_source

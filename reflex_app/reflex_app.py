@@ -476,7 +476,7 @@ def _topic_status_rows(
     text_processed: bool,
 ) -> list[dict]:
     return [
-        {"label": "Documento oficial disponible", "status": "Disponible" if document_available else "No disponible", "ready": document_available},
+        {"label": "Documento fuente disponible", "status": "Disponible" if document_available else "No disponible", "ready": document_available},
         {"label": "Expediente disponible", "status": "Disponible" if expediente_available else "No disponible", "ready": expediente_available},
         {"label": "Votaciones disponibles", "status": "Disponible" if votes_available else "No disponible", "ready": votes_available},
         {"label": "Texto completo procesado", "status": "Disponible" if text_processed else "No disponible", "ready": text_processed},
@@ -2132,18 +2132,18 @@ class AppState(rx.State):
 def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
     nav_items = rx.hstack(
         rx.link("Inicio", href="/", class_name=_nav_class(active_page == PAGE_HOME)),
-        rx.link("Tema", href="/topic", class_name=_nav_class(active_page == PAGE_TOPIC)),
+        rx.link("Lectura", href="/topic", class_name=_nav_class(active_page == PAGE_TOPIC)),
         rx.link("Descubre", href="/discover", class_name=_nav_class(active_page == PAGE_DISCOVER)),
         rx.link("Expediente", href="/investigation", class_name=_nav_class(active_page == PAGE_INVESTIGATION)),
-        rx.link("Reportes", href="/reports", class_name=_nav_class(active_page == PAGE_REPORTS)),
-        rx.link("Biblioteca", href="/library", class_name=_nav_class(active_page == PAGE_LIBRARY)),
-        rx.link("Documento Oficial", href="/official-document", class_name=_nav_class(active_page == PAGE_DOCUMENT)),
-        rx.link("Seguimiento", href="/tracking", class_name=_nav_class(active_page == PAGE_TRACKING)),
-        rx.link("Fuentes", href="/ecosystem", class_name=_nav_class(active_page == PAGE_ECOSYSTEM)),
+        rx.link("Informes", href="/reports", class_name=_nav_class(active_page == PAGE_REPORTS)),
+        rx.link("Mas lecturas", href="/library", class_name=_nav_class(active_page == PAGE_LIBRARY)),
+        rx.link("Documento Fuente", href="/official-document", class_name=_nav_class(active_page == PAGE_DOCUMENT)),
+        rx.link("Cronologia", href="/tracking", class_name=_nav_class(active_page == PAGE_TRACKING)),
+        rx.link("Fuentes oficiales", href="/ecosystem", class_name=_nav_class(active_page == PAGE_ECOSYSTEM)),
         rx.link("Proyecto", href="/project", class_name=_nav_class(active_page == PAGE_PROJECT)),
         spacing="2",
         align="center",
-        class_name="nav-links",
+        class_name="nav-links sidebar-ready-nav",
     )
     header_search = rx.hstack(
         rx.button("Buscar", on_click=AppState.toggle_header_search, class_name="header-search-toggle"),
@@ -2181,7 +2181,7 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
                 align="center",
                 class_name="nav-inner",
             ),
-            class_name="shell-header",
+            class_name="shell-header shell-header-sidebar-ready",
         ),
         rx.cond(
             AppState.error_message != "",
@@ -2201,6 +2201,7 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
 def _page_class(active_page: str) -> str:
     return {
         PAGE_HOME: "page-home",
+        PAGE_TOPIC: "page-topic",
         PAGE_DISCOVER: "page-discover",
         PAGE_INVESTIGATION: "page-investigation",
         PAGE_LIBRARY: "page-library",
@@ -2224,11 +2225,11 @@ def app_footer() -> rx.Component:
             ),
             rx.hstack(
                 rx.link("DatosEnOrden", href="/", class_name="footer-link"),
-                rx.link("DatosEnOrden Studio", href="/project", class_name="footer-link"),
-                rx.link("Reportes", href="/reports", class_name="footer-link"),
-                rx.link("Biblioteca", href="/library", class_name="footer-link"),
-                rx.link("Seguimiento", href="/tracking", class_name="footer-link"),
-                rx.link("Fuentes", href="/ecosystem", class_name="footer-link"),
+                rx.link("Proyecto", href="/project", class_name="footer-link"),
+                rx.link("Informes", href="/reports", class_name="footer-link"),
+                rx.link("Mas lecturas", href="/library", class_name="footer-link"),
+                rx.link("Cronologia", href="/tracking", class_name="footer-link"),
+                rx.link("Fuentes oficiales", href="/ecosystem", class_name="footer-link"),
                 rx.link("Estado del proyecto", href="/project", class_name="footer-link"),
                 rx.link("Contacto", href="mailto:datosenorden@gmail.com", class_name="footer-link"),
                 spacing="3",
@@ -2236,7 +2237,7 @@ def app_footer() -> rx.Component:
                 justify="center",
             ),
             rx.text("Contacto: datosenorden@gmail.com", class_name="footer-copy"),
-            rx.text("Desarrollado por DatosEnOrden Studio.", class_name="footer-copy"),
+            rx.text("Un observador ciudadano de documentos y eventos oficiales.", class_name="footer-copy"),
             spacing="2",
             align="center",
         ),
@@ -2872,13 +2873,11 @@ def current_topic_card(row: dict) -> rx.Component:
 
 def topic_nav() -> rx.Component:
     return rx.hstack(
-        rx.link("Tema", href="/topic", class_name="document-inline-link"),
-        rx.text("↓", class_name="muted small"),
-        rx.link("Lectura", href="#topic-reading", class_name="document-inline-link"),
-        rx.text("↓", class_name="muted small"),
         rx.link("Documento", href="#topic-document", class_name="document-inline-link"),
-        rx.text("↓", class_name="muted small"),
-        rx.link("Fragmento", href="#topic-evidence", class_name="document-inline-link"),
+        rx.text("|", class_name="muted small"),
+        rx.link("Lectura", href="#topic-reading", class_name="document-inline-link"),
+        rx.text("|", class_name="muted small"),
+        rx.link("Evidencia", href="#topic-evidence", class_name="document-inline-link"),
         spacing="2",
         wrap="wrap",
         class_name="topic-nav",
@@ -2922,16 +2921,64 @@ def topic_official_document_card(row: dict) -> rx.Component:
     )
 
 
+def topic_fragment_nav_item(row: dict) -> rx.Component:
+    return rx.button(
+        rx.vstack(
+            rx.hstack(
+                rx.text(row["label"], class_name="context-title"),
+                rx.text("Pagina ", row["page"], class_name="mini-pill"),
+                spacing="2",
+                wrap="wrap",
+            ),
+            rx.text(row["excerpt"], class_name="muted small"),
+            spacing="1",
+            align="stretch",
+        ),
+        on_click=AppState.select_document_anchor(row["page"], row["fragment_id"]),
+        class_name="topic-fragment-nav-item",
+    )
+
+
+def topic_source_panel() -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text("Documento Fuente", class_name="badge badge-teal"),
+            rx.text(AppState.topic_official_document["source"], class_name="source-fact"),
+            spacing="2",
+            wrap="wrap",
+            class_name="topic-source-header",
+        ),
+        rx.text(AppState.topic_official_document["title"], class_name="card-title"),
+        rx.box(
+            rx.text("Fragmento seleccionado", class_name="document-page-marker"),
+            rx.text(AppState.knowledge_selected_reference_label, class_name="document-section-title"),
+            rx.text(AppState.knowledge_selected_excerpt, class_name="topic-source-excerpt"),
+            class_name="document-current-anchor topic-current-anchor",
+        ),
+        rx.box(
+            rx.foreach(AppState.knowledge_fragments, document_fragment_card),
+            class_name="document-page topic-document-page",
+        ),
+        rx.link("Documento original", href=AppState.topic_original_url, class_name="document-inline-link topic-original-link"),
+        class_name="topic-source-panel topic-card-document",
+        id="topic-document",
+    )
+
 def topic_evidence_card(row: dict) -> rx.Component:
     return rx.box(
         rx.text(row["source"], class_name="mini-pill"),
         rx.text(row["label"], class_name="context-title"),
         rx.text(row["excerpt"], class_name="muted small"),
-        rx.text(row["url"], class_name="mono id-line"),
-        rx.button("Abrir fragmento", on_click=rx.redirect(row["href"]), class_name="button button-secondary"),
+        rx.button(
+            "Ver en documento",
+            on_click=[
+                AppState.select_document_anchor(row["page"], row["fragment_id"]),
+                rx.call_script("setTimeout(() => document.querySelector('.document-fragment-active')?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
+            ],
+            class_name="button button-secondary",
+        ),
         class_name="context-item topic-card-evidence",
     )
-
 
 def topic_change_card(row: dict) -> rx.Component:
     return rx.box(
@@ -2969,6 +3016,90 @@ def topic_summary_card(title: str, body: rx.Var | str, helper: rx.Var | str = ""
         class_name="card report-card",
     )
 
+
+def topic_reading_flow() -> rx.Component:
+    return rx.vstack(
+        rx.box(
+            rx.text("Resumen", class_name="section-title"),
+            rx.foreach(AppState.topic_hero_answer_rows, topic_answer_card),
+            rx.grid(
+                rx.foreach(AppState.topic_status_rows, topic_status_card),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            class_name="topic-reading-section topic-card-document",
+            id="topic-summary",
+        ),
+        rx.box(
+            rx.text("Que propone", class_name="section-title"),
+            rx.grid(
+                rx.foreach(AppState.topic_proposes_rows, knowledge_key_point_card),
+                columns="1",
+                spacing="3",
+                class_name="topic-compact-grid",
+            ),
+            class_name="topic-reading-section topic-card-proposes",
+            id="topic-proposes",
+        ),
+        rx.box(
+            rx.text("Que cambia", class_name="section-title"),
+            rx.grid(
+                rx.foreach(AppState.topic_changes_rows, topic_change_card),
+                columns="1",
+                spacing="3",
+                class_name="topic-compact-grid",
+            ),
+            class_name="topic-reading-section topic-card-changes",
+            id="topic-changes",
+        ),
+        rx.box(
+            rx.text("Que NO cambia", class_name="section-title"),
+            rx.grid(
+                rx.foreach(AppState.topic_no_changes_rows, topic_no_change_card),
+                columns="1",
+                spacing="3",
+                class_name="topic-compact-grid",
+            ),
+            class_name="topic-reading-section topic-card-no-change",
+            id="topic-no-change",
+        ),
+        rx.box(
+            rx.text("Cronologia", class_name="section-title"),
+            rx.cond(
+                AppState.topic_timeline_rows,
+                rx.grid(
+                    rx.foreach(AppState.topic_timeline_rows, tracking_event_card),
+                    columns="1",
+                    spacing="3",
+                    class_name="timeline-list",
+                ),
+                rx.text("No hay hitos de timeline visibles para este tema.", class_name="muted small"),
+            ),
+            class_name="topic-reading-section topic-card-next",
+            id="topic-timeline",
+        ),
+        rx.box(
+            rx.text("Evidencia", class_name="section-title"),
+            rx.grid(
+                rx.foreach(AppState.topic_evidence_rows, topic_evidence_card),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid topic-evidence-grid",
+            ),
+            class_name="topic-reading-section topic-card-evidence",
+            id="topic-evidence",
+        ),
+        rx.box(
+            rx.text("Expediente", class_name="section-title"),
+            topic_summary_card(AppState.topic_expediente_title, AppState.topic_expediente_summary, AppState.topic_expediente_metrics),
+            class_name="topic-reading-section",
+            id="topic-investigation",
+        ),
+        spacing="4",
+        align="stretch",
+        class_name="topic-reading-flow",
+    )
 
 def next_step_card(title: str, body: str, label: str, href: str) -> rx.Component:
     return rx.box(
@@ -3291,7 +3422,10 @@ def tracking_document_card(row: dict) -> rx.Component:
 def reference_button(row: dict) -> rx.Component:
     return rx.button(
         row["reference_label"],
-        on_click=AppState.select_document_anchor(row["page"], row["fragment_id"]),
+        on_click=[
+            AppState.select_document_anchor(row["page"], row["fragment_id"]),
+            rx.call_script("setTimeout(() => document.querySelector('.document-fragment-active')?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
+        ],
         class_name="reference-button",
     )
 
@@ -3329,19 +3463,8 @@ def document_fragment_card(row: dict) -> rx.Component:
             wrap="wrap",
         ),
         rx.text(row["text"], class_name="document-fragment-text"),
-        rx.box(
-            rx.text("Navegacion relacionada", class_name="document-cross-label"),
-            rx.hstack(
-                rx.link("Expediente", href="/investigation", class_name="document-inline-link"),
-                rx.link("Seguimiento", href="/tracking", class_name="document-inline-link"),
-                rx.link("Reporte ciudadano", href="/reports", class_name="document-inline-link"),
-                rx.link("Biblioteca", href="/library", class_name="document-inline-link"),
-                spacing="2",
-                wrap="wrap",
-            ),
-            class_name="fragment-supports",
-        ),
         on_click=AppState.select_document_anchor(row["page"], row["id"]),
+        id=row["id"],
         class_name=rx.cond(
             row["id"] == AppState.knowledge_selected_fragment_id,
             "document-fragment document-fragment-active",
@@ -3631,7 +3754,7 @@ def investigation_empty_state() -> rx.Component:
             rx.hstack(
                 rx.button("Abrir expediente demo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button"),
                 rx.button("Ver biblioteca", on_click=rx.redirect("/library"), class_name="button button-secondary"),
-                rx.button("Explorar fuentes", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
+                rx.button("Ver fuentes oficiales", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -4323,18 +4446,18 @@ def single_investigation_product_view() -> rx.Component:
 def home() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Todo lo importante sobre un tema publico, explicado desde documentos oficiales.", class_name="title"),
+            rx.text("Observa que esta cambiando en el Estado y entiende cada tema desde documentos oficiales.", class_name="title"),
             rx.text(
-                "DatosEnOrden ayuda a entender asuntos publicos reuniendo documentos, evidencia, lecturas y seguimiento en un solo lugar.",
+                "DatosEnOrden convierte eventos, documentos fuente y evidencia en una lectura clara para ciudadanos.",
                 class_name="subtitle",
             ),
             rx.text(
-                "Empieza por el tema destacado, revisa el documento oficial y vuelve siempre a los fragmentos que sostienen cada afirmacion.",
+                "Empieza por el Pulso del Estado, abre una Lectura Documentada y vuelve siempre a la fuente que sostiene cada afirmacion.",
                 class_name="story-summary",
             ),
             rx.hstack(
-                rx.button("Explorar tema destacado", on_click=rx.redirect("/topic"), class_name="button"),
-                rx.button("Ver documento oficial", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
+                rx.button("Ver lectura documentada", on_click=rx.redirect("/topic"), class_name="button"),
+                rx.button("Ver documento fuente", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -4342,7 +4465,7 @@ def home() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Tema destacado",
+            "Lectura destacada",
             rx.box(
                 rx.hstack(
                     rx.text("Ley de Presupuestos del Sector Publico 2013", class_name="card-title"),
@@ -4352,11 +4475,11 @@ def home() -> rx.Component:
                     wrap="wrap",
                 ),
                 rx.text(
-                    "Una entrada unica para entender que propone el boletin cargado, que evidencia existe, como avanza el expediente y donde revisar el documento original.",
+                    "Una lectura unica para entender que significa este tema, que documento lo sostiene, que evidencia existe y como ha evolucionado.",
                     class_name="story-summary",
                 ),
                 rx.grid(
-                    topic_status_card({"label": "Documento oficial disponible", "status": "Disponible", "ready": True}),
+                    topic_status_card({"label": "Documento fuente disponible", "status": "Disponible", "ready": True}),
                     topic_status_card({"label": "Expediente disponible", "status": "Disponible", "ready": True}),
                     topic_status_card({"label": "Votaciones disponibles", "status": "Disponible", "ready": True}),
                     topic_status_card({"label": "Texto completo procesado", "status": "Disponible", "ready": True}),
@@ -4372,32 +4495,43 @@ def home() -> rx.Component:
                     wrap="wrap",
                 ),
                 rx.hstack(
-                    rx.button("Entender este tema", on_click=rx.redirect("/topic"), class_name="button"),
-                    rx.button("Ver documento oficial", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
+                    rx.button("Entender la lectura", on_click=rx.redirect("/topic"), class_name="button"),
+                    rx.button("Ver documento fuente", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
                     spacing="2",
                     wrap="wrap",
                 ),
                 class_name="card topic-card-document featured-topic-card",
             ),
-            subtitle="La puerta principal al primer tema publico organizado por DatosEnOrden.",
+            subtitle="Una puerta de entrada para comprender un asunto publico sin perder la fuente oficial.",
         ),
         page_section(
-            "Que encontraras dentro de un tema",
+            "Que responde cada lectura",
             rx.grid(
-                help_card("Documento oficial", "El texto original y sus fragmentos citables."),
-                help_card("Que propone", "Una lectura ciudadana construida desde la evidencia disponible."),
+                help_card("Documento fuente", "El texto original y sus fragmentos citables."),
+                help_card("Que significa", "Una explicacion ciudadana construida desde la evidencia disponible."),
                 help_card("Que cambia", "Los cambios identificados cuando el documento entrega base suficiente."),
                 help_card("Que no dice", "Limites claros para no afirmar mas de lo que muestran las fuentes."),
-                help_card("Que sigue", "Hitos, seguimiento y votaciones relacionadas."),
+                help_card("Como evoluciona", "Hitos, cronologia y votaciones relacionadas."),
                 help_card("Evidencia", "Fragmentos que permiten revisar de donde sale cada afirmacion."),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Un tema ordena documentos, lectura, seguimiento y trazabilidad sin separar la explicacion de sus fuentes.",
+            subtitle="Una lectura ordena documentos, cronologia y trazabilidad sin separar la explicacion de sus fuentes.",
         ),
         page_section(
-            "Lecturas documentadas recientes",
+            "Pulso del Estado",
+            rx.grid(
+                help_card("Que cambio recientemente", "Eventos oficiales y cambios relevantes agrupados para abrir contexto."),
+                help_card("Que tema explica el cambio", "Cada evento debe llevar a una lectura, no a una pantalla aislada."),
+                help_card("Donde comprobarlo", "La fuente y la evidencia quedan visibles para revisar antes de compartir."),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Responde: que cambio recientemente y donde entenderlo sin perder la fuente oficial.",
+        ),        page_section(
+            "Mas lecturas",
             rx.cond(
                 AppState.current_topic_rows,
                 rx.grid(
@@ -4411,21 +4545,21 @@ def home() -> rx.Component:
             subtitle="Lecturas disponibles para entrar a un tema desde lenguaje ciudadano y evidencia verificable.",
         ),
         page_section(
-            "Fuentes oficiales y trazabilidad",
+            "Fuentes que sostienen la lectura",
             rx.grid(
                 rx.box(
-                    rx.text("Volver a la fuente", class_name="card-title"),
-                    rx.text("Cada lectura mantiene enlaces hacia documentos, expediente, seguimiento y fragmentos.", class_name="muted small"),
-                    rx.button("Explorar fuentes", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
+                    rx.text("Comprobar la fuente", class_name="card-title"),
+                    rx.text("Cada lectura mantiene enlaces hacia documento fuente, expediente, cronologia y fragmentos.", class_name="muted small"),
+                    rx.button("Ver fuentes oficiales", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
                     class_name="card topic-card-evidence",
                 ),
                 rx.box(
-                    rx.text("Rutas disponibles", class_name="card-title"),
-                    rx.text("Tema, documento, reportes, biblioteca, seguimiento, fuentes y proyecto siguen accesibles.", class_name="muted small"),
+                    rx.text("Vistas avanzadas", class_name="card-title"),
+                    rx.text("Informes, mas lecturas, cronologia, fuentes oficiales y proyecto siguen disponibles como vistas avanzadas.", class_name="muted small"),
                     rx.hstack(
-                        rx.link("Reportes", href="/reports", class_name="document-inline-link"),
-                        rx.link("Biblioteca", href="/library", class_name="document-inline-link"),
-                        rx.link("Seguimiento", href="/tracking", class_name="document-inline-link"),
+                        rx.link("Informes", href="/reports", class_name="document-inline-link"),
+                        rx.link("Mas lecturas", href="/library", class_name="document-inline-link"),
+                        rx.link("Cronologia", href="/tracking", class_name="document-inline-link"),
                         rx.link("Proyecto", href="/project", class_name="document-inline-link"),
                         spacing="2",
                         wrap="wrap",
@@ -4433,7 +4567,7 @@ def home() -> rx.Component:
                     class_name="card topic-card-next",
                 ),
                 rx.box(
-                    rx.text("Cobertura local", class_name="card-title"),
+                    rx.text("Cobertura visible", class_name="card-title"),
                     rx.hstack(
                         metric("Fuentes", AppState.total_datasets),
                         metric("Activas", AppState.active_datasets),
@@ -4450,10 +4584,10 @@ def home() -> rx.Component:
             subtitle="La explicacion mantiene trazabilidad hacia fuentes y documentos revisables.",
         ),
         page_section(
-            "DatosEnOrden Studio",
+            "Proyecto DatosEnOrden",
             rx.box(
                 rx.text(
-                    "Studio prepara herramientas para organizaciones que necesitan ordenar documentos, seguimiento y evidencia propia.",
+                    "El proyecto prepara herramientas para observar documentos, cronologia y evidencia sin perder la fuente oficial.",
                     class_name="muted small",
                 ),
                 rx.button("Ver proyecto", on_click=rx.redirect("/project"), class_name="button button-secondary"),
@@ -4464,9 +4598,9 @@ def home() -> rx.Component:
         page_section(
             "Navegacion",
             rx.grid(
-                next_step_card("Tema", "Entrar al asunto publico destacado.", "Abrir tema", "/topic"),
+                next_step_card("Lectura Documentada", "Entrar al asunto publico destacado.", "Abrir lectura", "/topic"),
                 next_step_card("Documento", "Revisar el texto oficial procesado.", "Abrir documento", "/official-document"),
-                next_step_card("Seguimiento", "Ver eventos y cambios relacionados.", "Ver seguimiento", "/tracking"),
+                next_step_card("Cronologia", "Ver eventos y cambios relacionados.", "Ver cronologia", "/tracking"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
@@ -4478,11 +4612,11 @@ def home() -> rx.Component:
     )
 
 
-@rx.page(route="/ecosystem", title="Ecosistema - DatosEnOrden")
+@rx.page(route="/ecosystem", title="Fuentes oficiales - DatosEnOrden")
 def ecosystem() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Ecosistema", class_name="title"),
+            rx.text("Fuentes oficiales", class_name="title"),
             rx.text(
                 "Mapa conceptual de las fuentes disponibles, las que están en camino y cómo se cruzan entre sí.",
                 class_name="subtitle",
@@ -4552,7 +4686,7 @@ def ecosystem() -> rx.Component:
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Panel operativo: datasets descargables, loaders locales y estado de carga. No usa scraping ni APIs externas desde la UI.",
+            subtitle="Vista avanzada de cobertura: que fuentes tienen informacion disponible, parcial o pendiente.",
         ),
         page_section(
             "Cómo se cruzan las fuentes",
@@ -4580,7 +4714,7 @@ def ecosystem() -> rx.Component:
             rx.grid(
                 next_step_card("Descubrir una pregunta", "Si todavia no sabes que buscar, empieza por una pregunta guiada.", "Ir a Descubre", "/discover"),
                 next_step_card("Abrir expediente demo", "Ver como las fuentes se conectan en una entidad concreta.", "Abrir expediente", _investigation_href(DEMO_INVESTIGATION_TARGET)),
-                next_step_card("Leer reporte ciudadano", "Ver una lectura menos tecnica del caso demo.", "Ir a Reportes", "/reports"),
+                next_step_card("Leer reporte ciudadano", "Ver una lectura menos tecnica del caso demo.", "Ir a Informes", "/reports"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
@@ -4693,7 +4827,7 @@ def discover() -> rx.Component:
             rx.hstack(
                 rx.button("Buscar entidad", on_click=rx.redirect("/search"), class_name="button"),
                 rx.button("Abrir expediente demo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button button-secondary"),
-                rx.button("Ir a Biblioteca", on_click=rx.redirect("/library"), class_name="button button-secondary"),
+                rx.button("Ir a Mas lecturas", on_click=rx.redirect("/library"), class_name="button button-secondary"),
                 rx.button("Ir al ecosistema", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
@@ -4709,160 +4843,44 @@ def result_card(row: dict) -> rx.Component:
     return workspace_match_card(row)
 
 
-@rx.page(route="/topic", title="Tema - Ley de Presupuestos 2013 - DatosEnOrden")
+@rx.page(route="/topic", title="Lectura Documentada - Ley de Presupuestos 2013 - DatosEnOrden")
 def topic() -> rx.Component:
     return shell(
         rx.box(
             rx.text("Tema", class_name="document-kicker"),
             rx.text(AppState.topic_title, class_name="document-title"),
             rx.text(
-                "Un tema reúne documentos, lecturas, evidencia, expediente, seguimiento y votaciones alrededor de un asunto público.",
+                "Documento Fuente visible, lectura ciudadana al lado y evidencia accionable sin perder trazabilidad.",
                 class_name="document-subtitle",
             ),
             topic_nav(),
-            rx.grid(
-                rx.foreach(AppState.topic_hero_answer_rows, topic_answer_card),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
             rx.hstack(
                 metric("Estado", AppState.topic_status),
                 metric("Tiempo estimado", AppState.topic_read_time),
                 metric("Documentos", AppState.topic_document_count),
-                metric("Ultima actualización", AppState.topic_updated_at),
+                metric("Ultima actualizacion", AppState.topic_updated_at),
                 spacing="3",
                 wrap="wrap",
             ),
             rx.text(AppState.topic_organizations_text, class_name="document-meta-reference"),
             class_name="document-hero topic-hero",
         ),
-        page_section(
-            "Estado de disponibilidad",
-            rx.grid(
-                rx.foreach(AppState.topic_status_rows, topic_status_card),
-                columns="4",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Lo que ya esta disponible para leer y verificar.",
-        ),
-        page_section(
-            "Documento oficial",
-            topic_official_document_card(AppState.topic_official_document),
-            subtitle="El documento protagonista del tema.",
-            class_name="topic-card-document",
-            element_id="topic-document",
-        ),
-        page_section(
-            "¿Qué propone?",
-            rx.grid(
-                rx.foreach(AppState.topic_proposes_rows, knowledge_key_point_card),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Puntos destacados reutilizados desde la lectura documentada.",
-            class_name="topic-card-proposes",
-        ),
-        page_section(
-            "¿Qué cambia?",
-            rx.grid(
-                rx.foreach(AppState.topic_changes_rows, topic_change_card),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Afirmaciones trazables ya presentes en Knowledge.",
-            class_name="topic-card-changes",
-        ),
-        page_section(
-            "¿Qué NO cambia?",
-            rx.grid(
-                rx.foreach(AppState.topic_no_changes_rows, topic_no_change_card),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Limitaciones y notas de revisión existentes.",
-        ),
-        page_section(
-            "¿Qué sigue?",
-            rx.cond(
-                AppState.topic_timeline_rows,
-                rx.grid(
-                    rx.foreach(AppState.topic_timeline_rows, tracking_event_card),
-                    columns="1",
-                    spacing="3",
-                    class_name="timeline-list",
-                ),
-                rx.text("No hay hitos de timeline visibles para este tema.", class_name="muted small"),
-            ),
-            subtitle="Timeline existente del expediente legislativo.",
-            class_name="topic-card-next",
-        ),
-        page_section(
-            "Evidencia",
-            rx.grid(
-                rx.foreach(AppState.topic_evidence_rows, topic_evidence_card),
-                columns="2",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            rx.button("Abrir documento y fragmentos", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
-            subtitle="Fragmentos reutilizados desde la lectura documentada.",
-            class_name="topic-evidence-section",
-            element_id="topic-evidence",
-        ),
-        page_section(
-            "Lecturas Documentadas",
-            rx.grid(
-                rx.foreach(AppState.topic_reading_rows, topic_reading_card),
-                columns="2",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Lista inicial de lecturas disponibles para este tema.",
-            class_name="topic-reading-section",
-            element_id="topic-reading",
-        ),
-        page_section(
-            "Expediente",
-            topic_summary_card(AppState.topic_expediente_title, AppState.topic_expediente_summary, AppState.topic_expediente_metrics),
-            rx.button("Abrir expediente", on_click=rx.redirect(_investigation_href(TOPIC_BUDGET_2013_TARGET)), class_name="button button-secondary"),
-            subtitle="Resumen de expediente reutilizado.",
-        ),
-        page_section(
-            "Seguimiento",
-            topic_summary_card("Timeline del expediente", AppState.topic_tracking_summary, AppState.topic_vote_summary),
-            subtitle="Resumen del seguimiento disponible para el boletín cargado.",
-        ),
-        page_section(
-            "Votaciones",
-            topic_summary_card("Votaciones", AppState.topic_vote_summary, AppState.topic_expediente_metrics),
-            subtitle="Resumen de votaciones expuesto por el expediente legislativo.",
-        ),
-        page_section(
-            "Documento original",
-            rx.box(
-                rx.text(AppState.topic_original_url, class_name="mono id-line"),
-                rx.link("Abrir fuente original", href=AppState.topic_original_url, class_name="button"),
-                class_name="card report-section-card",
-            ),
-            subtitle="Enlace al documento oficial descargado.",
+        rx.box(
+            topic_source_panel(),
+            rx.box(topic_reading_flow(), class_name="topic-reading-column", id="topic-reading"),
+            class_name="topic-document-first-layout",
         ),
         on_mount=AppState.load_topic,
         active_page=PAGE_TOPIC,
     )
 
-
-@rx.page(route="/tracking", title="Seguimiento - DatosEnOrden")
+@rx.page(route="/tracking", title="Cronologia - DatosEnOrden")
 def tracking() -> rx.Component:
     return shell(
         rx.box(
             rx.text("Sigue la historia de una propuesta publica", class_name="title"),
             rx.text(
-                "Seguimiento local de documentos, propuestas, estados, evidencia, expedientes relacionados y cambios historicos.",
+                "Cronologia local de documentos, propuestas, estados, evidencia, expedientes relacionados y cambios historicos.",
                 class_name="subtitle",
             ),
             rx.hstack(
@@ -4875,7 +4893,7 @@ def tracking() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Que significa seguimiento",
+            "Que significa cronologia",
             rx.grid(
                 help_card("Estado", "Indica en que punto esta una historia documental segun los datos disponibles."),
                 help_card("Evento", "Es un hito con fecha que ayuda a entender que paso antes y despues."),
@@ -4935,7 +4953,7 @@ def tracking() -> rx.Component:
                 rx.button("Abrir expediente", on_click=AppState.open_tracking_investigation, class_name="button"),
                 class_name="card",
             ),
-            subtitle="El seguimiento no reemplaza el expediente: lo conecta con historia documental.",
+            subtitle="La cronologia no reemplaza el expediente: lo conecta con historia documental.",
         ),
         page_section(
             "Evidencia y fuentes consultadas",
@@ -4956,8 +4974,8 @@ def tracking() -> rx.Component:
             "Siguientes pasos",
             rx.grid(
                 next_step_card("Abrir expediente", "Ver la entidad, relaciones y evidencia asociada.", "Ir al expediente", _investigation_href(DEMO_INVESTIGATION_TARGET)),
-                next_step_card("Leer reporte ciudadano", "Ver una lectura tipo articulo del caso.", "Ir a Reportes", "/reports"),
-                next_step_card("Ver documento oficial", "Abrir el visor para revisar paginas y fragmentos.", "Ver documento", "/official-document"),
+                next_step_card("Leer reporte ciudadano", "Ver una lectura tipo articulo del caso.", "Ir a Informes", "/reports"),
+                next_step_card("Ver documento fuente", "Abrir el visor para revisar paginas y fragmentos.", "Ver documento", "/official-document"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
@@ -4967,7 +4985,6 @@ def tracking() -> rx.Component:
         on_mount=AppState.load_tracking,
         active_page=PAGE_TRACKING,
     )
-
 
 @rx.page(route="/knowledge", title="Conocimiento - DatosEnOrden")
 def knowledge() -> rx.Component:
@@ -4980,8 +4997,8 @@ def knowledge() -> rx.Component:
             ),
             rx.hstack(
                 rx.button("Abrir expediente", on_click=AppState.open_knowledge_investigation, class_name="button"),
-                rx.button("Ver seguimiento", on_click=rx.redirect("/tracking"), class_name="button button-secondary"),
-                rx.button("Ver reportes", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
+                rx.button("Ver cronologia", on_click=rx.redirect("/tracking"), class_name="button button-secondary"),
+                rx.button("Ver informes", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -5051,7 +5068,7 @@ def knowledge() -> rx.Component:
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="El mismo digest conecta expediente, seguimiento, reporte ciudadano y fuente publica.",
+            subtitle="El mismo digest conecta expediente, cronologia, informe ciudadano y fuente publica.",
         ),
         page_section(
             "Evidencia asociada",
@@ -5068,9 +5085,7 @@ def knowledge() -> rx.Component:
         active_page=PAGE_KNOWLEDGE,
     )
 
-
-
-@rx.page(route="/official-document", title="Documento Oficial - DatosEnOrden")
+@rx.page(route="/official-document", title="Documento Fuente - DatosEnOrden")
 def official_document() -> rx.Component:
     return shell(
         rx.box(
@@ -5078,7 +5093,7 @@ def official_document() -> rx.Component:
                 rx.text("Lectura documentada", class_name="document-kicker"),
                 rx.text(AppState.knowledge_title, class_name="document-title"),
                 rx.text(
-                    "Resumen, preguntas y afirmaciones trazables construidas desde el texto extraido del documento oficial.",
+                    "Responde: de donde salio esta informacion. El documento queda visible junto a sus referencias.",
                     class_name="document-subtitle",
                 ),
                 class_name="document-hero-copy",
@@ -5111,8 +5126,8 @@ def official_document() -> rx.Component:
             class_name="official-document-layout",
         ),
         rx.box(
-            rx.text("Referencias documentales", class_name="section-title"),
-            rx.text("Cada referencia conserva fragment_id, pagina normalizada y extracto verificable del documento.", class_name="section-subtitle"),
+            rx.text("Evidencia dentro del documento", class_name="section-title"),
+            rx.text("Cada referencia conserva pagina, fragmento y extracto verificable del documento fuente.", class_name="section-subtitle"),
             rx.box(
                 rx.foreach(AppState.knowledge_evidence, guide_evidence),
                 class_name="reference-strip",
@@ -5123,11 +5138,11 @@ def official_document() -> rx.Component:
         active_page=PAGE_DOCUMENT,
     )
 
-@rx.page(route="/library", title="Biblioteca Oficial - DatosEnOrden")
+@rx.page(route="/library", title="Mas lecturas - DatosEnOrden")
 def library() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Biblioteca Oficial", class_name="title"),
+            rx.text("Mas lecturas", class_name="title"),
             rx.text(
                 "Documentos explicados en lenguaje ciudadano, con preguntas, puntos clave y evidencia para revisar.",
                 class_name="subtitle",
@@ -5144,7 +5159,7 @@ def library() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Como leer la Biblioteca",
+            "Como usar Mas lecturas",
             rx.grid(
                 help_card("Documento", "Es la pieza de informacion que se quiere entender. En esta fase usamos documentos demo."),
                 help_card("Resumen ciudadano", "Una explicacion breve para saber de que trata antes de revisar detalles."),
@@ -5153,7 +5168,7 @@ def library() -> rx.Component:
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="La Biblioteca prepara el lugar donde podran vivir miles de documentos explicados.",
+            subtitle="Mas lecturas responde: que otros documentos ayudan a entender este tema.",
         ),
         page_section(
             "Listado",
@@ -5221,27 +5236,27 @@ def library() -> rx.Component:
         page_section(
             "Siguientes pasos",
             rx.grid(
-                next_step_card("Leer el reporte", "Ver la lectura completa en formato articulo.", "Ir a Reportes", "/reports"),
-                next_step_card("Seguir la historia", "Revisar eventos, fechas y cambios asociados.", "Ir a Seguimiento", "/tracking"),
-                next_step_card("Explorar fuentes", "Entender de donde vienen los datos del demo.", "Ir a Fuentes", "/ecosystem"),
+                next_step_card("Leer el reporte", "Ver la lectura completa en formato articulo.", "Ir a Informes", "/reports"),
+                next_step_card("Seguir la historia", "Revisar eventos, fechas y cambios asociados.", "Ir a Cronologia", "/tracking"),
+                next_step_card("Ver fuentes oficiales", "Entender de donde vienen los datos del demo.", "Ir a Fuentes", "/ecosystem"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="La Biblioteca no es un final: conecta con el resto del recorrido.",
+            subtitle="Mas lecturas no es un final: conecta con documento fuente, cronologia y expediente.",
         ),
         on_mount=AppState.load_knowledge,
         active_page=PAGE_LIBRARY,
     )
 
 
-@rx.page(route="/reports", title="Reportes ciudadanos - DatosEnOrden")
+@rx.page(route="/reports", title="Informes ciudadanos - DatosEnOrden")
 def reports() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Reportes ciudadanos", class_name="title"),
+            rx.text("Informes ciudadanos", class_name="title"),
             rx.text(
-                "Reportes locales de lectura publica que conectan expediente, seguimiento, fuentes y evidencia navegable.",
+                "Informes locales de lectura publica que conectan expediente, seguimiento, fuentes y evidencia navegable.",
                 class_name="subtitle",
             ),
             rx.hstack(
@@ -5255,7 +5270,7 @@ def reports() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Reportes disponibles",
+            "Informes disponibles",
             rx.cond(
                 AppState.citizen_reports,
                 rx.grid(
@@ -5264,7 +5279,7 @@ def reports() -> rx.Component:
                     spacing="3",
                     class_name="responsive-grid",
                 ),
-                rx.text("No hay reportes ciudadanos locales disponibles.", class_name="muted small"),
+                rx.text("No hay informes ciudadanos locales disponibles.", class_name="muted small"),
             ),
             subtitle="Prototipos read-only marcados como datos locales de prueba.",
             class_name="reports-catalog-section",
@@ -5324,8 +5339,8 @@ def reports() -> rx.Component:
             "Expedientes relacionados",
             rx.grid(
                 next_step_card("Abrir expediente", "Ver contexto, relaciones y evidencia asociada.", "Ir al expediente", _investigation_href(DEMO_INVESTIGATION_TARGET)),
-                next_step_card("Ver documento oficial", "Leer el documento junto a sus referencias.", "Ver documento", "/official-document"),
-                next_step_card("Seguir proyecto", "Revisar timeline, estados y cambios.", "Ir a Seguimiento", "/tracking"),
+                next_step_card("Ver documento fuente", "Leer el documento junto a sus referencias.", "Ver documento", "/official-document"),
+                next_step_card("Seguir proyecto", "Revisar timeline, estados y cambios.", "Ir a Cronologia", "/tracking"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
@@ -5378,15 +5393,15 @@ def project() -> rx.Component:
             subtitle="La version publica muestra el potencial del producto con datos locales de prueba.",
         ),
         page_section(
-            "DatosEnOrden Studio",
+            "Proyecto DatosEnOrden",
             rx.text(
-                "DatosEnOrden ciudadano es la primera aplicacion publica del ecosistema. DatosEnOrden Studio prepara soluciones para organizaciones que necesitan ordenar, conectar y seguir su propia informacion documental sin perder evidencia.",
+                "DatosEnOrden ciudadano es la primera aplicacion publica del ecosistema. Proyecto DatosEnOrden prepara soluciones para organizaciones que necesitan ordenar, conectar y seguir su propia informacion documental sin perder evidencia.",
                 class_name="story-summary",
             ),
             rx.grid(
-                help_card("Seguimiento / TraceFlow", "Capacidad para seguir estados, hitos, responsables, documentos y cambios en el tiempo."),
+                help_card("Cronologia / TraceFlow", "Capacidad para seguir estados, hitos, responsables, documentos y cambios en el tiempo."),
                 help_card("Knowledge Engine", "Capacidad para transformar documentos y registros en resumenes, preguntas, claims y evidencia revisable."),
-                help_card("Reportes y documentacion", "Capacidad para convertir conocimiento estructurado en reportes, publicaciones y materiales para distintas audiencias."),
+                help_card("Informes y documentacion", "Capacidad para convertir conocimiento estructurado en reportes, publicaciones y materiales para distintas audiencias."),
                 help_card("Platform Core configurable", "Capacidad para adaptar vocabulario, workflows, templates y audiencias sin hardcodear el negocio."),
                 columns="4",
                 spacing="3",
@@ -5406,8 +5421,8 @@ def project() -> rx.Component:
             "Que partes usan datos demo",
             rx.grid(
                 help_card("Expediente demo", "Usa datos locales de prueba para mostrar como se conectarian fuentes y evidencia."),
-                help_card("Biblioteca demo", "Usa documentos simulados para mostrar resumenes, preguntas y puntos clave."),
-                help_card("Reportes y seguimiento", "Usan contenido local marcado como LOCAL_TEST_DATA / NOT_OFFICIAL_DATA."),
+                help_card("Mas lecturas demo", "Usa documentos simulados para mostrar resumenes, preguntas y puntos clave."),
+                help_card("Informes y seguimiento", "Usan contenido local marcado como LOCAL_TEST_DATA / NOT_OFFICIAL_DATA."),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
@@ -5438,8 +5453,8 @@ def project() -> rx.Component:
                 class_name="story-summary",
             ),
             rx.hstack(
-                rx.button("Revisar Biblioteca", on_click=rx.redirect("/library"), class_name="button"),
-                rx.button("Leer Reportes", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
+                rx.button("Revisar Mas lecturas", on_click=rx.redirect("/library"), class_name="button"),
+                rx.button("Leer Informes", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
                 rx.button("Explorar Fuentes", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
@@ -5542,9 +5557,9 @@ def investigation() -> rx.Component:
                     page_section(
                         "Siguientes pasos",
                         rx.grid(
-                            next_step_card("Leer reporte ciudadano", "Ver una explicacion en formato articulo.", "Ir a Reportes", "/reports"),
-                            next_step_card("Ver documento oficial", "Revisar el documento junto a sus referencias.", "Ver documento", "/official-document"),
-                            next_step_card("Seguir proyecto", "Ver la historia en el tiempo y sus hitos.", "Ir a Seguimiento", "/tracking"),
+                            next_step_card("Leer reporte ciudadano", "Ver una explicacion en formato articulo.", "Ir a Informes", "/reports"),
+                            next_step_card("Ver documento fuente", "Revisar el documento junto a sus referencias.", "Ver documento", "/official-document"),
+                            next_step_card("Seguir proyecto", "Ver la historia en el tiempo y sus hitos.", "Ir a Cronologia", "/tracking"),
                             columns="3",
                             spacing="3",
                             class_name="responsive-grid",
@@ -5571,7 +5586,7 @@ def investigation() -> rx.Component:
     )
 
 
-@rx.page(route="/dashboard", title="Dashboard - DatosEnOrden")
+@rx.page(route="/dashboard", title="Vista ciudadana - DatosEnOrden")
 def dashboard() -> rx.Component:
     return shell(
         rx.box(
@@ -5863,6 +5878,52 @@ style = {
     ".topic-card-no-change": {"border_left": "3px solid rgba(250, 204, 21, 0.62)"},
     ".topic-card-next": {"border_left": "3px solid rgba(74, 222, 128, 0.62)"},
     ".topic-card-evidence": {"border_left": "3px solid rgba(251, 146, 60, 0.62)"},
+    ".page-topic .shell-header": {"position": "sticky", "top": "0", "z_index": "20"},
+    ".page-topic .nav-inner": {"padding": "8px 0", "gap": "10px"},
+    ".page-topic .nav-links": {"gap": "12px", "font_size": "13px"},
+    ".page-topic .header-search-toggle, .page-topic .theme-toggle": {"padding": "6px 10px"},
+    ".sidebar-ready-nav": {"min_width": "0"},
+    ".topic-document-first-layout": {
+        "display": "grid",
+        "grid_template_columns": "minmax(0, 0.92fr) minmax(0, 1fr)",
+        "gap": "18px",
+        "align_items": "start",
+        "width": "100%",
+        "padding": "0 0 22px",
+    },
+    ".topic-source-panel": {
+        "position": "sticky",
+        "top": "72px",
+        "max_height": "calc(100vh - 88px)",
+        "overflow_y": "auto",
+        "border": "1px solid rgba(45, 212, 191, 0.26)",
+        "border_radius": "8px",
+        "padding": "14px",
+        "background": "#18181b",
+        "display": "grid",
+        "gap": "12px",
+        "align_content": "start",
+    },
+    ".shell.theme-light .topic-source-panel": {"background": "#ffffff", "color": "#18181b"},
+    ".topic-source-header": {"align_items": "center"},
+    ".topic-current-anchor": {"position": "sticky", "top": "0", "z_index": "3"},
+    ".topic-source-excerpt": {"color": "#27272a", "font_size": "14px", "line_height": "1.55"},
+    ".topic-document-page": {"gap": "12px"},
+    ".topic-original-link": {"width": "fit-content"},
+    ".topic-reading-column": {"min_width": "0", "display": "grid", "gap": "16px"},
+    ".topic-reading-flow": {"width": "100%"},
+    ".topic-reading-section": {
+        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border_radius": "8px",
+        "padding": "16px",
+        "background": "#18181b",
+        "display": "grid",
+        "gap": "14px",
+        "scroll_margin_top": "82px",
+    },
+    ".shell.theme-light .topic-reading-section": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
+    ".topic-compact-grid": {"width": "100%"},
+    ".topic-evidence-grid": {"align_items": "stretch"},
     ".shell.theme-light .topic-answer-card": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
     ".card": {
         "border": "1px solid rgba(161, 161, 170, 0.16)",
@@ -6127,7 +6188,7 @@ style = {
     },
     ".document-page-label": {"font_weight": "850", "color": "#18181b"},
     ".document-highlight": {"color": "#374151", "line_height": "1.55"},
-    ".document-page": {"display": "grid", "gap": "18px"},
+    ".document-page": {"display": "grid", "gap": "18px", "scroll_behavior": "smooth"},
     ".document-fragment": {
         "border": "1px solid rgba(113, 113, 122, 0.16)",
         "border_radius": "6px",
@@ -6136,8 +6197,9 @@ style = {
         "display": "grid",
         "gap": "12px",
         "cursor": "pointer",
+        "scroll_margin_top": "94px",
     },
-    ".document-fragment-active": {"border_color": "rgba(13, 148, 136, 0.72)", "box_shadow": "0 0 0 2px rgba(13, 148, 136, 0.12)"},
+    ".document-fragment-active": {"border_color": "rgba(13, 148, 136, 0.82)", "box_shadow": "0 0 0 3px rgba(13, 148, 136, 0.16)", "animation": "document-pulse 2.8s ease-out"},
     ".document-page-marker": {"font_size": "12px", "font_weight": "850", "color": "#0f766e"},
     ".document-section-title": {"font_size": "15px", "font_weight": "850", "color": "#18181b"},
     ".document-fragment-text": {"font_size": "18px", "line_height": "1.75", "color": "#18181b"},
@@ -6501,6 +6563,11 @@ style = {
     ".home-lower-layout .page-section": {
         "min_width": "0",
     },
+    "@keyframes document-pulse": {
+        "0%": {"background": "#ccfbf1"},
+        "35%": {"background": "#ecfeff"},
+        "100%": {"background": "#ffffff"},
+    },
     "@media (max-width: 900px)": {
         ".nav-inner": {"flex_wrap": "wrap"},
         ".nav-links": {"justify_content": "flex-start"},
@@ -6514,6 +6581,9 @@ style = {
         ".official-document-layout": {"grid_template_columns": "1fr"},
         ".document-side-column": {"position": "static"},
         ".reading-context-bar": {"grid_template_columns": "1fr 1fr", "align_items": "start"},
+        ".topic-document-first-layout": {"grid_template_columns": "1fr"},
+        ".topic-source-panel": {"position": "static", "max_height": "72vh"},
+        ".topic-evidence-grid": {"grid_template_columns": "1fr"},
         ".reference-strip": {"grid_template_columns": "1fr"},
     },
 }
