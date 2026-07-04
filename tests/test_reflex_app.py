@@ -914,11 +914,15 @@ def test_load_dashboard_populates_summary_metrics(monkeypatch) -> None:
     assert state.dashboard_featured_entities[0]["organization_name"] == "Entidad demo"
 
 
-def test_official_document_route_and_nav_are_visible() -> None:
+def test_official_document_route_stays_available_but_not_primary_nav() -> None:
     source = inspect.getsource(reflex_app.app_sidebar)
 
-    assert 'sidebar_nav_link("Documento Fuente", "/official-document"' in source
-    assert "PAGE_DOCUMENT" in source
+    assert 'sidebar_nav_link("Documento Fuente", "/official-document"' not in source
+    assert 'sidebar_nav_link("Pulso", "/"' in source
+    assert 'sidebar_nav_link("Lectura", "/topic"' in source
+    assert 'sidebar_nav_link("Buscar", "/search"' in source
+    assert 'sidebar_nav_link("Fuentes", "/ecosystem"' in source
+    assert 'sidebar_nav_link("Proyecto", "/project"' in source
 
     page_source = inspect.getsource(reflex_app.official_document)
     assert '@rx.page(route="/official-document"' in page_source
@@ -952,7 +956,7 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert "topic_source_panel" in evidence_mode_source
     assert "topic_reading_flow" in reading_mode_source
     assert "Sistema Vivo" in selector_source
-    assert "Documento" in selector_source
+    assert "Documento" not in selector_source
     assert "Evidencia" in selector_source
     assert "Documento Fuente" in source_panel
     assert "Fragmento seleccionado" not in source_panel

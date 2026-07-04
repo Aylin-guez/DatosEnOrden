@@ -1083,6 +1083,7 @@ class AppState(rx.State):
     header_search_open: bool = False
     header_search_query: str = ""
     sidebar_collapsed: bool = False
+    advanced_nav_open: bool = False
     topic_view_mode: str = "lectura"
 
     dataset_rows: list[dict] = []
@@ -1290,6 +1291,9 @@ class AppState(rx.State):
 
     def toggle_sidebar(self) -> None:
         self.sidebar_collapsed = not self.sidebar_collapsed
+
+    def toggle_advanced_nav(self) -> None:
+        self.advanced_nav_open = not self.advanced_nav_open
 
     def set_topic_view_mode(self, mode: str) -> None:
         self.topic_view_mode = mode
@@ -2168,10 +2172,29 @@ def sidebar_nav_link(label: str, href: str, active: bool) -> rx.Component:
     )
 
 
+def hamburger_icon() -> rx.Component:
+    return rx.vstack(
+        rx.box(class_name="hamburger-line"),
+        rx.box(class_name="hamburger-line"),
+        rx.box(class_name="hamburger-line"),
+        spacing="1",
+        align="center",
+        class_name="hamburger-icon",
+    )
+
+
+def sidebar_group_label(label: str) -> rx.Component:
+    return rx.text(label, class_name="sidebar-group-label")
+
+
 def app_sidebar(active_page: str) -> rx.Component:
     return rx.box(
         rx.box(
-            rx.link("DEO", href="/", class_name="sidebar-brand"),
+            rx.button(
+                hamburger_icon(),
+                on_click=AppState.toggle_sidebar,
+                class_name="sidebar-menu-button",
+            ),
             rx.button(
                 rx.cond(AppState.sidebar_collapsed, ">", "<"),
                 on_click=AppState.toggle_sidebar,
@@ -2180,16 +2203,31 @@ def app_sidebar(active_page: str) -> rx.Component:
             class_name="sidebar-header",
         ),
         rx.vstack(
-            sidebar_nav_link("Inicio", "/", active_page == PAGE_HOME),
+            sidebar_group_label("Principal"),
+            sidebar_nav_link("Pulso", "/", active_page == PAGE_HOME),
             sidebar_nav_link("Lectura", "/topic", active_page == PAGE_TOPIC),
-            sidebar_nav_link("Descubre", "/discover", active_page == PAGE_DISCOVER),
-            sidebar_nav_link("Expediente", "/investigation", active_page == PAGE_INVESTIGATION),
-            sidebar_nav_link("Informes", "/reports", active_page == PAGE_REPORTS),
-            sidebar_nav_link("Mas lecturas", "/library", active_page == PAGE_LIBRARY),
-            sidebar_nav_link("Documento Fuente", "/official-document", active_page == PAGE_DOCUMENT),
-            sidebar_nav_link("Cronologia", "/tracking", active_page == PAGE_TRACKING),
-            sidebar_nav_link("Fuentes oficiales", "/ecosystem", active_page == PAGE_ECOSYSTEM),
+            sidebar_nav_link("Buscar", "/search", active_page == PAGE_SEARCH),
+            sidebar_nav_link("Fuentes", "/ecosystem", active_page == PAGE_ECOSYSTEM),
             sidebar_nav_link("Proyecto", "/project", active_page == PAGE_PROJECT),
+            rx.box(class_name="sidebar-divider"),
+            rx.button(
+                rx.text("Avanzadas", class_name="sidebar-label"),
+                rx.text(rx.cond(AppState.advanced_nav_open, "-", "+"), class_name="sidebar-advanced-symbol"),
+                on_click=AppState.toggle_advanced_nav,
+                class_name="sidebar-advanced-toggle",
+            ),
+            rx.cond(
+                AppState.advanced_nav_open,
+                rx.vstack(
+                    sidebar_nav_link("Expediente", "/investigation", active_page == PAGE_INVESTIGATION),
+                    sidebar_nav_link("Informes", "/reports", active_page == PAGE_REPORTS),
+                    sidebar_nav_link("Mas lecturas", "/library", active_page == PAGE_LIBRARY),
+                    sidebar_nav_link("Cronologia", "/tracking", active_page == PAGE_TRACKING),
+                    spacing="1",
+                    align="stretch",
+                    class_name="sidebar-secondary-nav",
+                ),
+            ),
             spacing="1",
             align="stretch",
             class_name="sidebar-nav",
@@ -2988,14 +3026,21 @@ def home_pulse_card(row: dict) -> rx.Component:
             wrap="wrap",
         ),
         rx.text(row["title"], class_name="card-title"),
-        rx.text(row["summary"], class_name="muted small"),
-        rx.vstack(
-            rx.text(f"Fuente: {row['organization']}", class_name="source-fact"),
-            rx.text("Tema / lectura afectada: Lectura Documentada", class_name="source-fact"),
-            spacing="1",
-            align="stretch",
+        rx.box(
+            rx.text("Que cambio", class_name="pulse-field-label"),
+            rx.text(row["summary"], class_name="muted small"),
+            class_name="pulse-field",
         ),
-        rx.button("Leer con documento", on_click=rx.redirect(row["href"]), class_name="button"),
+        rx.box(
+            rx.text("Fuente que lo sostiene", class_name="pulse-field-label"),
+            rx.text(row["organization"], class_name="source-fact"),
+            class_name="pulse-field",
+        ),
+        rx.box(
+            rx.text("Lectura", class_name="pulse-field-label"),
+            rx.button("Leer con documento", on_click=rx.redirect(row["href"]), class_name="button"),
+            class_name="pulse-field",
+        ),
         class_name="current-topic-card home-pulse-card topic-card-document",
     )
 def topic_nav() -> rx.Component:
@@ -3095,10 +3140,15 @@ def topic_source_panel() -> rx.Component:
             class_name="topic-source-header",
         ),
         rx.text(AppState.topic_official_document["title"], class_name="card-title"),
-        rx.text("Click en una evidencia resalta su fragmento dentro de este documento.", class_name="topic-source-guidance"),
+        rx.text("Documento completo reconstruido desde los fragmentos disponibles. Click en una evidencia resalta su ubicacion dentro de esta hoja.", class_name="topic-source-guidance"),
         rx.box(
+            rx.box(
+                rx.text("Documento oficial", class_name="document-label"),
+                rx.text(AppState.topic_official_document["title"], class_name="document-sheet-title"),
+                class_name="document-sheet-cover",
+            ),
             rx.foreach(AppState.knowledge_fragments, document_fragment_card),
-            class_name="document-page topic-document-page",
+            class_name="document-page topic-document-page document-sheet",
         ),
         rx.link("Documento original", href=AppState.topic_original_url, class_name="document-inline-link topic-original-link"),
         class_name="topic-source-panel topic-card-document",
@@ -3114,7 +3164,7 @@ def topic_evidence_card(row: dict) -> rx.Component:
             "Ver en documento",
             on_click=[
                 AppState.select_document_anchor(row["page"], row["fragment_id"]),
-                rx.call_script("setTimeout(() => document.querySelector('.document-fragment-active')?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
+                rx.call_script("setTimeout(() => document.querySelector('.topic-source-panel .document-fragment-active')?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
             ],
             class_name="button button-secondary",
         ),
@@ -3255,7 +3305,6 @@ def topic_mode_button(label: str, mode: str) -> rx.Component:
 def topic_mode_selector() -> rx.Component:
     return rx.hstack(
         topic_mode_button("Lectura", "lectura"),
-        topic_mode_button("Documento", "documento"),
         topic_mode_button("Sistema Vivo", "sistema_vivo"),
         topic_mode_button("Evidencia", "evidencia"),
         spacing="2",
@@ -3273,39 +3322,71 @@ def topic_reading_mode() -> rx.Component:
     )
 
 
-def topic_document_mode() -> rx.Component:
+def topic_live_stage(label: str, state: str, body: str) -> rx.Component:
     return rx.box(
-        topic_source_panel(),
-        class_name="topic-single-mode topic-mode-shell topic-mode-document",
+        rx.text(state, class_name="live-stage-state"),
+        rx.text(label, class_name="live-stage-title"),
+        rx.text(body, class_name="live-stage-body"),
+        class_name="live-stage-card",
     )
 
 
 def topic_system_mode() -> rx.Component:
     return rx.box(
-        rx.text("Sistema Vivo", class_name="section-title"),
-        rx.text(
-            "Modo preparado para observar continuidad, estado actual y siguientes hitos del mismo tema. La implementacion visual definitiva queda para una fase posterior.",
-            class_name="muted",
+        rx.box(
+            rx.text("Sistema Vivo", class_name="section-title"),
+            rx.text(
+                "Vista macroscopica del mismo tema: continuidad, eventos observados y pendientes documentales. No reemplaza la lectura ni el documento.",
+                class_name="muted",
+            ),
+            class_name="live-system-heading",
         ),
         rx.grid(
-            rx.foreach(AppState.topic_status_rows, topic_status_card),
+            topic_live_stage("Estado actual", AppState.topic_status, "Situacion del tema seg?n la lectura documentada disponible."),
+            topic_live_stage("Eventos del tema", AppState.topic_document_count, "Documentos y eventos disponibles para sostener la cronologia."),
+            topic_live_stage("Cronolog?a viva", AppState.topic_updated_at, "Ultima fecha registrada en el recorrido documental."),
+            columns="3",
+            spacing="3",
+            class_name="responsive-grid live-stage-grid",
+        ),
+        rx.box(
+            rx.text("Eventos del tema", class_name="card-title"),
+            rx.cond(
+                AppState.topic_timeline_rows,
+                rx.hstack(
+                    rx.foreach(AppState.topic_timeline_rows, tracking_event_card),
+                    spacing="3",
+                    align="stretch",
+                    class_name="live-timeline-strip",
+                ),
+                rx.text("No hay eventos visibles para este tema todav?a.", class_name="muted small"),
+            ),
+            class_name="topic-reading-section topic-card-next live-timeline-panel",
+        ),
+        rx.grid(
+            rx.box(
+                rx.text("Qu? cambi?", class_name="card-title"),
+                rx.grid(
+                    rx.foreach(AppState.topic_changes_rows, topic_change_card),
+                    columns="1",
+                    spacing="3",
+                    class_name="topic-compact-grid",
+                ),
+                class_name="topic-reading-section topic-card-changes",
+            ),
+            rx.box(
+                rx.text("Qu? falta", class_name="card-title"),
+                rx.grid(
+                    rx.foreach(AppState.topic_no_changes_rows, topic_no_change_card),
+                    columns="1",
+                    spacing="3",
+                    class_name="topic-compact-grid",
+                ),
+                class_name="topic-reading-section topic-card-no-change",
+            ),
             columns="2",
             spacing="3",
             class_name="responsive-grid",
-        ),
-        rx.box(
-            rx.text("Cronologia disponible", class_name="card-title"),
-            rx.cond(
-                AppState.topic_timeline_rows,
-                rx.grid(
-                    rx.foreach(AppState.topic_timeline_rows, tracking_event_card),
-                    columns="1",
-                    spacing="3",
-                    class_name="timeline-list",
-                ),
-                rx.text("No hay hitos visibles para este tema.", class_name="muted small"),
-            ),
-            class_name="topic-reading-section topic-card-next",
         ),
         class_name="topic-system-placeholder topic-mode-shell",
     )
@@ -3331,16 +3412,12 @@ def topic_evidence_mode() -> rx.Component:
 
 def topic_mode_body() -> rx.Component:
     return rx.cond(
-        AppState.topic_view_mode == "documento",
-        topic_document_mode(),
+        AppState.topic_view_mode == "sistema_vivo",
+        topic_system_mode(),
         rx.cond(
-            AppState.topic_view_mode == "sistema_vivo",
-            topic_system_mode(),
-            rx.cond(
-                AppState.topic_view_mode == "evidencia",
-                topic_evidence_mode(),
-                topic_reading_mode(),
-            ),
+            AppState.topic_view_mode == "evidencia",
+            topic_evidence_mode(),
+            topic_reading_mode(),
         ),
     )
 
@@ -3668,7 +3745,7 @@ def reference_button(row: dict) -> rx.Component:
         row["reference_label"],
         on_click=[
             AppState.select_document_anchor(row["page"], row["fragment_id"]),
-            rx.call_script("setTimeout(() => document.querySelector('.document-fragment-active')?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
+            rx.call_script("setTimeout(() => document.querySelector('.topic-source-panel .document-fragment-active')?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
         ],
         class_name="reference-button",
     )
@@ -5817,8 +5894,17 @@ style = {
     ".shell.theme-light .app-sidebar": {"background": "rgba(255, 255, 255, 0.96)", "border_right": "1px solid rgba(113, 113, 122, 0.18)"},
     ".app-sidebar-collapsed": {"width": "72px"},
     ".sidebar-header": {"display": "flex", "align_items": "center", "justify_content": "space-between", "gap": "8px", "padding": "2px 2px 8px"},
-    ".sidebar-brand": {"font_weight": "900", "font_size": "14px", "color": "#ccfbf1", "letter_spacing": "0.08em"},
-    ".shell.theme-light .sidebar-brand": {"color": "#0f766e"},
+    ".sidebar-menu-button": {
+        "width": "38px",
+        "height": "38px",
+        "padding": "0",
+        "border_radius": "8px",
+        "border": "1px solid rgba(161, 161, 170, 0.2)",
+        "background": "rgba(255, 255, 255, 0.06)",
+    },
+    ".hamburger-icon": {"gap": "4px"},
+    ".hamburger-line": {"width": "18px", "height": "2px", "border_radius": "999px", "background": "#e4e4e7"},
+    ".shell.theme-light .hamburger-line": {"background": "#18181b"},
     ".sidebar-collapse-button, .sidebar-toggle": {
         "border_radius": "6px",
         "border": "1px solid rgba(161, 161, 170, 0.2)",
@@ -5827,8 +5913,10 @@ style = {
         "font_weight": "850",
         "min_width": "36px",
     },
-    ".shell.theme-light .sidebar-collapse-button, .shell.theme-light .sidebar-toggle": {"background": "#ffffff", "color": "#18181b"},
+    ".shell.theme-light .sidebar-collapse-button, .shell.theme-light .sidebar-toggle, .shell.theme-light .sidebar-menu-button": {"background": "#ffffff", "color": "#18181b"},
     ".sidebar-nav": {"overflow_y": "auto", "padding_right": "2px"},
+    ".sidebar-group-label": {"padding": "8px 10px 4px", "color": "#71717a", "font_size": "11px", "font_weight": "850", "letter_spacing": "0.08em", "text_transform": "uppercase"},
+    ".sidebar-divider": {"height": "1px", "margin": "10px 8px", "background": "rgba(161, 161, 170, 0.16)"},
     ".sidebar-nav-link": {
         "display": "grid",
         "grid_template_columns": "28px minmax(0, 1fr)",
@@ -5844,9 +5932,23 @@ style = {
     ".shell.theme-light .sidebar-nav-link": {"color": "#3f3f46"},
     ".shell.theme-light .sidebar-nav-link-active": {"background": "rgba(13, 148, 136, 0.12)", "color": "#0f766e"},
     ".sidebar-initial": {"display": "inline-flex", "align_items": "center", "justify_content": "center", "width": "26px", "height": "26px", "border_radius": "6px", "background": "rgba(255, 255, 255, 0.06)", "font_weight": "900"},
-    ".app-sidebar-collapsed .sidebar-label": {"display": "none"},
+    ".sidebar-advanced-toggle": {
+        "display": "flex",
+        "align_items": "center",
+        "justify_content": "space-between",
+        "gap": "8px",
+        "padding": "9px 10px",
+        "border_radius": "8px",
+        "border": "1px solid transparent",
+        "background": "transparent",
+        "color": "#a1a1aa",
+        "font_weight": "800",
+    },
+    ".sidebar-advanced-symbol": {"font_weight": "900", "color": "#ccfbf1"},
+    ".sidebar-secondary-nav": {"padding_left": "8px", "border_left": "1px solid rgba(161, 161, 170, 0.16)", "margin_left": "14px"},
+    ".app-sidebar-collapsed .sidebar-label, .app-sidebar-collapsed .sidebar-group-label, .app-sidebar-collapsed .sidebar-advanced-symbol, .app-sidebar-collapsed .sidebar-divider": {"display": "none"},
     ".app-sidebar-collapsed .sidebar-nav-link": {"grid_template_columns": "1fr", "justify_items": "center", "padding": "9px 6px"},
-    ".app-sidebar-collapsed .sidebar-brand": {"font_size": "12px"},
+    ".app-sidebar-collapsed .sidebar-advanced-toggle": {"justify_content": "center", "padding": "9px 6px"},
     ".shell-header": {
         "width": "100%",
         "border_bottom": "1px solid rgba(161, 161, 170, 0.18)",
@@ -6104,6 +6206,36 @@ style = {
         "background": "#18181b",
     },
     ".topic-evidence-mode-panel": {"align_self": "start"},
+    ".pulse-field": {"display": "grid", "gap": "4px", "padding_top": "8px", "border_top": "1px solid rgba(161, 161, 170, 0.12)"},
+    ".pulse-field-label": {"font_size": "11px", "font_weight": "850", "letter_spacing": "0.07em", "text_transform": "uppercase", "color": "#a1a1aa"},
+    ".document-sheet": {
+        "border": "1px solid rgba(113, 113, 122, 0.18)",
+        "border_radius": "8px",
+        "padding": "30px",
+        "background": "#f8fafc",
+        "color": "#18181b",
+        "box_shadow": "0 18px 60px rgba(0, 0, 0, 0.18)",
+    },
+    ".document-sheet-cover": {"display": "grid", "gap": "6px", "padding_bottom": "18px", "border_bottom": "1px solid rgba(113, 113, 122, 0.18)", "margin_bottom": "6px"},
+    ".document-sheet-title": {"font_size": "20px", "font_weight": "850", "line_height": "1.25", "color": "#111827"},
+    ".live-system-heading": {"display": "grid", "gap": "6px"},
+    ".live-stage-grid": {"align_items": "stretch"},
+    ".live-stage-card": {
+        "min_height": "118px",
+        "padding": "14px",
+        "border": "1px solid rgba(45, 212, 191, 0.18)",
+        "border_radius": "8px",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "display": "grid",
+        "gap": "7px",
+        "align_content": "start",
+    },
+    ".live-stage-state": {"font_size": "12px", "font_weight": "850", "color": "#ccfbf1"},
+    ".live-stage-title": {"font_size": "16px", "font_weight": "850", "color": "#f4f4f5"},
+    ".live-stage-body": {"font_size": "13px", "line_height": "1.45", "color": "#a1a1aa"},
+    ".live-timeline-panel": {"overflow": "hidden"},
+    ".live-timeline-strip": {"overflow_x": "auto", "padding_bottom": "8px", "scroll_snap_type": "x proximity"},
+    ".live-timeline-strip .tracking-event-card": {"flex": "0 0 270px", "scroll_snap_align": "start"},
     ".topic-document-first-layout": {
         "display": "grid",
         "grid_template_columns": "minmax(0, 48fr) minmax(88px, 0.12fr) minmax(0, 52fr)",
@@ -6417,19 +6549,20 @@ style = {
     ".document-highlight": {"color": "#374151", "line_height": "1.55"},
     ".document-page": {"display": "grid", "gap": "18px", "scroll_behavior": "smooth"},
     ".document-fragment": {
-        "border": "1px solid rgba(113, 113, 122, 0.16)",
-        "border_radius": "6px",
-        "padding": "18px 18px 16px",
-        "background": "#ffffff",
+        "border": "1px solid transparent",
+        "border_radius": "4px",
+        "padding": "12px 4px 14px",
+        "background": "transparent",
         "display": "grid",
-        "gap": "12px",
+        "gap": "8px",
         "cursor": "pointer",
-        "scroll_margin_top": "94px",
+        "scroll_margin_top": "28px",
     },
-    ".document-fragment-active": {"border_color": "rgba(13, 148, 136, 0.82)", "box_shadow": "0 0 0 3px rgba(13, 148, 136, 0.16)", "animation": "document-pulse 2.8s ease-out"},
-    ".document-page-marker": {"font_size": "12px", "font_weight": "850", "color": "#0f766e"},
-    ".document-section-title": {"font_size": "15px", "font_weight": "850", "color": "#18181b"},
-    ".document-fragment-text": {"font_size": "18px", "line_height": "1.75", "color": "#18181b"},
+    ".document-fragment + .document-fragment": {"border_top": "1px solid rgba(113, 113, 122, 0.13)"},
+    ".document-fragment-active": {"border_color": "rgba(13, 148, 136, 0.55)", "background": "rgba(204, 251, 241, 0.72)", "box_shadow": "0 0 0 3px rgba(13, 148, 136, 0.13)", "animation": "document-pulse 2.8s ease-out"},
+    ".document-page-marker": {"font_size": "11px", "font_weight": "850", "color": "#0f766e", "letter_spacing": "0.05em", "text_transform": "uppercase"},
+    ".document-section-title": {"font_size": "13px", "font_weight": "850", "color": "#374151"},
+    ".document-fragment-text": {"font_size": "17px", "line_height": "1.85", "color": "#18181b"},
     ".fragment-supports": {"border_top": "1px solid rgba(113, 113, 122, 0.14)", "padding_top": "10px", "display": "grid", "gap": "8px"},
     ".document-cross-label": {"font_size": "12px", "font_weight": "800", "color": "#52525b"},
     ".document-inline-link": {
