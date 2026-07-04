@@ -1,0 +1,58 @@
+{
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "organization",
+    "source_url",
+    "publication_date",
+    "retrieval_date",
+    "status",
+    "document_type",
+    "language",
+    "version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "organization": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_url": {
+      "type": "string",
+      "minLength": 1
+    },
+    "publication_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "retrieval_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "document_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "default": "es"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": true
+}
