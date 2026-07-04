@@ -42,6 +42,7 @@ def test_verify_mvp_demo_passes_with_nonzero_service_data(monkeypatch, capsys) -
         "get_investigation",
         lambda entity_id: {
             "found": True,
+            "entity": {"name": verify_mvp_demo.MAIN_ENTITY},
             "resolution": {"entity_id": entity_id},
             "compact_metrics": {
                 "datasets_involved": 7,
@@ -74,7 +75,12 @@ def test_verify_mvp_demo_passes_with_nonzero_service_data(monkeypatch, capsys) -
     monkeypatch.setattr(
         verify_mvp_demo,
         "get_guided_discovery_options",
-        lambda category: [{"entity_id": "budget-1" if category == "budgets" else "option-1"}],
+        lambda category: [
+            {
+                "entity_id": "budget-1" if category == "budgets" else "11111111-1111-1111-1111-111111111111",
+                "canonical_entity_id": "11111111-1111-1111-1111-111111111111",
+            }
+        ],
     )
     monkeypatch.setattr(
         verify_mvp_demo,

@@ -33,6 +33,31 @@ Generated directories that should not be committed:
 
 Do not delete source directories.
 
+## Reflex Dev Server Recompiles Constantly
+
+If Reflex recompiles after running demo/export scripts, check whether generated files changed inside the repository:
+
+```powershell
+git status --short reports .pytest-tmp* .web .states
+```
+
+Likely cause:
+
+- Export scripts write HTML into `reports/`.
+- Test runs write temporary files into `.pytest-tmp-*`.
+- Reflex dev hot reload can watch repository file changes and rebuild even when source code did not change.
+
+Current mitigation:
+
+- `.web/`, `.states/`, `.pytest_cache/`, `.pytest-tmp-*`, `reports/*.html` and `.generated_reports/` should be treated as generated output.
+- Keep running exports, but avoid running export scripts in a loop while the Reflex dev server is active.
+
+Recommended future cleanup:
+
+- Move generated report output to an ignored output directory such as `.generated_reports/`.
+- Keep `reports/` for committed report templates or curated static examples only.
+- If changing export defaults, preserve CLI options or service wrappers so current demo commands continue to work.
+
 ## Python 3.14 vs Python 3.10
 
 Check installed Python launchers:
@@ -78,6 +103,27 @@ Direct Expediente URLs:
 ```
 
 The backend investigation builders expect an entity UUID. The web service resolver accepts UUID, exact name, case-insensitive name, and normalized name.
+
+If Reflex hot reloads and the browser temporarily reports no query parameter, `/investigation` should preserve an already loaded expediente instead of replacing it with zero metrics. A fresh `/investigation` without `id` should still show the empty state and should not open the demo automatically.
+
+Current invariant:
+
+- If the URL has `id`, `load_investigation` resolves the target and reloads from the backend.
+- If `query_parameters` is empty but `RouterData.url.raw_path` still contains `?id=...`, the id is recovered from `RouterData.url`.
+- If a dev hot reload temporarily drops the query parameter after a valid expediente is already loaded, the state is preserved instead of zeroing metrics.
+- If the backend returns an empty payload after a valid loaded state, the existing view is preserved and a status message is set.
+- If there is no id and no previous loaded state, the page is intentionally empty.
+
+Developer workaround if the Reflex dev server keeps showing an old empty state after recompilation: open the canonical URL directly again or do a browser hard refresh on `/investigation?id=SERVICIO%20DE%20SALUD%20ARAUCO%20HOSPITAL%20DE%20ARAUCO`. This should only affect the dev hot-reload loop; the route itself is reconstructible from URL.
+
+Debug logs for this path are disabled by default. To inspect investigation reload decisions:
+
+```powershell
+$env:DATOSENORDEN_DEBUG_INVESTIGATION="1"
+python -m reflex run
+```
+
+Then look for `load start`, `target resolved`, `preserved previous state`, and `load complete`.
 
 Canonical product routing accepts names too:
 
@@ -125,6 +171,38 @@ src/datosenorden/maintenance/source_plugins.py
 ```
 
 Every current or planned source should have a `PublicSourcePlugin` entry. Ecosistema is built from that registry, so missing plugin metadata usually means the source will not appear consistently across the product.
+
+## Tracking Demo Missing
+
+Run:
+
+```powershell
+python scripts/tracking_demo_summary.py
+python scripts/export_tracking_demo_report.py
+python scripts/run_demo_check.py
+```
+
+Expected behavior:
+
+- `tracking_demo_summary.py` prints `tracking_demo_summary`.
+- The tracking timeline has events, documents, evidence anchors, related sources, and the Arauco expediente target.
+- The report is written to `reports/tracking_demo_arauco.html`.
+- `/tracking` compiles without requiring database writes, external APIs, scraping, or PDF downloads.
+
+## Citizen Report Missing
+
+Run:
+
+```powershell
+python scripts/export_citizen_report.py
+python scripts/run_demo_check.py
+```
+
+Expected behavior:
+
+- The report is written to `reports/citizen_report_arauco.html`.
+- `/reports` compiles and shows a local report connected to the Arauco expediente and tracking item.
+- The report remains neutral and marked as `LOCAL_TEST_DATA` / `NOT_OFFICIAL_DATA`.
 
 ## Source Factory Validation Fails
 

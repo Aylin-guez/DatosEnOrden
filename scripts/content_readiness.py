@@ -20,10 +20,17 @@ def main() -> int:
     checks.append(_import_check("publication engine", "datosenorden.studio.publication_engine", "publish_document"))
     checks.append(_import_check("actualidad engine", "datosenorden.studio.actualidad_engine", "publish_current_topic"))
     checks.append(_import_check("source watcher", "datosenorden.studio.source_watcher", "watch_legislative_source"))
+    checks.append(_import_check("topic classifier", "datosenorden.studio.topic_classifier", "classify_candidate"))
+    checks.append(_import_check("topic update", "datosenorden.studio.topic_update", "build_topic_update"))
+    checks.append(_import_check("state events", "datosenorden.studio.state_events", "build_state_event"))
+    checks.append(_import_check("daily brief", "datosenorden.studio.daily_brief", "build_daily_brief"))
     checks.append(_legislative_adapter_check())
     checks.append(_directory_check("data/real_imports", ROOT / "data" / "real_imports"))
     checks.append(_directory_check("documents", ROOT / "documents"))
     checks.append(_directory_check("data/watch_runs", ROOT / "data" / "watch_runs"))
+    checks.append(_directory_check("data/topic_updates", ROOT / "data" / "topic_updates"))
+    checks.append(_directory_check("data/state_events", ROOT / "data" / "state_events"))
+    checks.append(_directory_check("data/daily_briefs", ROOT / "data" / "daily_briefs"))
     checks.append(_official_documents_structure_check())
     checks.append(_real_imports_not_tracked_check())
     checks.append(_run_demo_check())
@@ -39,6 +46,10 @@ def _platform_compiles_check() -> tuple[str, bool, str]:
         ROOT / "src" / "datosenorden" / "studio" / "publication_engine.py",
         ROOT / "src" / "datosenorden" / "studio" / "actualidad_engine.py",
         ROOT / "src" / "datosenorden" / "studio" / "source_watcher.py",
+        ROOT / "src" / "datosenorden" / "studio" / "topic_classifier.py",
+        ROOT / "src" / "datosenorden" / "studio" / "topic_update.py",
+        ROOT / "src" / "datosenorden" / "studio" / "state_events.py",
+        ROOT / "src" / "datosenorden" / "studio" / "daily_brief.py",
         ROOT / "src" / "datosenorden" / "web" / "app_services.py",
     ]
     try:

@@ -34,12 +34,39 @@ py -3.14 -m reflex run --frontend-port 3001 --backend-port 8001
 
 ```powershell
 python scripts/verify_mvp_demo.py
+python scripts/demo_ready_check.py
 python scripts/reset_and_load_mvp_demo.py
 python scripts/source_trace.py "DIVISION LOGISTICA DEL EJERCITO"
 python scripts/investigation_story.py "DIVISION LOGISTICA DEL EJERCITO"
 python scripts/entity_comparison.py "DIVISION LOGISTICA DEL EJERCITO"
 python scripts/export_investigation_markdown.py "DIVISION LOGISTICA DEL EJERCITO" --output reports/investigation_entity.md
 python scripts/export_investigation_report.py "DIVISION LOGISTICA DEL EJERCITO"
+```
+
+## Tracking
+
+```powershell
+python scripts/load_tracking_demo.py
+python scripts/tracking_demo_summary.py
+python scripts/export_tracking_demo_report.py
+```
+
+Open after Reflex starts:
+
+```text
+http://localhost:3000/tracking
+```
+
+## Citizen Reports
+
+```powershell
+python scripts/export_citizen_report.py
+```
+
+Open after Reflex starts:
+
+```text
+http://localhost:3000/reports
 ```
 
 ## Streamlit
@@ -141,6 +168,9 @@ Non-destructive load and verification:
 
 ```powershell
 python scripts/reset_and_load_mvp_demo.py
+python scripts/run_demo_check.py
+python scripts/tracking_demo_summary.py
+python scripts/export_tracking_demo_report.py
 ```
 
 Manual load and verify:
@@ -148,6 +178,8 @@ Manual load and verify:
 ```powershell
 python scripts/load_complete_demo_case.py
 python scripts/verify_mvp_demo.py
+python scripts/demo_ready_check.py
+python scripts/run_demo_check.py
 python -m reflex compile --dry --no-rich
 python -m reflex run
 ```
@@ -157,6 +189,27 @@ Open the expediente directly after the app starts:
 ```text
 http://localhost:3000/investigation?id=SERVICIO%20DE%20SALUD%20ARAUCO%20HOSPITAL%20DE%20ARAUCO
 ```
+
+Presentation-ready URLs:
+
+```text
+http://localhost:3000/
+http://localhost:3000/ecosystem
+http://localhost:3000/discover
+http://localhost:3000/tracking
+http://localhost:3000/reports
+http://localhost:3000/investigation?id=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO
+```
+
+## Final Demo Check
+
+Run this before presenting:
+
+```powershell
+python scripts/run_demo_check.py
+```
+
+It verifies database connectivity, the loaded Arauco demo, expediente by name, expediente by UUID, source/evidence/relationship thresholds, tracking demo availability, tracking report export, citizen report availability, citizen report export, search utility, guided discovery, ecosystem sources, and Reflex compile.
 
 If the verifier reports a concrete UUID, prefer:
 

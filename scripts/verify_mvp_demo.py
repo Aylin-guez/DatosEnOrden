@@ -63,13 +63,22 @@ def main() -> int:
     checks.append(("main organization resolves by name", str(name_resolved.get("canonical_entity_id", "")) == entity_id, str(name_resolved)))
 
     investigation = get_investigation(entity_id or MAIN_ENTITY)
+    name_investigation = get_investigation(MAIN_ENTITY)
+    uuid_investigation = get_investigation(entity_id) if entity_id else {}
     metrics = _field(investigation, "compact_metrics", {})
+    name_metrics = _field(name_investigation, "compact_metrics", {})
+    uuid_metrics = _field(uuid_investigation, "compact_metrics", {})
+    name_entity = _field(_field(name_investigation, "entity", {}), "name", "")
+    uuid_entity = _field(_field(uuid_investigation, "entity", {}), "name", "")
     checks.extend(
         [
             ("investigation service", bool(_field(investigation, "found", False)), str(_field(investigation, "resolution", {}))),
             ("datasets for entity", int(_field(metrics, "datasets_involved", 0) or 0) >= 3, str(_field(metrics, "datasets_involved", 0))),
             ("evidence count", int(_field(metrics, "evidence_count", 0) or 0) > 0, str(_field(metrics, "evidence_count", 0))),
             ("relationship count", int(_field(metrics, "relationship_count", 0) or 0) > 0, str(_field(metrics, "relationship_count", 0))),
+            ("canonical name URL resolves non-empty", bool(_field(name_investigation, "found", False)) and int(_field(name_metrics, "evidence_count", 0) or 0) > 0, str(name_entity)),
+            ("canonical UUID URL resolves non-empty", bool(_field(uuid_investigation, "found", False)) and int(_field(uuid_metrics, "relationship_count", 0) or 0) > 0, str(uuid_entity)),
+            ("canonical name and UUID return same entity", str(name_entity).upper() == str(uuid_entity).upper() == MAIN_ENTITY, f"name={name_entity} uuid={uuid_entity}"),
         ]
     )
 
@@ -105,6 +114,9 @@ def main() -> int:
             str(budget_context),
         )
     )
+    public_options = get_guided_discovery_options("public_organizations")
+    guided_canonical = any(str(_field(option, "canonical_entity_id", "")) == entity_id for option in public_options)
+    checks.append(("guided cards route to canonical entity", guided_canonical, str(public_options[:1])))
 
     checks.append(_check_reflex_import())
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 import sys
+import argparse
 from urllib.parse import quote_plus
 
 from sqlalchemy import text
@@ -31,13 +32,22 @@ from datosenorden.web.app_services import get_tracking_demo
 
 
 MAIN_ENTITY = "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+LEGISLATIVE_BILL_TARGET = "cl-congreso-boletin-8575-05"
 LOCAL_BASE_URL = "http://localhost:3000"
 MIN_SOURCES = 5
 MIN_EVIDENCE = 8
 MIN_RELATIONSHIPS = 8
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run local DatosEnOrden demo checks.")
+    parser.add_argument(
+        "--include-real-legislative",
+        action="store_true",
+        help="Also require the official legislative bulletin demo data to be loaded and visible.",
+    )
+    args = parser.parse_args(argv)
+
     checks: list[tuple[str, bool, str]] = []
     checks.append(_check_database())
 
@@ -123,6 +133,9 @@ def main() -> int:
     readiness_totals = _field(readiness, "totals", {}) or {}
     checks.append(("real data readiness has connected source", int(_field(readiness_totals, "ready", 0) or 0) >= 1, str(_field(readiness_totals, "ready", 0))))
 
+    if args.include_real_legislative:
+        checks.extend(_official_legislative_checks())
+
     checks.append(_check_reflex_compile())
 
     _print_report(checks, entity_id)
@@ -146,6 +159,36 @@ def _check_reflex_compile() -> tuple[str, bool, str]:
         return ("Reflex compile", False, f"{type(exc).__name__}: {exc}")
     detail = (result.stdout or result.stderr or "").strip().splitlines()
     return ("Reflex compile", result.returncode == 0, detail[-1] if detail else f"exit={result.returncode}")
+
+
+def _official_legislative_checks() -> list[tuple[str, bool, str]]:
+    checks: list[tuple[str, bool, str]] = []
+    search = search_workspace("boletin 8575")
+    matches = _field(search, "matches", []) or []
+    search_ok = any(
+        str(_field(match, "canonical_entity_id", "")) == LEGISLATIVE_BILL_TARGET
+        or str(_field(match, "entity_name", "")).lower() == "boletin 8575-05"
+        for match in matches
+    )
+    checks.append(("official legislative data loaded - search finds bulletin", search_ok, str(len(matches))))
+
+    investigation = get_investigation(LEGISLATIVE_BILL_TARGET)
+    compact = _field(investigation, "compact_metrics", {}) or {}
+    legislative = _field(investigation, "legislative", {}) or {}
+    evidence_count = int(_field(compact, "evidence_count", 0) or 0)
+    source_count = int(_field(legislative, "source_records_count", 0) or 0)
+    checks.append(
+        (
+            "official legislative data loaded - expediente has data",
+            bool(_field(investigation, "found", False)) and evidence_count > 0 and source_count > 0,
+            f"evidence={evidence_count} source_records={source_count}",
+        )
+    )
+
+    timeline = get_investigation_timeline(LEGISLATIVE_BILL_TARGET)
+    years = _field(timeline, "years", []) or []
+    checks.append(("official legislative data loaded - timeline non-empty", len(years) > 0, str(len(years))))
+    return checks
 
 
 def _investigation_ok(data: object) -> bool:

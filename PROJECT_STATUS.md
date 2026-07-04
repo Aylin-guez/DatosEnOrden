@@ -15,6 +15,8 @@ Main layers:
 - Demo loaders/prototypes: `src/datosenorden/maintenance/*_prototype.py` and `src/datosenorden/maintenance/complete_demo_case.py`
 - Investigation builders: `src/datosenorden/maintenance/investigation_view.py`, `investigation_story.py`, `source_trace.py`, `source_contributions.py`, `investigation_graph.py`, `investigation_timeline.py`
 - Product navigation: `src/datosenorden/maintenance/product_navigation.py`
+- Tracking / internal TraceFlow layer: `src/datosenorden/maintenance/tracking.py`
+- Citizen reports layer: `src/datosenorden/maintenance/citizen_reports.py`
 - Source plugin registry: `src/datosenorden/maintenance/source_plugins.py`
 - Web service facade: `src/datosenorden/web/app_services.py`
 - Reflex UI: `reflex_app/reflex_app.py`
@@ -24,9 +26,42 @@ Main layers:
 - `/` - Inicio. Home page with demo status, dataset cards, and highlighted examples.
 - `/ecosystem` - Ecosistema. Source map and metadata.
 - `/discover` - Descubre. Guided questions and categories.
-- `/search` - Buscar. Direct search and results.
 - `/investigation` - Expediente. Entity investigation page; uses query parameter `id`.
+- `/tracking` - Seguimiento. Local tracking demo for proposals, documents, status changes, evidence, related expedientes, and future subscription placeholders.
+- `/reports` - Reportes ciudadanos. Local read-only reports connected to expediente, tracking and evidence.
+- `/search` - Internal direct search utility. It is not a primary navigation item.
 - `/dashboard` - Dashboard citizen summary.
+
+## Tracking / Seguimiento
+
+DatosEnOrden no solo busca entidades: permite seguir la historia publica de documentos, propuestas y expedientes conectados por evidencia.
+
+The first tracking layer is local and read-only. Internally it acts as the DatosEnOrden TraceFlow engine: it models `TrackableItem`, `TrackingEvent`, `TrackingStatus`, `OfficialDocumentRef`, `EvidenceAnchor`, `FollowTarget`, and `TrackingTimeline` in `src/datosenorden/maintenance/tracking.py`. The visible product name remains `Seguimiento`.
+
+Current demo:
+
+`Programa / propuesta de fortalecimiento hospitalario Arauco`
+
+It connects a proposal with official-document metadata, budget, procurement, provider context, publication/role records, control follow-up, source metadata, and the existing expediente for `SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO`.
+
+Rules:
+
+- All tracking demo content is `LOCAL_TEST_DATA` and `NOT_OFFICIAL_DATA`.
+- It stores no heavy PDFs; it keeps metadata, local/official URL references, optional hashes, summaries, source names, and evidence anchors.
+- It does not call external APIs, scrape, send emails, or mutate the database.
+- Subscription support is represented only as disabled placeholders.
+
+## Citizen Reports
+
+`src/datosenorden/maintenance/citizen_reports.py` adds a local report engine for citizen-readable summaries. It follows the same pattern as tracking: typed dataclasses, no schema migration, JSON-safe service functions in `app_services.py`, and HTML export under `reports/`.
+
+Current demo:
+
+`Reporte ciudadano demo: Servicio de Salud Arauco`
+
+It connects the Arauco expediente, tracking item, source list, sections, and evidence references. It is `LOCAL_TEST_DATA` / `NOT_OFFICIAL_DATA` and does not assert causalidad, irregularidad, culpa or responsabilidad.
+
+Future API planning is documented in `docs/API_FUTURE.md`. Reusable-engine findings are documented in `docs/REUSABLE_ENGINES_AUDIT.md`.
 
 ## Current Datasets And Prototypes
 
@@ -172,6 +207,66 @@ python scripts/reset_and_load_mvp_demo.py
 - The top metrics count sources directly attached to the canonical entity. The source map can show all 7 complete demo sources, including related-record sources.
 - Repeated non-destructive demo loads can create duplicate names. Canonical routing chooses the entity with the richest navigable data.
 - Visual polish is still secondary to local demo correctness and traceability.
+
+## Final MVP Demo Readiness
+
+Ready for local presentation:
+
+- Canonical expediente by name:
+
+```text
+http://localhost:3000/investigation?id=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO
+```
+
+- Canonical expediente by UUID, when this local database contains the current demo ID:
+
+```text
+http://localhost:3000/investigation?id=338d160c-8d5d-47e1-9c37-038ed5043ba1
+```
+
+- Single demo check:
+
+```powershell
+python scripts/run_demo_check.py
+```
+
+Important behavior:
+
+- `/investigation?id=<name>` and `/investigation?id=<uuid>` rebuild the expediente from the local backend.
+- A missing `id` shows the empty state.
+- A transient empty backend response does not replace a previously loaded investigation.
+- Technical details remain available but do not dominate the main presentation flow.
+
+## Source Status
+
+Active:
+
+- ChileCompra
+
+Prototype:
+
+- DIPRES
+- Lobby
+- Transparencia Activa
+- Contraloria
+- Municipalidades
+- SERVEL
+- Diario Oficial
+- Registro Empresas
+- Declaraciones de Intereses
+
+Planned:
+
+- Sanciones y Procedimientos
+
+## Missing For A Real Pilot
+
+- Official data ingestion strategy and source-by-source legal/operational review.
+- Repeatable production-grade data refresh process.
+- Record pages for individual purchases, budgets, meetings, publications, roles and evidence.
+- Browser-level end-to-end tests against the Reflex frontend.
+- Deployment, backups, access control, and monitoring.
+- Human review of Spanish copy, accessibility, and public communication limits.
 
 ## Git Checkpoint
 
