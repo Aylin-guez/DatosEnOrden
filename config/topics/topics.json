@@ -1,0 +1,220 @@
+{
+    "default_topic_id":  "presupuesto-publico",
+    "categories":  [
+                       {
+                           "id":  "legislacion",
+                           "label":  "Legislacion",
+                           "keywords":  [
+                                            "ley",
+                                            "boletin",
+                                            "votacion",
+                                            "camara",
+                                            "senado",
+                                            "tramite"
+                                        ]
+                       },
+                       {
+                           "id":  "presupuesto",
+                           "label":  "Presupuesto publico",
+                           "keywords":  [
+                                            "presupuesto",
+                                            "erario",
+                                            "hacienda",
+                                            "gasto publico",
+                                            "ley de presupuestos"
+                                        ]
+                       }
+                   ],
+    "topics":  [
+                   {
+                       "id":  "presupuesto-publico",
+                       "category_id":  "presupuesto",
+                       "title":  "Presupuesto Publico",
+                       "keywords":  [
+                                        "presupuesto",
+                                        "erario",
+                                        "hacienda",
+                                        "ley de presupuestos",
+                                        "boletin 8575",
+                                        "8575-05"
+                                    ],
+                       "source_ids":  [
+                                          "datos-abiertos-legislativos"
+                                      ],
+                       "external_ids":  [
+                                            "cl-congreso-boletin-8575-05"
+                                        ],
+                       "external_id_prefixes":  [
+                                                    "cl-congreso-boletin-",
+                                                    "camara-votacion-"
+                                                ],
+                       "suggested_actions":  [
+                                                 "import_bill",
+                                                 "update_topic",
+                                                 "create_documented_reading"
+                                             ],
+                       "document_types":  [
+                                              "legislative_bill",
+                                              "legislative_vote"
+                                          ]
+                   },
+                   {
+                       "id":  "actividad-legislativa",
+                       "category_id":  "legislacion",
+                       "title":  "Actividad Legislativa",
+                       "keywords":  [
+                                        "boletin",
+                                        "votacion",
+                                        "sesion",
+                                        "camara",
+                                        "senado",
+                                        "tramite"
+                                    ],
+                       "source_ids":  [
+                                          "datos-abiertos-legislativos"
+                                      ],
+                       "external_id_prefixes":  [
+                                                    "cl-congreso-boletin-",
+                                                    "camara-votacion-"
+                                                ],
+                       "suggested_actions":  [
+                                                 "import_bill",
+                                                 "update_topic",
+                                                 "ignore"
+                                             ],
+                       "document_types":  [
+                                              "legislative_bill",
+                                              "legislative_vote"
+                                          ]
+                   }
+               ],
+    "event_type_rules":  [
+                             {
+                                 "id":  "law_published",
+                                 "event_type":  "LAW_PUBLISHED",
+                                 "keywords":  [
+                                                  "ley publicada",
+                                                  "promulgada",
+                                                  "diario oficial"
+                                              ],
+                                 "suggested_actions":  [
+                                                           "create_documented_reading",
+                                                           "update_topic"
+                                                       ]
+                             },
+                             {
+                                 "id":  "new_vote",
+                                 "event_type":  "NEW_VOTE",
+                                 "keywords":  [
+                                                  "votacion",
+                                                  "vote"
+                                              ],
+                                 "external_id_prefixes":  [
+                                                              "camara-votacion-"
+                                                          ],
+                                 "suggested_actions":  [
+                                                           "import_bill",
+                                                           "update_topic"
+                                                       ]
+                             },
+                             {
+                                 "id":  "new_bill",
+                                 "event_type":  "NEW_BILL",
+                                 "keywords":  [
+                                                  "boletin",
+                                                  "proyecto de ley",
+                                                  "mensaje",
+                                                  "mocion"
+                                              ],
+                                 "external_id_prefixes":  [
+                                                              "cl-congreso-boletin-"
+                                                          ],
+                                 "suggested_actions":  [
+                                                           "import_bill"
+                                                       ]
+                             },
+                             {
+                                 "id":  "new_document",
+                                 "event_type":  "NEW_DOCUMENT",
+                                 "keywords":  [
+                                                  "documento",
+                                                  "oficio",
+                                                  "informe"
+                                              ],
+                                 "suggested_actions":  [
+                                                           "download_document"
+                                                       ]
+                             },
+                             {
+                                 "id":  "status_changed",
+                                 "event_type":  "STATUS_CHANGED",
+                                 "keywords":  [
+                                                  "estado",
+                                                  "tramite",
+                                                  "comision"
+                                              ],
+                                 "suggested_actions":  [
+                                                           "update_topic"
+                                                       ]
+                             }
+                         ],
+    "importance_rules":  [
+                             {
+                                 "id":  "high_law",
+                                 "importance":  "HIGH",
+                                 "event_types":  [
+                                                     "LAW_PUBLISHED"
+                                                 ],
+                                 "keywords":  [
+                                                  "ley publicada",
+                                                  "promulgada"
+                                              ]
+                             },
+                             {
+                                 "id":  "high_vote",
+                                 "importance":  "HIGH",
+                                 "event_types":  [
+                                                     "NEW_VOTE"
+                                                 ],
+                                 "suggested_actions":  [
+                                                           "import_bill",
+                                                           "update_topic"
+                                                       ]
+                             },
+                             {
+                                 "id":  "medium_report",
+                                 "importance":  "MEDIUM",
+                                 "event_types":  [
+                                                     "NEW_REPORT",
+                                                     "NEW_DOCUMENT"
+                                                 ],
+                                 "keywords":  [
+                                                  "informe",
+                                                  "documento adicional",
+                                                  "oficio"
+                                              ]
+                             },
+                             {
+                                 "id":  "medium_bill",
+                                 "importance":  "MEDIUM",
+                                 "event_types":  [
+                                                     "NEW_BILL"
+                                                 ],
+                                 "suggested_actions":  [
+                                                           "import_bill"
+                                                       ]
+                             },
+                             {
+                                 "id":  "low_minor",
+                                 "importance":  "LOW",
+                                 "event_types":  [
+                                                     "DOCUMENT_UPDATED",
+                                                     "STATUS_CHANGED",
+                                                     "OTHER"
+                                                 ],
+                                 "suggested_actions":  [
+                                                           "ignore"
+                                                       ]
+                             }
+                         ]
+}
