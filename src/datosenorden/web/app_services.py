@@ -69,6 +69,7 @@ from datosenorden.models import Entity
 LEGISLATIVE_PROJECT_ENTITY_TYPE = "PUBLIC_PROJECT"
 LEGISLATIVE_SOURCE_LABEL = "Datos Abiertos Legislativos"
 SOURCE_POPULATION_PATH = Path(__file__).resolve().parents[3] / "data" / "source_population" / "infolobby_minimal.json"
+CONNECTORS_ROOT = Path(__file__).resolve().parents[3] / "data" / "connectors"
 REAL_DOCUMENT_PUBLICATION_PATH = (
     Path(__file__).resolve().parents[3]
     / "data"
@@ -330,7 +331,8 @@ def get_real_data_readiness() -> dict[str, Any]:
 def get_data_ecosystem() -> dict[str, Any]:
     with _session_scope() as session:
         ecosystem = _jsonify(build_ecosystem_registry(session))
-    return _apply_source_population_to_ecosystem(ecosystem)
+    ecosystem = _apply_source_population_to_ecosystem(ecosystem)
+    return _apply_connectors_to_ecosystem(ecosystem)
 
 
 def get_discovery_cases() -> dict[str, Any]:
@@ -405,6 +407,7 @@ def search_workspace(query: str) -> dict[str, Any]:
             )
         matches.append(enriched)
     matches.extend(_source_population_search_matches(query))
+    matches.extend(_connector_search_matches(query))
     workspace["matches"] = matches
     return workspace
 
@@ -474,7 +477,7 @@ def get_demo_status() -> dict[str, Any]:
 
 
 def get_tracking_demo() -> dict[str, Any]:
-    return _jsonify(tracking_to_dict(build_tracking_demo()))
+    return _apply_connectors_to_tracking(_jsonify(tracking_to_dict(build_tracking_demo())))
 
 
 def get_tracking_items() -> list[dict[str, Any]]:
@@ -483,12 +486,12 @@ def get_tracking_items() -> list[dict[str, Any]]:
 
 def get_tracking_item(item_id: str) -> dict[str, Any]:
     timeline = _get_tracking_item(item_id)
-    return _jsonify(tracking_to_dict(timeline)) if timeline is not None else {}
+    return _apply_connectors_to_tracking(_jsonify(tracking_to_dict(timeline))) if timeline is not None else {}
 
 
 def get_tracking_timeline(item_id: str) -> dict[str, Any]:
     timeline = _get_tracking_timeline(item_id)
-    return _jsonify(tracking_to_dict(timeline)) if timeline is not None else {}
+    return _apply_connectors_to_tracking(_jsonify(tracking_to_dict(timeline))) if timeline is not None else {}
 
 
 def export_tracking_demo_report() -> str:
@@ -512,6 +515,113 @@ def get_knowledge_digest(document_id: str) -> dict[str, Any]:
 def get_knowledge_documents() -> list[dict[str, Any]]:
     return _jsonify([official_document_to_dict(document) for document in _list_knowledge_documents()])
 
+
+def _load_connector(connector_id: str) -> dict[str, Any]:
+    path = CONNECTORS_ROOT / f"{connector_id}_connector.json"
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _loaded_connectors() -> list[dict[str, Any]]:
+    return [connector for connector in (_load_connector("chilecompra"),) if connector]
+
+
+def _apply_connectors_to_ecosystem(ecosystem: dict[str, Any]) -> dict[str, Any]:
+    connectors = {str(connector.get("id", "")): connector for connector in _loaded_connectors()}
+    for source in ecosystem.get("sources", []):
+        connector = connectors.get(str(source.get("slug", "")))
+        if not connector:
+            continue
+        source["connector_status"] = str(connector.get("status", ""))
+        source["connector_summary"] = str(connector.get("summary", ""))
+        source["connector_entities"] = len(connector.get("entities", []))
+        source["connector_relationships"] = len(connector.get("relationships", []))
+        source["connector_events"] = len(connector.get("events", []))
+    return ecosystem
+
+
+def _connector_search_matches(query: str) -> list[dict[str, Any]]:
+    normalized_query = _normalize_for_population(query)
+    if not normalized_query:
+        return []
+    matches: list[dict[str, Any]] = []
+    for connector in _loaded_connectors():
+        for entity in _jsonify(connector.get("entities", [])):
+            haystack = _normalize_for_population(" ".join([str(entity.get("name", "")), str(entity.get("id", "")), str(entity.get("entity_type", "")), str(connector.get("display_name", ""))]))
+            if not _population_query_matches(normalized_query, haystack):
+                continue
+            matches.append(
+                {
+                    "entity_id": entity.get("id", ""),
+                    "entity_name": entity.get("name", ""),
+                    "entity_type": entity.get("model_entity_type", entity.get("entity_type", "")),
+                    "datasets": [connector.get("display_name", "ChileCompra Connector")],
+                    "evidence_count": len(connector.get("evidence", [])),
+                    "relationship_count": len(connector.get("relationships", [])),
+                    "result_type": f"connector: {entity.get('entity_type', 'entidad')}",
+                    "official_status": connector.get("official_status", ""),
+                    "source_label": connector.get("display_name", "ChileCompra Connector"),
+                    "source_hint": connector.get("status", ""),
+                    "canonical_entity_id": entity.get("id", ""),
+                    "canonical_entity_name": entity.get("name", ""),
+                    "canonical_entity_type": entity.get("model_entity_type", entity.get("entity_type", "")),
+                    "action_label": "Buscar expediente",
+                    "action_href": f"/search?q={str(entity.get('name', '')).replace(' ', '+')}",
+                }
+            )
+    return matches
+
+
+def _connector_pulse_events() -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    for connector in _loaded_connectors():
+        for row in _jsonify(connector.get("events", []))[:1]:
+            events.append(
+                {
+                    "id": row.get("id", ""),
+                    "title": row.get("title", ""),
+                    "summary": row.get("pulse_summary", row.get("description", "")),
+                    "status": "Connector activo",
+                    "updated_at": row.get("date", ""),
+                    "organization": row.get("source", connector.get("display_name", "")),
+                    "source": row.get("source", connector.get("display_name", "")),
+                    "href": "/search?q=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO",
+                }
+            )
+    return events
+
+
+def _apply_connectors_to_tracking(timeline: dict[str, Any]) -> dict[str, Any]:
+    if not timeline:
+        return timeline
+    existing_ids = {str(event.get("id", "")) for event in timeline.get("events", [])}
+    for connector in _loaded_connectors():
+        for row in _jsonify(connector.get("events", [])):
+            event_id = str(row.get("id", ""))
+            if not event_id or event_id in existing_ids:
+                continue
+            timeline.setdefault("events", []).append(
+                {
+                    "id": event_id,
+                    "date": row.get("date", ""),
+                    "status": row.get("status", "published"),
+                    "title": row.get("title", ""),
+                    "description": row.get("description", ""),
+                    "source": row.get("source", connector.get("display_name", "")),
+                    "evidence_ids": row.get("evidence_ids", []),
+                    "document_ids": [],
+                    "related_entity_names": row.get("related_entity_names", []),
+                }
+            )
+            existing_ids.add(event_id)
+    if "overview" in timeline and "progress" in timeline["overview"]:
+        timeline["overview"]["progress"]["total_events"] = len(timeline.get("events", []))
+    return timeline
 
 def _load_source_population() -> dict[str, Any]:
     if not SOURCE_POPULATION_PATH.exists():
@@ -598,7 +708,7 @@ def _load_real_document_publication() -> dict[str, Any]:
 
 def get_current_topics(limit: int = 3) -> list[dict[str, Any]]:
     topics = _jsonify(_list_current_topics(limit=limit))
-    for event in _source_population_pulse_events():
+    for event in [*_connector_pulse_events(), *_source_population_pulse_events()]:
         if len(topics) >= limit:
             break
         topics.append(event)

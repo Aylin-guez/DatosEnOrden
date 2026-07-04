@@ -1,0 +1,229 @@
+{
+  "id": "chilecompra",
+  "display_name": "ChileCompra Connector",
+  "priority": 1,
+  "status": "active_local_connector",
+  "mode": "demo_controlled_from_existing_data",
+  "source_dataset_name": "chilecompra-demo-case-sample",
+  "source_name": "DatosEnOrden ChileCompra Demo Case",
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "summary": "Connector local de compras p?blicas que transforma ?rdenes de compra existentes en entidades, relaciones, evidencia y eventos.",
+  "produces": {
+    "entities": [
+      "Organismo",
+      "Proveedor",
+      "Empresa",
+      "Contrato",
+      "Compra"
+    ],
+    "relationships": [
+      "ISSUES_PURCHASE_ORDER",
+      "RECEIVES_CONTRACT"
+    ],
+    "evidence": [
+      "purchase_order_url",
+      "source_record",
+      "local_sample_payload"
+    ],
+    "events": [
+      "Nueva compra p?blica"
+    ]
+  },
+  "feeds": [
+    "Buscar",
+    "Expediente",
+    "Pulso",
+    "Fuentes",
+    "Cronologia",
+    "Relaciones"
+  ],
+  "entities": [
+    {
+      "id": "chilecompra:buyer:ssaah-001",
+      "name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "entity_type": "Organismo",
+      "model_entity_type": "PUBLIC_ORGANIZATION"
+    },
+    {
+      "id": "chilecompra:supplier:76.123.456-7",
+      "name": "ACME TECNOLOGIAS SPA",
+      "entity_type": "Proveedor",
+      "model_entity_type": "COMPANY"
+    },
+    {
+      "id": "chilecompra:purchase_order:oc-2026-0001",
+      "name": "Compra de insumos clinicos basicos",
+      "entity_type": "Compra",
+      "model_entity_type": "CONTRACT"
+    },
+    {
+      "id": "chilecompra:supplier:77.234.567-8",
+      "name": "SERVICIOS NORTE LTDA",
+      "entity_type": "Proveedor",
+      "model_entity_type": "COMPANY"
+    },
+    {
+      "id": "chilecompra:purchase_order:oc-2026-0002",
+      "name": "Servicio de mantenimiento preventivo",
+      "entity_type": "Compra",
+      "model_entity_type": "CONTRACT"
+    },
+    {
+      "id": "chilecompra:supplier:78.345.678-9",
+      "name": "CONSULTORA PUBLICA SPA",
+      "entity_type": "Proveedor",
+      "model_entity_type": "COMPANY"
+    },
+    {
+      "id": "chilecompra:purchase_order:oc-2026-0003",
+      "name": "Asesoria de apoyo operativo",
+      "entity_type": "Compra",
+      "model_entity_type": "CONTRACT"
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "ISSUES_PURCHASE_ORDER",
+      "subject_id": "chilecompra:buyer:ssaah-001",
+      "subject_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "object_id": "chilecompra:purchase_order:oc-2026-0001",
+      "object_name": "Compra de insumos clinicos basicos",
+      "description": "El organismo emite una orden de compra."
+    },
+    {
+      "predicate": "RECEIVES_CONTRACT",
+      "subject_id": "chilecompra:supplier:76.123.456-7",
+      "subject_name": "ACME TECNOLOGIAS SPA",
+      "object_id": "chilecompra:purchase_order:oc-2026-0001",
+      "object_name": "Compra de insumos clinicos basicos",
+      "description": "El proveedor recibe una compra p?blica."
+    },
+    {
+      "predicate": "ISSUES_PURCHASE_ORDER",
+      "subject_id": "chilecompra:buyer:ssaah-001",
+      "subject_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "object_id": "chilecompra:purchase_order:oc-2026-0002",
+      "object_name": "Servicio de mantenimiento preventivo",
+      "description": "El organismo emite una orden de compra."
+    },
+    {
+      "predicate": "RECEIVES_CONTRACT",
+      "subject_id": "chilecompra:supplier:77.234.567-8",
+      "subject_name": "SERVICIOS NORTE LTDA",
+      "object_id": "chilecompra:purchase_order:oc-2026-0002",
+      "object_name": "Servicio de mantenimiento preventivo",
+      "description": "El proveedor recibe una compra p?blica."
+    },
+    {
+      "predicate": "ISSUES_PURCHASE_ORDER",
+      "subject_id": "chilecompra:buyer:ssaah-001",
+      "subject_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "object_id": "chilecompra:purchase_order:oc-2026-0003",
+      "object_name": "Asesoria de apoyo operativo",
+      "description": "El organismo emite una orden de compra."
+    },
+    {
+      "predicate": "RECEIVES_CONTRACT",
+      "subject_id": "chilecompra:supplier:78.345.678-9",
+      "subject_name": "CONSULTORA PUBLICA SPA",
+      "object_id": "chilecompra:purchase_order:oc-2026-0003",
+      "object_name": "Asesoria de apoyo operativo",
+      "description": "El proveedor recibe una compra p?blica."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence:chilecompra:purchase_order:oc-2026-0001",
+      "source": "ChileCompra",
+      "label": "OC-2026-0001",
+      "url": "local://demo-case/chilecompra/oc-2026-0001",
+      "excerpt": "Compra de insumos clinicos basicos por 18500000 CLP. Estado: Aceptada.",
+      "record_type": "purchase_order"
+    },
+    {
+      "id": "evidence:chilecompra:purchase_order:oc-2026-0002",
+      "source": "ChileCompra",
+      "label": "OC-2026-0002",
+      "url": "local://demo-case/chilecompra/oc-2026-0002",
+      "excerpt": "Servicio de mantenimiento preventivo por 9240000 CLP. Estado: Aceptada.",
+      "record_type": "purchase_order"
+    },
+    {
+      "id": "evidence:chilecompra:purchase_order:oc-2026-0003",
+      "source": "ChileCompra",
+      "label": "OC-2026-0003",
+      "url": "local://demo-case/chilecompra/oc-2026-0003",
+      "excerpt": "Asesoria de apoyo operativo por 12600000 CLP. Estado: Aceptada.",
+      "record_type": "purchase_order"
+    }
+  ],
+  "events": [
+    {
+      "id": "event:chilecompra:purchase_order:oc-2026-0001",
+      "date": "2026-04-05",
+      "status": "published",
+      "title": "Nueva compra p?blica: Compra de insumos clinicos basicos",
+      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO registra una compra p?blica con ACME TECNOLOGIAS SPA por 18500000 CLP.",
+      "source": "ChileCompra Connector",
+      "evidence_ids": [
+        "evidence:chilecompra:purchase_order:oc-2026-0001"
+      ],
+      "related_entity_names": [
+        "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+        "ACME TECNOLOGIAS SPA",
+        "Compra de insumos clinicos basicos"
+      ],
+      "pulse_summary": "Compra p?blica local de muestra: OC-2026-0001 conecta organismo, proveedor y contrato."
+    },
+    {
+      "id": "event:chilecompra:purchase_order:oc-2026-0002",
+      "date": "2026-04-18",
+      "status": "published",
+      "title": "Nueva compra p?blica: Servicio de mantenimiento preventivo",
+      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO registra una compra p?blica con SERVICIOS NORTE LTDA por 9240000 CLP.",
+      "source": "ChileCompra Connector",
+      "evidence_ids": [
+        "evidence:chilecompra:purchase_order:oc-2026-0002"
+      ],
+      "related_entity_names": [
+        "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+        "SERVICIOS NORTE LTDA",
+        "Servicio de mantenimiento preventivo"
+      ],
+      "pulse_summary": "Compra p?blica local de muestra: OC-2026-0002 conecta organismo, proveedor y contrato."
+    },
+    {
+      "id": "event:chilecompra:purchase_order:oc-2026-0003",
+      "date": "2026-05-02",
+      "status": "published",
+      "title": "Nueva compra p?blica: Asesoria de apoyo operativo",
+      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO registra una compra p?blica con CONSULTORA PUBLICA SPA por 12600000 CLP.",
+      "source": "ChileCompra Connector",
+      "evidence_ids": [
+        "evidence:chilecompra:purchase_order:oc-2026-0003"
+      ],
+      "related_entity_names": [
+        "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+        "CONSULTORA PUBLICA SPA",
+        "Asesoria de apoyo operativo"
+      ],
+      "pulse_summary": "Compra p?blica local de muestra: OC-2026-0003 conecta organismo, proveedor y contrato."
+    }
+  ],
+  "audit": {
+    "scripts": [
+      "scripts/run_chilecompra_etl.py",
+      "scripts/load_chilecompra_file.py",
+      "scripts/load_sample_purchase_orders.py",
+      "scripts/validate_chilecompra_file.py",
+      "scripts/verify_real_chilecompra_load.py"
+    ],
+    "tests": [
+      "tests/test_chilecompra_mapping.py",
+      "tests/test_chilecompra_phase_26.py",
+      "tests/test_chilecompra_phase_30.py",
+      "tests/test_validate_chilecompra_file.py"
+    ]
+  }
+}

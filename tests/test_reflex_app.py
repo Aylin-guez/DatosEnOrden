@@ -1241,3 +1241,10 @@ def test_ecosystem_source_card_shows_population_note() -> None:
 
     assert "population_label" in source
     assert "source-population-note" in source
+
+def test_ecosystem_source_card_shows_connector_label() -> None:
+    source = inspect.getsource(reflex_app.ecosystem_source_card)
+    loader_source = inspect.getsource(reflex_app.AppState.load_ecosystem.fn)
+
+    assert "connector_label" in loader_source
+    assert "connector_label" in source

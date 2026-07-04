@@ -737,3 +737,27 @@ def test_source_population_enriches_lobby_surfaces(monkeypatch) -> None:
     assert lobby["population_status_label"] == "muestra local controlada"
     assert any(match["source_label"] == "InfoLobby" for match in search["matches"])
     assert any(topic["id"] == "pulse-infolobby-minimal-v1" for topic in topics)
+
+def test_chilecompra_connector_feeds_core_surfaces(monkeypatch) -> None:
+    _patch_session(monkeypatch)
+    monkeypatch.setattr(
+        "datosenorden.maintenance.ecosystem_registry.list_datasets",
+        lambda session: (),
+    )
+    monkeypatch.setattr(app_services, "_search_workspace", lambda query: {"matches": []})
+    monkeypatch.setattr(app_services, "_list_current_topics", lambda limit=3: [])
+
+    connector = app_services._load_connector("chilecompra")
+    ecosystem = app_services.get_data_ecosystem()
+    search = app_services.search_workspace("ACME TECNOLOGIAS")
+    topics = app_services.get_current_topics(limit=3)
+    tracking = app_services.get_tracking_demo()
+    chilecompra = next(source for source in ecosystem["sources"] if source["slug"] == "chilecompra")
+
+    assert connector["produces"]["entities"] == ["Organismo", "Proveedor", "Empresa", "Contrato", "Compra"]
+    assert connector["produces"]["relationships"] == ["ISSUES_PURCHASE_ORDER", "RECEIVES_CONTRACT"]
+    assert chilecompra["connector_entities"] >= 5
+    assert chilecompra["connector_relationships"] >= 6
+    assert any(match["source_label"] == "ChileCompra Connector" for match in search["matches"])
+    assert any(topic["source"] == "ChileCompra Connector" for topic in topics)
+    assert any(event["source"] == "ChileCompra Connector" for event in tracking["events"])

@@ -1545,6 +1545,11 @@ class AppState(rx.State):
                         if int(row.get("population_records", 0) or 0)
                         else ""
                     ),
+                    "connector_label": (
+                        f"connector: {row.get('connector_status', '')} | entidades {int(row.get('connector_entities', 0) or 0)} | relaciones {int(row.get('connector_relationships', 0) or 0)} | eventos {int(row.get('connector_events', 0) or 0)}"
+                        if str(row.get("connector_status", ""))
+                        else ""
+                    ),
                 }
                 for row in ecosystem.get("sources", [])
             ]
@@ -2502,6 +2507,10 @@ def ecosystem_source_card(row: dict) -> rx.Component:
         rx.cond(
             row["population_label"] != "",
             rx.text(row["population_label"], class_name="source-fact source-population-note"),
+        ),
+        rx.cond(
+            row["connector_label"] != "",
+            rx.text(row["connector_label"], class_name="source-fact"),
         ),
         rx.accordion.root(
             rx.accordion.item(
