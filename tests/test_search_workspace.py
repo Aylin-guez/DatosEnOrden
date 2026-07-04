@@ -143,5 +143,42 @@ def test_search_workspace_adds_document_report_and_tracking_matches(monkeypatch)
     assert {"Ver documento", "Ver reporte", "Ver seguimiento"}.issubset(action_labels)
 
 
+def test_search_workspace_finds_partial_legislative_bulletin(monkeypatch) -> None:
+    session = _FakeSession(
+        entity_types=("PUBLIC_PROJECT",),
+        direct_rows=(
+            SimpleNamespace(
+                id="11111111-1111-1111-1111-111111111111",
+                entity_type="PUBLIC_PROJECT",
+                name="Boletin 8575-05",
+                external_id="cl-congreso-boletin-8575-05",
+            ),
+        ),
+    )
+    monkeypatch.setattr(search_workspace, "SessionLocal", lambda: _SessionContext(session))
+    monkeypatch.setattr(search_workspace, "resolve_entity", lambda query: SimpleNamespace(found=False, entity=None))
+    monkeypatch.setattr(search_workspace, "match_entity_candidates", lambda session, entity_type, name, limit=20: ())
+    monkeypatch.setattr(
+        search_workspace,
+        "get_entity_profile",
+        lambda session, entity_id: SimpleNamespace(evidences=(1, 2), relationships=()),
+    )
+    monkeypatch.setattr(
+        search_workspace,
+        "build_entity_comparison",
+        lambda entity_id: {"datasets_present": ["Datos Abiertos Legislativos"]},
+    )
+    monkeypatch.setattr(search_workspace, "list_knowledge_documents", lambda: [])
+    monkeypatch.setattr(search_workspace, "list_citizen_reports", lambda: [])
+    monkeypatch.setattr(search_workspace, "list_tracking_items", lambda: [])
+
+    report = search_workspace.search_workspace("boletin 8575")
+
+    assert report["matches"][0]["entity_name"] == "Boletin 8575-05"
+    assert report["matches"][0]["result_type"] == "Proyecto legislativo / Boletin"
+    assert report["matches"][0]["official_status"] == "dato oficial cargado"
+    assert report["matches"][0]["action_label"] == "Abrir expediente"
+
+
 def test_search_workspace_handles_empty_query() -> None:
     assert search_workspace.search_workspace("") == {"matches": []}

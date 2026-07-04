@@ -253,6 +253,7 @@ def summarize_real_dataset_registry(session: Session | None = None) -> dict[str,
     source_stats = {row.slug: row for row in list_datasets(session)} if session is not None else {}
     for entry in REAL_DATASET_REGISTRY:
         row = source_stats.get(entry.id)
+        markers = _real_data_markers(session, entry) if session is not None else {"official_records": 0, "test_records": 0, "last_loaded": ""}
         entries.append(
             {
                 **asdict(entry),
@@ -262,6 +263,9 @@ def summarize_real_dataset_registry(session: Session | None = None) -> dict[str,
                 "evidence": row.evidence if row is not None else 0,
                 "relationships": row.relationships if row is not None else 0,
                 "health": row.health if row is not None else "unknown",
+                "official_records": markers["official_records"],
+                "test_records": markers["test_records"],
+                "last_loaded": markers["last_loaded"] or entry.last_loaded,
                 "ready_for_real_data": entry.status == "connected_file_loader" and bool(entry.loader_script),
             }
         )
@@ -275,6 +279,30 @@ def summarize_real_dataset_registry(session: Session | None = None) -> dict[str,
             "without_loader": sum(1 for entry in entries if not str(entry["loader_script"]).strip()),
         },
     }
+
+
+def _real_data_markers(session: Session, entry: RealDatasetRegistryEntry) -> dict[str, object]:
+    definition = resolve_dataset(entry.id)
+    dataset_names = definition.dataset_names if definition is not None else ()
+    if not dataset_names:
+        return {"official_records": 0, "test_records": 0, "last_loaded": ""}
+    rows = session.scalars(
+        select(SourceRecord)
+        .join(Dataset, SourceRecord.dataset_id == Dataset.id)
+        .where(Dataset.name.in_(dataset_names))
+        .order_by(SourceRecord.retrieved_at.desc())
+    ).all()
+    official = 0
+    test = 0
+    for row in rows:
+        payload = row.raw_payload or {}
+        marker = str(payload.get("_datosenorden_data_classification", payload.get("Version", "")))
+        if marker == "OFFICIAL_DATA_OPERATOR_PROVIDED":
+            official += 1
+        elif marker:
+            test += 1
+    last_loaded = rows[0].retrieved_at.isoformat() if rows else ""
+    return {"official_records": official, "test_records": test, "last_loaded": last_loaded}
 
 
 def get_dataset_details(session: Session, dataset_slug: str) -> DatasetDetails | None:

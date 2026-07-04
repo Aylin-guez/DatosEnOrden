@@ -53,6 +53,7 @@ EVENT_LABELS = {
     "PERSON_OWNS_COMPANY": "Se registro una relacion de propiedad o participacion en una empresa.",
     "COMPANY_REGISTERED_ON": "Se registro la inscripcion de una empresa.",
     "COMPANY_MODIFIED_ON": "Se registro la modificacion de una empresa.",
+    "LEGISLATIVE_BILL_HAS_VOTE": "Votacion asociada al boletin.",
 }
 
 
@@ -367,7 +368,7 @@ def _date_from_payload(payload: dict[str, Any]) -> date | None:
         parsed_period = _period_start(str(period))
         if parsed_period is not None:
             return parsed_period
-    for key in ("meeting_date", "FechaEnvio", "FechaCreacion", "FechaContrato", "FechaPublicacion"):
+    for key in ("meeting_date", "date", "FechaEnvio", "FechaCreacion", "FechaContrato", "FechaPublicacion"):
         value = payload.get(key)
         parsed = _parse_any_date(value)
         if parsed is not None:
@@ -407,6 +408,8 @@ def _period_start(period: str) -> date | None:
 def _event_title(predicate: str, dataset_name: str) -> str:
     if dataset_name in {"chilecompra-ordenes-compra", "chilecompra-licitaciones"}:
         return EVENT_LABELS.get(predicate, "ChileCompra event")
+    if dataset_name == "congreso-votaciones-boletin":
+        return EVENT_LABELS.get(predicate, "Votacion asociada al boletin.")
     return EVENT_LABELS.get(predicate, event_explanation(predicate))
 
 
@@ -473,6 +476,7 @@ def _summarize_entity(entity: Entity) -> EntitySummary:
 
 
 DATASET_LABELS["servel-authorities-sample"] = "SERVEL"
+DATASET_LABELS["congreso-votaciones-boletin"] = "DATOS ABIERTOS LEGISLATIVOS"
 EVENT_LABELS.update(
     {
         "AUTHORITY_ELECTED_TO_OFFICE": "Se registro una autoridad asociada a un cargo electo.",

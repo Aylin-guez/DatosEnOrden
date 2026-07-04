@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import unicodedata
 import re
+from uuid import UUID
 
 from sqlalchemy import or_, select
 
@@ -15,6 +16,9 @@ from datosenorden.maintenance.knowledge_engine import list_knowledge_documents
 from datosenorden.maintenance.citizen_reports import list_citizen_reports
 from datosenorden.maintenance.tracking import list_tracking_items
 from datosenorden.models import Entity
+
+
+LEGISLATIVE_SOURCE_LABEL = "Datos Abiertos Legislativos"
 
 
 @dataclass(frozen=True)
@@ -51,6 +55,8 @@ def search_workspace(query: str, limit: int = 12) -> dict[str, object]:
                 "evidence_count": item.evidence_count,
                 "relationship_count": item.relationship_count,
                 "result_type": item.result_type,
+                "official_status": _official_status(item),
+                "source_label": _source_label(item),
                 "action_label": item.action_label,
                 "action_href": item.action_href or f"/investigation?id={item.entity_id}",
             }
@@ -66,7 +72,7 @@ def _collect_matches(session, query: str, *, limit: int) -> tuple[SearchWorkspac
     entity_types = session.scalars(select(Entity.entity_type).distinct().order_by(Entity.entity_type.asc())).all()
     resolved = resolve_entity(query)
     if resolved.found and resolved.entity is not None:
-        entity = session.get(Entity, resolved.entity.id)
+        entity = _entity_for_resolved_registry_entry(session, resolved.entity.id, resolved.entity.canonical_name)
         if entity is not None:
             _merge_candidate(merged, session, str(entity.id), entity.name, entity.entity_type, 1.0)
 
@@ -132,6 +138,26 @@ def _merge_candidate(
             action_label="Abrir expediente",
             action_href=f"/investigation?id={entity_id}",
         )
+
+
+def _entity_for_resolved_registry_entry(session, entity_id: str, canonical_name: str):  # noqa: ANN001
+    try:
+        entity_uuid = UUID(str(entity_id))
+    except ValueError:
+        entity_uuid = None
+    if entity_uuid is not None:
+        entity = session.get(Entity, entity_uuid)
+        if entity is not None:
+            return entity
+
+    external = session.scalar(select(Entity).where(Entity.external_id == str(entity_id)))
+    if external is not None:
+        return external
+
+    exact = session.scalar(select(Entity).where(Entity.name == str(canonical_name)))
+    if exact is not None:
+        return exact
+    return None
 
 
 def _document_matches(query: str) -> tuple[SearchWorkspaceMatch, ...]:
@@ -221,9 +247,23 @@ def _result_type(entity_type: str) -> str:
         return "proveedor"
     if entity_type in {"DOCUMENT", "OFFICIAL_PUBLICATION", "PUBLICATION"}:
         return "documento"
+    if entity_type == "PUBLIC_PROJECT":
+        return "Proyecto legislativo / Boletin"
     if entity_type in {"CONTRACT", "PURCHASE_ORDER", "BUDGET", "LOBBY_MEETING"}:
         return "fuente/registro"
     return "entidad"
+
+
+def _official_status(item: SearchWorkspaceMatch) -> str:
+    if item.entity_type == "PUBLIC_PROJECT" and "Datos Abiertos" in " ".join(item.datasets):
+        return "dato oficial cargado"
+    return ""
+
+
+def _source_label(item: SearchWorkspaceMatch) -> str:
+    if item.entity_type == "PUBLIC_PROJECT" and "Datos Abiertos" in " ".join(item.datasets):
+        return LEGISLATIVE_SOURCE_LABEL
+    return item.datasets[0] if item.datasets else ""
 
 
 def _normalize(value: str) -> str:

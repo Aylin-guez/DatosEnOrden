@@ -386,6 +386,7 @@ def test_render_app_uses_sidebar_only_navigation(monkeypatch) -> None:
 
     monkeypatch.setattr(streamlit_app, "SessionLocal", lambda: _SessionContext())
     monkeypatch.setattr(streamlit_app, "render_home_page", lambda st, session: calls.append(streamlit_app.PAGE_HOME))
+    monkeypatch.setattr(streamlit_app, "render_ecosystem_page", lambda st, session: calls.append(streamlit_app.PAGE_ECOSYSTEM))
     monkeypatch.setattr(streamlit_app, "render_dataset_explorer_page", lambda st, session: calls.append(streamlit_app.PAGE_DATASETS))
     monkeypatch.setattr(streamlit_app, "render_entity_search_page", lambda st, session: calls.append(streamlit_app.PAGE_SEARCH))
     monkeypatch.setattr(streamlit_app, "render_investigation_page", lambda st, session: calls.append(streamlit_app.PAGE_INVESTIGATION))
@@ -415,6 +416,7 @@ def test_render_app_uses_session_state_page_for_sidebar_index(monkeypatch) -> No
 
     monkeypatch.setattr(streamlit_app, "SessionLocal", lambda: _SessionContext())
     monkeypatch.setattr(streamlit_app, "render_home_page", lambda st, session: calls.append(streamlit_app.PAGE_HOME))
+    monkeypatch.setattr(streamlit_app, "render_ecosystem_page", lambda st, session: calls.append(streamlit_app.PAGE_ECOSYSTEM))
     monkeypatch.setattr(streamlit_app, "render_dataset_explorer_page", lambda st, session: calls.append(streamlit_app.PAGE_DATASETS))
     monkeypatch.setattr(streamlit_app, "render_entity_search_page", lambda st, session: calls.append(streamlit_app.PAGE_SEARCH))
     monkeypatch.setattr(streamlit_app, "render_investigation_page", lambda st, session: calls.append(streamlit_app.PAGE_INVESTIGATION))
@@ -422,8 +424,34 @@ def test_render_app_uses_session_state_page_for_sidebar_index(monkeypatch) -> No
     streamlit_app.render_app(fake_st)
 
     assert calls == [streamlit_app.PAGE_INVESTIGATION]
-    assert fake_st.sidebar.radio_calls == [("Secciones", streamlit_app.PAGE_ORDER, 3, "page")]
+    assert fake_st.sidebar.radio_calls == [("Secciones", streamlit_app.PAGE_ORDER, 4, "page")]
     assert fake_st.session_state["page"] == streamlit_app.PAGE_INVESTIGATION
+
+
+def test_render_ecosystem_page_shows_catalog_detail_and_registry(monkeypatch) -> None:
+    fake_st = _FakeStreamlit()
+    rows = (
+        DatasetSummary("chilecompra", "ChileCompra", 10, 20, 30, 40, 50, "active", False),
+        DatasetSummary("lobby", "Lobby", 1, 2, 3, 4, 5, "partially_loaded", False),
+    )
+    monkeypatch.setattr("datosenorden.maintenance.ecosystem_registry.list_datasets", lambda session: rows)
+
+    streamlit_app.render_ecosystem_page(fake_st, object())
+
+    assert fake_st.titles == ["Ecosistema"]
+    assert fake_st.subheaders == [
+        "Data Source Catalog",
+        "Source Detail View",
+        "Concept Graph",
+        "Coverage Dashboard",
+        "Project Roadmap",
+        "Dataset Metadata Registry",
+    ]
+    assert any("Data Ecosystem Explorer" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("ChileCompra" in markdown for markdown, _ in fake_st.markdowns)
+    assert any("Concept Graph" not in markdown and "concept-node" in markdown for markdown, _ in fake_st.markdowns)
+    assert fake_st.tables
+    assert any(row["dataset"] == "ChileCompra" for row in fake_st.tables[0])
 
 
 def test_render_home_page_shows_cards_and_questions(monkeypatch) -> None:

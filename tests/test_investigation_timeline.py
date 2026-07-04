@@ -68,10 +68,23 @@ def test_build_investigation_timeline_groups_events_by_year_and_category(monkeyp
                 evidence_count=1,
                 relationship_count=1,
             ),
+            SimpleNamespace(
+                event_date=date(2026, 5, 9),
+                dataset="DATOS ABIERTOS LEGISLATIVOS",
+                dataset_name="congreso-votaciones-boletin",
+                title="Votacion asociada al boletin.",
+                explanation="Fuente legislativa.",
+                claim_id="c5",
+                predicate="LEGISLATIVE_BILL_HAS_VOTE",
+                source_record_id="s5",
+                evidence_count=1,
+                relationship_count=0,
+            ),
         )
     )
     monkeypatch.setattr(investigation_timeline, "SessionLocal", lambda: _SessionContext())
     monkeypatch.setattr(investigation_timeline, "build_entity_timeline", lambda session, entity_id: timeline)
+    monkeypatch.setattr(investigation_timeline, "_source_record_urls", lambda session, source_record_ids: {"s5": "https://opendata.camara.cl/services/getVotacion_Detalle?prmVotacionID=1"})
 
     report = investigation_timeline.build_investigation_timeline(str(timeline.entity.id))
 
@@ -81,6 +94,7 @@ def test_build_investigation_timeline_groups_events_by_year_and_category(monkeyp
     assert first_year["categories"][0]["category"] == "Budget"
     assert any(category["category"] == "Procurement" for category in first_year["categories"])
     assert any(category["category"] == "Company Registry" for category in first_year["categories"])
+    assert any(category["category"] == "Legislative" for category in first_year["categories"])
     first_item = first_year["categories"][0]["items"][0]
     assert first_item["origin"] == "derived_from_expediente"
     assert first_item["source_id"] == "s1"

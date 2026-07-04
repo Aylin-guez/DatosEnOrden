@@ -50,6 +50,22 @@ def test_demo_registry_resolves_identifier() -> None:
     assert result.confidence == 1.0
 
 
+def test_demo_registry_resolves_legislative_bill_aliases_to_same_entity() -> None:
+    registry = load_entity_registry()
+
+    queries = [
+        "8575-05",
+        "boletin 8575",
+        "boletín 8575",
+        "cl-congreso-boletin-8575-05",
+    ]
+
+    results = [registry.resolve(query) for query in queries]
+
+    assert all(result.found for result in results)
+    assert {result.entity.id for result in results if result.entity is not None} == {"cl-congreso-boletin-8575-05"}
+
+
 def test_demo_registry_resolves_canonical_with_case_and_accents_normalized() -> None:
     result = resolve_entity("servicio   de salud arauco hospital de araúco")
 

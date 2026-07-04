@@ -199,6 +199,24 @@ _DATASET_METADATA: dict[str, DatasetMetadata] = {
         connects_with=("DIPRES", "ChileCompra", "Contraloria"),
         entities=("Organismo", "Presupuesto", "Proyecto Publico"),
     ),
+    "Datos Abiertos Legislativos": DatasetMetadata(
+        slug="legislature",
+        name="Datos Abiertos Legislativos",
+        description="Votaciones oficiales de Camara asociadas a boletines legislativos cargados manualmente.",
+        contributes=(
+            "Boletin legislativo",
+            "Votaciones asociadas",
+            "Enlaces getVotacion_Detalle",
+        ),
+        category="legislative",
+        citizen_summary="Muestra votaciones oficiales asociadas a un boletin legislativo desde Datos Abiertos Legislativos.",
+        status="active",
+        coverage="partial",
+        concepts=("Boletin", "Votacion", "Camara"),
+        relationships=("LEGISLATIVE_BILL_HAS_VOTE",),
+        connects_with=(),
+        entities=("Proyecto legislativo",),
+    ),
 }
 
 

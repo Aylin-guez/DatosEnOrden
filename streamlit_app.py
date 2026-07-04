@@ -19,6 +19,10 @@ from datosenorden.maintenance.dataset_registry import DatasetDetails
 from datosenorden.maintenance.dataset_registry import DatasetSummary
 from datosenorden.maintenance.dataset_registry import get_dataset_details
 from datosenorden.maintenance.dataset_registry import list_datasets
+from datosenorden.maintenance.ecosystem_registry import EcosystemRegistry
+from datosenorden.maintenance.ecosystem_registry import build_ecosystem_registry
+from datosenorden.maintenance.ecosystem_registry import coverage_groups
+from datosenorden.maintenance.ecosystem_registry import sources_by_status
 from datosenorden.maintenance.cross_dataset_explorer import CrossDatasetOrganizationSummary
 from datosenorden.maintenance.cross_dataset_explorer import get_cross_dataset_organization_summary
 from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
@@ -48,6 +52,7 @@ from datosenorden.maintenance.timeline_explorer import EntityTimeline
 from datosenorden.maintenance.timeline_explorer import build_entity_timeline
 
 PAGE_HOME = "Inicio"
+PAGE_ECOSYSTEM = "Ecosistema"
 PAGE_DATASETS = "Conjuntos de datos"
 PAGE_SEARCH = "Buscar"
 PAGE_INVESTIGATION = "Investigación"
@@ -57,6 +62,7 @@ PAGE_EXPLANATION = "Explicación"
 
 PAGE_ORDER = (
     PAGE_HOME,
+    PAGE_ECOSYSTEM,
     PAGE_DATASETS,
     PAGE_SEARCH,
     PAGE_INVESTIGATION,
@@ -942,6 +948,8 @@ def render_app(st) -> None:  # noqa: ANN001
     with load_streamlit_data("SessionLocal", SessionLocal) as session:
         if page == PAGE_HOME:
             render_home_page(st, session)
+        elif page == PAGE_ECOSYSTEM:
+            render_ecosystem_page(st, session)
         elif page == PAGE_DATASETS:
             render_dataset_explorer_page(st, session)
         elif page == PAGE_SEARCH:
@@ -1015,6 +1023,165 @@ def render_home_page(st, session) -> None:  # noqa: ANN001
 
     st.subheader("Hoja de ruta")
     _render_roadmap(st)
+
+
+def render_ecosystem_page(st, session) -> None:  # noqa: ANN001
+    registry = load_streamlit_data("build_ecosystem_registry", lambda: build_ecosystem_registry(session))
+
+    st.title("Ecosistema")
+    st.markdown(
+        """
+<section class="hero">
+  <div class="hero__eyebrow">Data Ecosystem Explorer</div>
+  <div class="hero__subtitle">Vista principal para entender fuentes, conceptos, cobertura y conexiones antes de iniciar una investigacion.</div>
+</section>
+""",
+        unsafe_allow_html=True,
+    )
+
+    active = sources_by_status(registry, "active")
+    prototype = sources_by_status(registry, "prototype")
+    planned = sources_by_status(registry, "planned")
+    coverage = coverage_groups(registry)
+    render_metric_cards(
+        st,
+        [
+            ("Fuentes activas", len(active), "Implementadas"),
+            ("Fuentes prototipo", len(prototype), "En desarrollo"),
+            ("Fuentes planificadas", len(planned), "Futuras"),
+            ("Conceptos cubiertos", len(coverage["covered"]), "Con fuente activa"),
+            ("Conceptos parciales", len(coverage["partial"]), "Prototipo"),
+            ("Conceptos futuros", len(coverage["future"]), "Planificados"),
+        ],
+    )
+
+    st.subheader("Data Source Catalog")
+    _render_source_status_group(st, "Fuentes activas", active)
+    _render_source_status_group(st, "Fuentes prototipo", prototype)
+    _render_source_status_group(st, "Fuentes planificadas", planned)
+
+    st.subheader("Source Detail View")
+    selected = st.selectbox(
+        "Elige una fuente",
+        registry.sources,
+        key="ecosystem_source_select",
+        format_func=lambda source: f"{source.name} ({source.status})",
+    )
+    if selected is not None:
+        _render_source_detail(st, selected)
+
+    st.subheader("Concept Graph")
+    _render_concept_graph(st, registry)
+
+    st.subheader("Coverage Dashboard")
+    _render_coverage_dashboard(st, registry)
+
+    st.subheader("Project Roadmap")
+    _render_ecosystem_roadmap(st, registry)
+
+    st.subheader("Dataset Metadata Registry")
+    _render_metadata_registry(st, registry)
+
+
+def _render_source_status_group(st, title: str, sources) -> None:  # noqa: ANN001
+    if not sources:
+        st.info(f"{title}: sin fuentes registradas.")
+        return
+    cards = []
+    for source in sources:
+        cards.append(
+            f"""
+<article class="ecosystem-card ecosystem-card--{escape(source.status)}">
+  <div class="ecosystem-card__top">
+    <strong>{escape(source.name)}</strong>
+    <span>{escape(source.status)}</span>
+  </div>
+  <p>{escape(source.description)}</p>
+  <div class="ecosystem-card__meta">Categoria: {escape(source.category)} &middot; Cobertura: {escape(source.coverage)}</div>
+</article>
+"""
+        )
+    st.markdown(
+        f'<div class="ecosystem-group-title">{escape(title)}</div><div class="ecosystem-grid">{"".join(cards)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_source_detail(st, source) -> None:  # noqa: ANN001
+    rows = [
+        ("Que aporta", ", ".join(source.concepts)),
+        ("Entidades que genera", ", ".join(source.entities)),
+        ("Relaciones que genera", ", ".join(source.relationships)),
+        ("Puede conectarse con", ", ".join(source.connects_with)),
+    ]
+    html_rows = "".join(
+        f"<tr><th>{escape(label)}</th><td>{escape(value or 'Sin dato')}</td></tr>" for label, value in rows
+    )
+    st.markdown(
+        f"""
+<section class="detail-card">
+  <div class="detail-card__title">{escape(source.name)}</div>
+  <p>{escape(source.description)}</p>
+  <table class="ecosystem-table"><tbody>{html_rows}</tbody></table>
+</section>
+""",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_concept_graph(st, registry: EcosystemRegistry) -> None:  # noqa: ANN001
+    nodes = []
+    for concept in registry.concepts:
+        datasets = "".join(f"<span>{escape(dataset)}</span>" for dataset in concept.datasets)
+        nodes.append(
+            f"""
+<article class="concept-node concept-node--{escape(concept.coverage)}">
+  <strong>{escape(concept.name)}</strong>
+  <div>{datasets}</div>
+</article>
+"""
+        )
+    st.markdown(f'<div class="concept-graph">{"".join(nodes)}</div>', unsafe_allow_html=True)
+
+
+def _render_coverage_dashboard(st, registry: EcosystemRegistry) -> None:  # noqa: ANN001
+    groups = coverage_groups(registry)
+    labels = {
+        "covered": "Entidades cubiertas",
+        "partial": "Entidades parcialmente cubiertas",
+        "future": "Entidades futuras",
+    }
+    cards = []
+    for key in ("covered", "partial", "future"):
+        items = "".join(f"<li>{escape(item.name)}: {escape(', '.join(item.datasets))}</li>" for item in groups[key])
+        cards.append(f"<article class='coverage-card'><strong>{escape(labels[key])}</strong><ul>{items}</ul></article>")
+    st.markdown(f'<div class="coverage-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
+
+
+def _render_ecosystem_roadmap(st, registry: EcosystemRegistry) -> None:  # noqa: ANN001
+    cards = []
+    for group in registry.roadmap:
+        items = "".join(f"<li>{escape(source)}</li>" for source in group.sources)
+        cards.append(
+            f"<article class='roadmap-card'><strong>{escape(group.title)}</strong><ul>{items or '<li>Sin fuentes</li>'}</ul></article>"
+        )
+    st.markdown(f'<div class="roadmap-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
+
+
+def _render_metadata_registry(st, registry: EcosystemRegistry) -> None:  # noqa: ANN001
+    st.table(
+        [
+            {
+                "dataset": source.name,
+                "estado": source.status,
+                "cobertura": source.coverage,
+                "conceptos": ", ".join(source.concepts),
+                "relaciones": ", ".join(source.relationships),
+            }
+            for source in registry.sources
+        ]
+    )
+
 
 def render_dataset_explorer_page(st, session) -> None:  # noqa: ANN001
     rows = load_streamlit_data("list_datasets", lambda: list_datasets(session))
@@ -1734,13 +1901,14 @@ div[data-testid="stMetric"] * {
   color: var(--ink);
 }
 
-.dataset-grid, .entity-grid, .question-chip-grid, .roadmap-grid, .cross-dataset-grid, .timeline-card-grid {
+.dataset-grid, .entity-grid, .question-chip-grid, .roadmap-grid, .cross-dataset-grid, .timeline-card-grid,
+.ecosystem-grid, .concept-graph, .coverage-grid {
   display: grid;
   gap: 12px;
   margin: 0.25rem 0 0.9rem;
 }
 
-.dataset-grid, .cross-dataset-grid {
+.dataset-grid, .cross-dataset-grid, .ecosystem-grid, .concept-graph, .coverage-grid {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
@@ -1833,6 +2001,9 @@ div[data-testid="stMetric"] * {
 .entity-card,
 .cross-dataset-card,
 .timeline-card,
+.ecosystem-card,
+.concept-node,
+.coverage-card,
 .detail-card,
 .summary-block,
 .roadmap-card,
@@ -1847,9 +2018,87 @@ div[data-testid="stMetric"] * {
 .entity-card,
 .cross-dataset-card,
 .timeline-card,
+.ecosystem-card,
+.concept-node,
+.coverage-card,
 .detail-card,
 .summary-block {
   padding: 12px 14px;
+}
+
+.ecosystem-group-title {
+  color: var(--accent-2);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin: 0.75rem 0 0.25rem;
+  text-transform: uppercase;
+}
+
+.ecosystem-card,
+.concept-node,
+.coverage-card {
+  display: grid;
+  gap: 8px;
+}
+
+.ecosystem-card__top {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.ecosystem-card__top span,
+.concept-node span {
+  background: rgba(123, 224, 208, 0.10);
+  border: 1px solid rgba(123, 224, 208, 0.18);
+  border-radius: 999px;
+  color: var(--accent-2);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin: 2px 4px 2px 0;
+  padding: 3px 8px;
+}
+
+.ecosystem-card__meta {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.ecosystem-card--active,
+.concept-node--covered {
+  border-color: rgba(123, 224, 208, 0.34);
+}
+
+.ecosystem-card--planned,
+.concept-node--future {
+  border-style: dashed;
+}
+
+.ecosystem-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.ecosystem-table th,
+.ecosystem-table td {
+  border-top: 1px solid var(--line);
+  padding: 8px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ecosystem-table th {
+  color: var(--accent-2);
+  width: 220px;
+}
+
+.coverage-card ul,
+.roadmap-card ul {
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
 }
 
 .dataset-card {

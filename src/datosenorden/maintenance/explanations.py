@@ -64,6 +64,7 @@ EVENT_EXPLANATIONS = {
     "PERSON_OWNS_COMPANY": "Se registro una relacion de participacion o propiedad sobre una empresa.",
     "COMPANY_REGISTERED_ON": "Se registro una inscripcion o alta de una empresa.",
     "COMPANY_MODIFIED_ON": "Se registro una modificacion o actualizacion de una empresa.",
+    "LEGISLATIVE_BILL_HAS_VOTE": "Se registro una votacion asociada al boletin.",
 }
 
 

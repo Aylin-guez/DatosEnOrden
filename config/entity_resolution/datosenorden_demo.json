@@ -35,6 +35,34 @@
       }
     },
     {
+      "id": "cl-congreso-boletin-8575-05",
+      "canonical_name": "Boletin 8575-05",
+      "aliases": [
+        "8575-05",
+        "boletin 8575",
+        "boletín 8575",
+        "cl-congreso-boletin-8575-05"
+      ],
+      "identifiers": [
+        {
+          "type": "external_id",
+          "value": "cl-congreso-boletin-8575-05"
+        },
+        {
+          "type": "bulletin",
+          "value": "8575-05"
+        }
+      ],
+      "tags": [
+        "legislative",
+        "official_loaded"
+      ],
+      "metadata": {
+        "source": "congreso_opendata",
+        "visibility": "public_internal"
+      }
+    },
+    {
       "id": "client-example-project-alpha",
       "canonical_name": "Proyecto Interno Alpha",
       "aliases": [

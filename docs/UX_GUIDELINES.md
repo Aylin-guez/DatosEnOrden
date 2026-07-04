@@ -6,6 +6,8 @@ DatosEnOrden should read first as a civic explanation tool, not as a database br
 
 ## Citizen-first principles
 
+- Before implementing any visual change, ask whether it helps a citizen understand the information better. If an element only makes the interface prettier but not clearer, prioritize clarity over decoration.
+- DatosEnOrden must transmit confidence, order, and documentary rigor before spectacle.
 - Start with meaning: explain what appears in the records before showing tables, IDs, predicates, or URLs.
 - Keep entity pages centered on one question: what public information is available for this entity?
 - Use compact metrics for orientation: datasets involved, evidence count, connected entities, and relationship count.

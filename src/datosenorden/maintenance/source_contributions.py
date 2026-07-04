@@ -77,6 +77,7 @@ def build_source_contributions(entity_id: str) -> dict[str, object]:
                 "evidence_types": _plugin_field(row.dataset, "evidence_types"),
                 "evidence_types_text": " | ".join(_plugin_field(row.dataset, "evidence_types")),
                 "timeline_contribution": _plugin_field(row.dataset, "timeline_contribution_text"),
+                "commands_text": " | ".join(_plugin_field(row.dataset, "commands")),
             }
             for row in source_rows
         ],
@@ -138,4 +139,6 @@ def _plugin_field(dataset_name: str, field: str):
         return list(plugin.evidence_types)
     if field == "timeline_contribution_text":
         return plugin.timeline_contribution
+    if field == "commands":
+        return [command.command for command in plugin.commands]
     return ""

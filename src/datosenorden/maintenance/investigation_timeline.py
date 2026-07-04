@@ -2,19 +2,23 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from sqlalchemy import select
+
 from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.dataset_metadata import dataset_category
 from datosenorden.maintenance.dataset_metadata import dataset_metadata_for_name
 from datosenorden.maintenance.explanations import event_explanation
 from datosenorden.maintenance.timeline_explorer import build_entity_timeline
+from datosenorden.models import SourceRecord
 
 
-TIMELINE_CATEGORIES = ("Budget", "Procurement", "Lobby", "Transparency", "Authorities", "Audits", "Company Registry")
+TIMELINE_CATEGORIES = ("Budget", "Procurement", "Lobby", "Transparency", "Authorities", "Audits", "Company Registry", "Legislative")
 
 
 def build_investigation_timeline(entity_id: str) -> dict[str, object]:
     with SessionLocal() as session:
         timeline = build_entity_timeline(session, entity_id)
+        source_urls = _source_record_urls(session, tuple(event.source_record_id for event in timeline.events)) if timeline is not None else {}
 
     if timeline is None:
         return _empty_timeline()
@@ -33,6 +37,7 @@ def build_investigation_timeline(entity_id: str) -> dict[str, object]:
                 "origin": "derived_from_expediente",
                 "source_id": str(event.source_record_id),
                 "source_record_id": str(event.source_record_id),
+                "official_url": source_urls.get(str(event.source_record_id), ""),
                 "evidence_id": "",
                 "claim_id": str(event.claim_id),
                 "predicate": event.predicate,
@@ -74,6 +79,8 @@ def _event_category(dataset_name: str, predicate: str) -> str:
     dataset = dataset_metadata_for_name(dataset_name)
     category = dataset.category if dataset is not None else dataset_category(dataset_name)
     predicate_upper = predicate.upper()
+    if category == "legislative" or "LEGISLATIVE_BILL" in predicate_upper:
+        return "Legislative"
     if category == "budget" or "BUDGET" in predicate_upper:
         return "Budget"
     if category == "procurement" or any(marker in predicate_upper for marker in ("PURCHASE_ORDER", "CONTRACT", "TENDER")):
@@ -89,6 +96,25 @@ def _event_category(dataset_name: str, predicate: str) -> str:
     if category == "company_registry" or any(marker in predicate_upper for marker in ("COMPANY_REGISTERED_ON", "COMPANY_MODIFIED_ON", "PERSON_REPRESENTS_COMPANY", "PERSON_OWNS_COMPANY")):
         return "Company Registry"
     return "Budget"
+
+
+def _source_record_urls(session, source_record_ids: tuple[str, ...]) -> dict[str, str]:  # noqa: ANN001
+    if not source_record_ids:
+        return {}
+    rows = session.scalars(select(SourceRecord).where(SourceRecord.id.in_(source_record_ids))).all()
+    urls: dict[str, str] = {}
+    for row in rows:
+        payload = row.raw_payload or {}
+        if row.record_type == "legislature:vote":
+            vote_id = str(payload.get("source_id", "") or row.external_id).removeprefix("camara-votacion-")
+            if vote_id:
+                urls[str(row.id)] = f"https://opendata.camara.cl/services/getVotacion_Detalle?prmVotacionID={vote_id}"
+                continue
+        if row.record_type == "legislature:bill" and isinstance(payload, dict):
+            request = payload.get("request", {})
+            if isinstance(request, dict) and request.get("url"):
+                urls[str(row.id)] = str(request["url"])
+    return urls
 
 
 def _empty_timeline() -> dict[str, object]:

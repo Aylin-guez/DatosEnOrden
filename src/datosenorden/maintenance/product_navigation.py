@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session, joinedload
 from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.safe_access import _field
-from datosenorden.models import Claim, Entity, Evidence, RelationshipPublic
+from datosenorden.models import Claim, Entity, Evidence, RelationshipPublic, SourceRecord
 
 
-MAIN_ENTITY_TYPES = {"PUBLIC_ORGANIZATION", "PERSON", "COMPANY", "SUPPLIER", "AUTHORITY"}
+MAIN_ENTITY_TYPES = {"PUBLIC_ORGANIZATION", "PERSON", "COMPANY", "SUPPLIER", "AUTHORITY", "PUBLIC_PROJECT"}
 RECORD_ENTITY_TYPES = {
     "BUDGET",
     "CONTRACT",
@@ -116,9 +116,14 @@ def _category_entities(session: Session, category: str, *, limit: int) -> list[E
     if category in {"authorities", "public_offices", "which_authorities_appear"}:
         return _entities_by_types(session, ("PERSON", "ROLE"), limit=limit, preferred_names=("SOFIA", "ANA", "JUAN", "LAURA", "MARIA", "PEDRO"))
     if category in {"budgets"}:
-        return _entities_by_types(session, ("BUDGET",), limit=limit, name_hint="DIPRES")
+        return _entities_by_types(session, ("BUDGET",), limit=limit, name_hint="DIPRES", preferred_names=("HOSPITAL DE ARAUCO",))
     if category in {"procurement"}:
-        return _entities_by_types(session, ("CONTRACT", "PURCHASE_ORDER"), limit=limit)
+        return _entities_by_types(
+            session,
+            ("CONTRACT", "PURCHASE_ORDER"),
+            limit=limit,
+            preferred_names=("insumos clinicos", "apoyo operativo", "mantenimiento preventivo"),
+        )
     if category in {"meetings", "which_meetings_were_recorded"}:
         return _entities_by_types(session, ("LOBBY_MEETING",), limit=limit)
     if category in {"which_official_publications_exist", "publications"}:
@@ -162,6 +167,14 @@ def _resolve_entity(session: Session, value: str) -> _ResolvedEntity | None:
     if insensitive:
         return _ResolvedEntity(_best_entity(session, insensitive), "case_insensitive_name", _ambiguity_warning(insensitive))
 
+    external = session.scalars(select(Entity).where(Entity.external_id == value)).all()
+    if external:
+        return _ResolvedEntity(_best_entity(session, external), "external_id", _ambiguity_warning(external))
+
+    external_insensitive = session.scalars(select(Entity).where(func.lower(Entity.external_id) == lowered)).all()
+    if external_insensitive:
+        return _ResolvedEntity(_best_entity(session, external_insensitive), "external_id", _ambiguity_warning(external_insensitive))
+
     normalized = _normalize_lookup(value)
     if not normalized:
         return None
@@ -196,6 +209,17 @@ def _canonical_neighbor(session: Session, entity: Entity) -> tuple[Entity | None
 
     if not neighbors:
         return None, ""
+    name_matched = _canonical_by_record_name(session, entity)
+    if name_matched is not None:
+        relation = next(
+            (
+                relation
+                for neighbor, relation in neighbors
+                if neighbor.id == name_matched.id
+            ),
+            "name_context",
+        )
+        return name_matched, relation
     best = _best_entity(session, [neighbor for neighbor, _relation in neighbors])
     same_named = session.scalars(
         select(Entity).where(Entity.entity_type == best.entity_type, func.lower(Entity.name) == best.name.lower())
@@ -204,6 +228,30 @@ def _canonical_neighbor(session: Session, entity: Entity) -> tuple[Entity | None
         best = _best_entity(session, same_named)
     relation = next((relation for neighbor, relation in neighbors if neighbor.id == best.id), "related")
     return best, relation
+
+
+def _canonical_by_record_name(session: Session, entity: Entity) -> Entity | None:
+    normalized_record_name = _normalize_lookup(entity.name)
+    if not normalized_record_name:
+        return None
+    candidates = session.scalars(select(Entity).where(Entity.entity_type.in_(tuple(MAIN_ENTITY_TYPES)))).all()
+    matches = [
+        candidate
+        for candidate in candidates
+        if _normalize_lookup(candidate.name) and _normalize_lookup(candidate.name) in normalized_record_name
+    ]
+    if not matches:
+        return None
+    return sorted(
+        matches,
+        key=lambda candidate: (
+            -len(_normalize_lookup(candidate.name)),
+            CANONICAL_PRIORITY.get(candidate.entity_type, 9),
+            -_activity_score(session, candidate),
+            candidate.name.lower(),
+            str(candidate.id),
+        ),
+    )[0]
 
 
 def _best_entity(session: Session, entities: list[Entity]) -> Entity:
@@ -242,7 +290,16 @@ def _activity_score(session: Session, entity: Entity) -> int:
         )
         or 0
     )
-    return claims + relationships + evidence
+    datasets = int(
+        session.scalar(
+            select(func.count(func.distinct(SourceRecord.dataset_id)))
+            .select_from(Claim)
+            .join(SourceRecord, Claim.source_record_id == SourceRecord.id)
+            .where(or_(Claim.subject_entity_id == entity.id, Claim.object_entity_id == entity.id))
+        )
+        or 0
+    )
+    return (datasets * 1000) + (evidence * 10) + claims + relationships
 
 
 def _entities_by_types(
@@ -314,6 +371,7 @@ def _record_label(entity_type: str) -> str:
         "PUBLIC_OBSERVATION": "Registro especifico",
         "ADMINISTRATIVE_PROCEDURE": "Registro especifico",
         "ADMINISTRATIVE_RESOLUTION": "Registro especifico",
+        "PUBLIC_PROJECT": "Proyecto legislativo / Boletin",
     }
     return labels.get(entity_type, entity_type.replace("_", " ").title())
 
