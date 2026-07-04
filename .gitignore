@@ -47,6 +47,7 @@ data/official_documents/archived/**
 studio_private/
 client_configs/
 client_data/
+.bun-cache/
 data/watch_runs/*
 !data/watch_runs/.gitkeep
 data/topic_updates/*
