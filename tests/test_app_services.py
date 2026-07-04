@@ -719,3 +719,21 @@ def test_demo_status_reports_database_failure_without_crashing(monkeypatch) -> N
     assert status["database_connected"] is False
     assert status["missing"][0]["label"] == "PostgreSQL connection."
     assert "database unavailable" in status["error"]
+
+
+def test_source_population_enriches_lobby_surfaces(monkeypatch) -> None:
+    _patch_session(monkeypatch)
+    monkeypatch.setattr(
+        "datosenorden.maintenance.ecosystem_registry.list_datasets",
+        lambda session: (),
+    )
+
+    ecosystem = app_services.get_data_ecosystem()
+    lobby = next(source for source in ecosystem["sources"] if source["slug"] == "lobby")
+    search = app_services.search_workspace("MARLENE FLORES")
+    topics = app_services.get_current_topics(limit=4)
+
+    assert lobby["population_records"] == 1
+    assert lobby["population_status_label"] == "muestra local controlada"
+    assert any(match["source_label"] == "InfoLobby" for match in search["matches"])
+    assert any(topic["id"] == "pulse-infolobby-minimal-v1" for topic in topics)

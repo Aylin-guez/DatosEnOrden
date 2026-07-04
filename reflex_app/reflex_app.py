@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
+from pathlib import Path
 from dataclasses import fields, is_dataclass
 from datetime import date, datetime
 from types import MappingProxyType
@@ -88,6 +90,10 @@ SOURCE_COVERAGE_TEMPLATE = [
     {"source": "Municipalidades", "status": "prototipo con datos", "contribution": "Contexto municipal y proyectos locales de muestra."},
     {"source": "Sanciones y Procedimientos", "status": "prototipo sin datos", "contribution": "Procedimientos y resoluciones administrativas de prueba cuando exista carga local."},
 ]
+PUBLISHED_DOCUMENT_VIEW_PATH = Path("data") / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion" / "document_view.json"
+PUBLISHED_DOCUMENT_READING_PATH = Path("data") / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion" / "reading.json"
+PROCESSING_DOCUMENT_FRAGMENTS_PATH = Path("data") / "official_documents" / "processing" / "senado-docto-9000-mensaje_mocion" / "fragments.json"
+
 INVESTIGATION_TOPICS = [
     {"label": "Organismos publicos", "example": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"},
     {"label": "Empresas proveedoras", "example": "Consultora Publica SpA"},
@@ -331,6 +337,101 @@ def _json_dict(value: object) -> dict:
 def _json_list(value: object) -> list:
     safe = to_json_safe(value)
     return safe if isinstance(safe, list) else []
+
+
+
+def _processed_fragment_order(row: dict, fallback: int) -> int:
+    raw_order = _field(row, "order", fallback)
+    try:
+        return int(raw_order or fallback)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _document_blocks(text: str) -> list[str]:
+    normalized = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    blocks = [block.strip() for block in normalized.split("\n\n")]
+    return [block for block in blocks if block]
+
+
+def _looks_like_document_heading(text: str) -> bool:
+    clean = str(text or "").strip()
+    if not clean or len(clean) > 140:
+        return False
+    return clean.isupper() or clean.startswith(("MENSAJE", "PROYECTO DE LEY", "ANTECEDENTES", "I.", "II.", "III."))
+
+
+def _load_document_view_blocks(path: Path) -> list[dict]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return []
+    blocks = []
+    for index, row in enumerate(_json_list(_field(payload, "blocks", [])), start=1):
+        text = _clean(_field(row, "text"), "")
+        if not text:
+            continue
+        fragment_id = _clean(_field(row, "source_fragment_id", _field(row, "fragment_id", f"document-view-{index}")), f"document-view-{index}")
+        blocks.append(
+            {
+                "id": _clean(_field(row, "id"), f"{fragment_id}-p{index}"),
+                "fragment_id": fragment_id,
+                "marker": _clean(_field(row, "marker"), ""),
+                "text": text,
+                "is_heading": bool(_field(row, "is_heading", False)),
+            }
+        )
+    return blocks
+
+def _load_document_fragments_from_file(path: Path) -> list[dict]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return []
+    return _json_list(_field(payload, "fragments", []))
+
+
+def _load_document_fragments_with_source(fallback_fragments: list[dict]) -> tuple[list[dict], str, bool]:
+    view_blocks = _load_document_view_blocks(PUBLISHED_DOCUMENT_VIEW_PATH)
+    if view_blocks:
+        return view_blocks, str(PUBLISHED_DOCUMENT_VIEW_PATH), False
+    for path, is_fallback in (
+        (PUBLISHED_DOCUMENT_READING_PATH, False),
+        (PROCESSING_DOCUMENT_FRAGMENTS_PATH, True),
+    ):
+        fragments = _load_document_fragments_from_file(path)
+        if fragments:
+            return fragments, str(path), is_fallback
+    if fallback_fragments:
+        return fallback_fragments, "knowledge_demo_payload", True
+    return [], "", False
+
+
+def _document_paragraphs_from_fragments(fragments: list[dict]) -> list[dict]:
+    sorted_fragments = sorted(
+        _json_list(fragments),
+        key=lambda row: _processed_fragment_order(row, 9999),
+    )
+    paragraphs: list[dict] = []
+    for fragment_index, fragment in enumerate(sorted_fragments, start=1):
+        fragment_id = _clean(_field(fragment, "fragment_id", _field(fragment, "id", f"fragment-{fragment_index}")), f"fragment-{fragment_index}")
+        text = _clean(_field(fragment, "text"), "")
+        for paragraph_index, paragraph in enumerate(_document_blocks(text), start=1):
+            paragraphs.append(
+                {
+                    "id": f"{fragment_id}-p{paragraph_index}",
+                    "fragment_id": fragment_id,
+                    "marker": f"Fragmento {fragment_index:02d}" if paragraph_index == 1 else "",
+                    "text": paragraph,
+                    "is_heading": _looks_like_document_heading(paragraph),
+                }
+            )
+    return paragraphs
+
+
+def _load_document_paragraphs(fallback_fragments: list[dict]) -> list[dict]:
+    fragments, _, _ = _load_document_fragments_with_source(fallback_fragments)
+    return _document_paragraphs_from_fragments(fragments)
 
 
 def _topic_read_time(fragments: list[dict]) -> str:
@@ -1079,10 +1180,9 @@ class AppState(rx.State):
     selected_entity_id: str = ""
     selected_entity_name: str = ""
     error_message: str = ""
-    theme_dark: bool = True
     header_search_open: bool = False
     header_search_query: str = ""
-    sidebar_collapsed: bool = False
+    sidebar_collapsed: bool = True
     advanced_nav_open: bool = False
     topic_view_mode: str = "lectura"
 
@@ -1231,6 +1331,9 @@ class AppState(rx.State):
     knowledge_evidence: list[dict] = []
     knowledge_pages: list[dict] = []
     knowledge_fragments: list[dict] = []
+    knowledge_document_paragraphs: list[dict] = []
+    knowledge_document_source_path: str = ""
+    knowledge_document_source_is_fallback: bool = False
     knowledge_citations: list[dict] = []
     knowledge_connections: list[dict] = []
     knowledge_notice: str = ""
@@ -1283,11 +1386,10 @@ class AppState(rx.State):
     investigation_loaded: bool = False
     investigation_loading: bool = False
 
-    def toggle_theme(self) -> None:
-        self.theme_dark = not self.theme_dark
-
     def toggle_header_search(self) -> None:
         self.header_search_open = not self.header_search_open
+        if not self.header_search_open:
+            self.header_search_query = ""
 
     def toggle_sidebar(self) -> None:
         self.sidebar_collapsed = not self.sidebar_collapsed
@@ -1303,6 +1405,10 @@ class AppState(rx.State):
 
     def submit_header_search(self):
         query = str(self.header_search_query or self.query or "").strip()
+        if not query:
+            self.header_search_open = False
+            self.header_search_query = ""
+            return None
         self.query = query
         return rx.redirect(_search_href(query))
 
@@ -1431,6 +1537,14 @@ class AppState(rx.State):
                     "relationships_text": " | ".join(str(item) for item in row.get("relationships", [])),
                     "connects_with_text": " | ".join(str(item) for item in row.get("connects_with", [])),
                     "entities_text": " | ".join(str(item) for item in row.get("entities", [])),
+                    "population_records": int(row.get("population_records", 0) or 0),
+                    "population_summary": str(row.get("population_summary", "")),
+                    "population_status_label": str(row.get("population_status_label", "")),
+                    "population_label": (
+                        f"poblacion minima: {row.get('population_status_label', '')} ({int(row.get('population_records', 0) or 0)} registro). {row.get('population_summary', '')}"
+                        if int(row.get("population_records", 0) or 0)
+                        else ""
+                    ),
                 }
                 for row in ecosystem.get("sources", [])
             ]
@@ -1661,6 +1775,10 @@ class AppState(rx.State):
             self.knowledge_claims = _json_list(demo.get("claims", []))
             self.knowledge_evidence = _json_list(demo.get("references", demo.get("evidence", [])))
             self.knowledge_fragments = _json_list(demo.get("fragments", []))
+            document_fragments, document_source_path, document_source_is_fallback = _load_document_fragments_with_source(self.knowledge_fragments)
+            self.knowledge_document_paragraphs = _document_paragraphs_from_fragments(document_fragments)
+            self.knowledge_document_source_path = document_source_path
+            self.knowledge_document_source_is_fallback = document_source_is_fallback
             self.knowledge_fragment_contexts = _json_list(demo.get("fragment_contexts", []))
             selected_context = _json_dict(demo.get("selected_context", {}))
             requested_fragment_id = _router_query_value(self.router, "fragment_id")
@@ -1708,6 +1826,9 @@ class AppState(rx.State):
             self.knowledge_evidence = []
             self.knowledge_pages = []
             self.knowledge_fragments = []
+            self.knowledge_document_paragraphs = []
+            self.knowledge_document_source_path = ""
+            self.knowledge_document_source_is_fallback = False
             self.knowledge_citations = []
             self.knowledge_connections = []
             self.knowledge_notice = ""
@@ -2189,52 +2310,27 @@ def sidebar_group_label(label: str) -> rx.Component:
 
 def app_sidebar(active_page: str) -> rx.Component:
     return rx.box(
-        rx.box(
+        rx.vstack(
             rx.button(
                 hamburger_icon(),
                 on_click=AppState.toggle_sidebar,
                 class_name="sidebar-menu-button",
             ),
-            rx.button(
-                rx.cond(AppState.sidebar_collapsed, ">", "<"),
-                on_click=AppState.toggle_sidebar,
-                class_name="sidebar-collapse-button",
-            ),
-            class_name="sidebar-header",
-        ),
-        rx.vstack(
-            sidebar_group_label("Principal"),
             sidebar_nav_link("Pulso", "/", active_page == PAGE_HOME),
             sidebar_nav_link("Lectura", "/topic", active_page == PAGE_TOPIC),
             sidebar_nav_link("Buscar", "/search", active_page == PAGE_SEARCH),
             sidebar_nav_link("Fuentes", "/ecosystem", active_page == PAGE_ECOSYSTEM),
             sidebar_nav_link("Proyecto", "/project", active_page == PAGE_PROJECT),
-            rx.box(class_name="sidebar-divider"),
-            rx.button(
-                rx.text("Avanzadas", class_name="sidebar-label"),
-                rx.text(rx.cond(AppState.advanced_nav_open, "-", "+"), class_name="sidebar-advanced-symbol"),
-                on_click=AppState.toggle_advanced_nav,
-                class_name="sidebar-advanced-toggle",
-            ),
-            rx.cond(
-                AppState.advanced_nav_open,
-                rx.vstack(
-                    sidebar_nav_link("Expediente", "/investigation", active_page == PAGE_INVESTIGATION),
-                    sidebar_nav_link("Informes", "/reports", active_page == PAGE_REPORTS),
-                    sidebar_nav_link("Mas lecturas", "/library", active_page == PAGE_LIBRARY),
-                    sidebar_nav_link("Cronologia", "/tracking", active_page == PAGE_TRACKING),
-                    spacing="1",
-                    align="stretch",
-                    class_name="sidebar-secondary-nav",
-                ),
-            ),
+            rx.box(class_name="sidebar-spacer"),
+            sidebar_nav_link("Expediente", "/investigation", active_page == PAGE_INVESTIGATION),
+            sidebar_nav_link("Informes", "/reports", active_page == PAGE_REPORTS),
+            sidebar_nav_link("Cronologia", "/tracking", active_page == PAGE_TRACKING),
             spacing="1",
             align="stretch",
             class_name="sidebar-nav",
         ),
         class_name=rx.cond(AppState.sidebar_collapsed, "app-sidebar app-sidebar-collapsed", "app-sidebar"),
     )
-
 
 def scroll_top_control() -> rx.Component:
     return rx.box(
@@ -2264,15 +2360,7 @@ def scroll_top_control() -> rx.Component:
 
 
 def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
-    nav_items = rx.hstack(
-        rx.link("Pulso", href="/", class_name=_nav_class(active_page == PAGE_HOME)),
-        rx.link("Lectura", href="/topic", class_name=_nav_class(active_page == PAGE_TOPIC)),
-        spacing="2",
-        align="center",
-        class_name="nav-links sidebar-ready-nav top-minimal-nav",
-    )
-    header_search = rx.hstack(
-        rx.button("Buscar", on_click=AppState.toggle_header_search, class_name="header-search-toggle"),
+    header_search = rx.box(
         rx.cond(
             AppState.header_search_open,
             rx.hstack(
@@ -2285,40 +2373,24 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
                 rx.button("Ir", on_click=AppState.submit_header_search, class_name="header-search-submit"),
                 spacing="2",
                 align="center",
-                class_name="header-search-popover",
+                class_name="header-search-popover header-search-popover-open",
             ),
+            rx.button("Buscar", on_click=AppState.toggle_header_search, class_name="header-search-toggle"),
         ),
-        spacing="2",
-        align="center",
         class_name="header-search",
     )
     shell_class = rx.cond(
-        AppState.theme_dark,
-        rx.cond(
-            AppState.sidebar_collapsed,
-            f"shell theme-dark sidebar-collapsed {_page_class(active_page)}",
-            f"shell theme-dark {_page_class(active_page)}",
-        ),
-        rx.cond(
-            AppState.sidebar_collapsed,
-            f"shell theme-light sidebar-collapsed {_page_class(active_page)}",
-            f"shell theme-light {_page_class(active_page)}",
-        ),
+        AppState.sidebar_collapsed,
+        f"shell theme-dark sidebar-collapsed {_page_class(active_page)}",
+        f"shell theme-dark {_page_class(active_page)}",
     )
     return rx.box(
         app_sidebar(active_page),
         rx.box(
             rx.box(
                 rx.hstack(
-                    rx.button("Menu", on_click=AppState.toggle_sidebar, class_name="sidebar-toggle"),
                     rx.link("DatosEnOrden", href="/", class_name="brand"),
-                    nav_items,
                     header_search,
-                    rx.button(
-                        rx.cond(AppState.theme_dark, "Claro", "Oscuro"),
-                        on_click=AppState.toggle_theme,
-                        class_name="theme-toggle",
-                    ),
                     justify="between",
                     align="center",
                     class_name="nav-inner",
@@ -2369,13 +2441,6 @@ def app_footer() -> rx.Component:
                 class_name="footer-copy",
             ),
             rx.hstack(
-                rx.link("DatosEnOrden", href="/", class_name="footer-link"),
-                rx.link("Proyecto", href="/project", class_name="footer-link"),
-                rx.link("Informes", href="/reports", class_name="footer-link"),
-                rx.link("Mas lecturas", href="/library", class_name="footer-link"),
-                rx.link("Cronologia", href="/tracking", class_name="footer-link"),
-                rx.link("Fuentes oficiales", href="/ecosystem", class_name="footer-link"),
-                rx.link("Estado del proyecto", href="/project", class_name="footer-link"),
                 rx.link("Contacto", href="mailto:datosenorden@gmail.com", class_name="footer-link"),
                 spacing="3",
                 wrap="wrap",
@@ -2434,6 +2499,10 @@ def ecosystem_source_card(row: dict) -> rx.Component:
         ),
         rx.text(f"qué aporta: {row['concepts_text']}", class_name="source-fact"),
         rx.text(f"con qué se cruza: {row.get('connects_with_text', '')}", class_name="source-fact"),
+        rx.cond(
+            row["population_label"] != "",
+            rx.text(row["population_label"], class_name="source-fact source-population-note"),
+        ),
         rx.accordion.root(
             rx.accordion.item(
                 header="Detalles técnicos de metadata",
@@ -3130,6 +3199,24 @@ def topic_fragment_nav_item(row: dict) -> rx.Component:
     )
 
 
+def document_paragraph(row: dict) -> rx.Component:
+    return rx.box(
+        rx.cond(
+            row["marker"] != "",
+            rx.text(row["marker"], class_name="document-paragraph-marker"),
+        ),
+        rx.text(
+            row["text"],
+            class_name=rx.cond(row["is_heading"], "document-paragraph document-paragraph-heading", "document-paragraph"),
+        ),
+        id=row["id"],
+        class_name=rx.cond(
+            row["fragment_id"] == AppState.knowledge_selected_fragment_id,
+            "document-paragraph-block document-paragraph-block-active",
+            "document-paragraph-block",
+        ),
+    )
+
 def topic_source_panel() -> rx.Component:
     return rx.box(
         rx.hstack(
@@ -3140,14 +3227,21 @@ def topic_source_panel() -> rx.Component:
             class_name="topic-source-header",
         ),
         rx.text(AppState.topic_official_document["title"], class_name="card-title"),
-        rx.text("Documento completo reconstruido desde los fragmentos disponibles. Click en una evidencia resalta su ubicacion dentro de esta hoja.", class_name="topic-source-guidance"),
+        rx.text(
+            rx.cond(
+                AppState.knowledge_document_source_is_fallback,
+                "Documento reconstruido desde fallback local. Fuente: " + AppState.knowledge_document_source_path,
+                "Documento original publicado. Fuente: " + AppState.knowledge_document_source_path,
+            ),
+            class_name="topic-source-guidance",
+        ),
         rx.box(
             rx.box(
                 rx.text("Documento oficial", class_name="document-label"),
                 rx.text(AppState.topic_official_document["title"], class_name="document-sheet-title"),
                 class_name="document-sheet-cover",
             ),
-            rx.foreach(AppState.knowledge_fragments, document_fragment_card),
+            rx.foreach(AppState.knowledge_document_paragraphs, document_paragraph),
             class_name="document-page topic-document-page document-sheet",
         ),
         rx.link("Documento original", href=AppState.topic_original_url, class_name="document-inline-link topic-original-link"),
@@ -3830,7 +3924,7 @@ def official_document_viewer(document_id: str, page: int, fragment_id: str, high
                 class_name="document-current-anchor",
             ),
             rx.box(
-                rx.foreach(AppState.knowledge_fragments, document_fragment_card),
+                rx.foreach(AppState.knowledge_document_paragraphs, document_paragraph),
                 class_name="document-page",
             ),
             class_name="document-paper",
@@ -4769,12 +4863,12 @@ def home() -> rx.Component:
         rx.box(
             rx.text("Pulso del Estado", class_name="title"),
             rx.text(
-                "Eventos recientes, lecturas afectadas y documentos oficiales que sostienen cada cambio.",
+                "Un lugar para entender que cambio, que documento lo sostiene y que lectura abrir primero.",
                 class_name="subtitle",
             ),
             rx.hstack(
-                rx.button("Abrir lectura principal", on_click=rx.redirect("/topic"), class_name="button"),
-                rx.button("Ver todas las lecturas", on_click=rx.redirect("/library"), class_name="button button-secondary"),
+                rx.button("Abrir lectura principal", on_click=rx.redirect("/topic"), class_name="button primary-action"),
+                rx.text("Documento oficial visible en menos de un minuto.", class_name="hero-action-note"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -4793,21 +4887,7 @@ def home() -> rx.Component:
                 ),
                 rx.text("Todavia no hay eventos publicos recientes para mostrar.", class_name="muted small"),
             ),
-            subtitle="Que cambio, que lectura se actualiza y donde revisar el documento que lo sostiene.",
-        ),
-        page_section(
-            "Lecturas",
-            rx.cond(
-                AppState.current_topic_rows,
-                rx.grid(
-                    rx.foreach(AppState.current_topic_rows, current_topic_card),
-                    columns="3",
-                    spacing="3",
-                    class_name="responsive-grid",
-                ),
-                rx.text("Todavia no hay lecturas documentadas publicadas.", class_name="muted small"),
-            ),
-            subtitle="Accesos directos a las lecturas documentadas disponibles.",
+            subtitle="Cada tarjeta responde una sola pregunta: que paso, que fuente lo sostiene y que lectura abre.",
         ),
         on_mount=AppState.load_home,
         active_page=PAGE_HOME,
@@ -4986,59 +5066,9 @@ def demo() -> rx.Component:
     )
 
 
-@rx.page(route="/discover", title="Descubre - DatosEnOrden")
+@rx.page(route="/discover", title="Buscar - DatosEnOrden")
 def discover() -> rx.Component:
-    return shell(
-        rx.box(
-            rx.text("Descubre qué puedes explorar", class_name="title"),
-            rx.text(
-                "Elige una pregunta inicial y DatosEnOrden te guía por las fuentes públicas disponibles.",
-                class_name="subtitle",
-            ),
-            class_name="hero",
-        ),
-        guided_discovery_panel(),
-        what_to_investigate_panel(),
-        page_section(
-            "Casos guiados",
-            rx.grid(
-                rx.foreach(AppState.discovery_case_rows, discovery_case_card),
-                columns="2",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Puntos de entrada para empezar antes de buscar.",
-        ),
-        page_section(
-            "Qué puedes probar",
-            rx.hstack(
-                rx.text("Organismos públicos", class_name="search-chip"),
-                rx.text("Proveedores", class_name="search-chip"),
-                rx.text("Autoridades", class_name="search-chip"),
-                rx.text("Compras", class_name="search-chip"),
-                rx.text("Presupuestos", class_name="search-chip"),
-                rx.text("Reuniones", class_name="search-chip"),
-                rx.text("Cargos públicos", class_name="search-chip"),
-                spacing="2",
-                wrap="wrap",
-            ),
-            subtitle="Conceptos para orientar el primer recorrido.",
-        ),
-        page_section(
-            "Desde aquí",
-            rx.hstack(
-                rx.button("Buscar entidad", on_click=rx.redirect("/search"), class_name="button"),
-                rx.button("Abrir expediente demo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button button-secondary"),
-                rx.button("Ir a Mas lecturas", on_click=rx.redirect("/library"), class_name="button button-secondary"),
-                rx.button("Ir al ecosistema", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
-                spacing="3",
-                wrap="wrap",
-            ),
-            subtitle="Cambia de ruta sin perder el contexto.",
-        ),
-        on_mount=AppState.load_discover,
-        active_page=PAGE_DISCOVER,
-    )
+    return search()
 
 
 def result_card(row: dict) -> rx.Component:
@@ -5049,19 +5079,19 @@ def result_card(row: dict) -> rx.Component:
 def topic() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Tema", class_name="document-kicker"),
+            rx.text("Lectura documentada", class_name="document-kicker"),
             rx.text(AppState.topic_title, class_name="document-title"),
             rx.text(
-                "Documento Fuente visible, lectura ciudadana al lado y evidencia accionable sin perder trazabilidad.",
+                "Primero el documento. Luego la explicacion ciudadana y la evidencia que permite verificar cada afirmacion.",
                 class_name="document-subtitle",
             ),
             rx.hstack(
-                metric("Estado", AppState.topic_status),
-                metric("Tiempo estimado", AppState.topic_read_time),
-                metric("Documentos", AppState.topic_document_count),
-                metric("Ultima actualizacion", AppState.topic_updated_at),
-                spacing="3",
+                rx.text(AppState.topic_status, class_name="document-meta-pill"),
+                rx.text(AppState.topic_read_time, class_name="document-meta-pill"),
+                rx.text(AppState.topic_updated_at, class_name="document-meta-reference"),
+                spacing="2",
                 wrap="wrap",
+                class_name="document-meta-row",
             ),
             topic_mode_selector(),
             rx.text(AppState.topic_organizations_text, class_name="document-meta-reference"),
@@ -5450,38 +5480,7 @@ def library() -> rx.Component:
 
 @rx.page(route="/reports", title="Informes ciudadanos - DatosEnOrden")
 def reports() -> rx.Component:
-    return shell(
-        rx.box(
-            rx.text("Informes ciudadanos", class_name="title"),
-            rx.text(
-                "Informes locales de lectura publica que conectan expediente, seguimiento, fuentes y evidencia navegable.",
-                class_name="subtitle",
-            ),
-            rx.hstack(
-                rx.button("Abrir expediente", on_click=AppState.open_report_investigation, class_name="button"),
-                rx.button("Ver seguimiento", on_click=rx.redirect("/tracking"), class_name="button button-secondary"),
-                rx.button("Ver demo", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
-                spacing="3",
-                wrap="wrap",
-                class_name="hero-actions",
-            ),
-            class_name="hero",
-        ),
-        page_section(
-            "Informes disponibles",
-            rx.cond(
-                AppState.citizen_reports,
-                rx.grid(
-                    rx.foreach(AppState.citizen_reports, citizen_report_card),
-                    columns="2",
-                    spacing="3",
-                    class_name="responsive-grid",
-                ),
-                rx.text("No hay informes ciudadanos locales disponibles.", class_name="muted small"),
-            ),
-            subtitle="Prototipos read-only marcados como datos locales de prueba.",
-            class_name="reports-catalog-section",
-        ),
+    loaded_report = rx.box(
         page_section(
             "Resumen",
             rx.text(AppState.citizen_report_summary, class_name="story-summary"),
@@ -5554,10 +5553,53 @@ def reports() -> rx.Component:
             rx.link("Abrir version HTML local", href=AppState.citizen_report_path, class_name="button button-secondary"),
             subtitle="Mensaje obligatorio para el demo publico.",
         ),
+        class_name="reports-loaded-content",
+    )
+    empty_report = page_section(
+        "Sin informe seleccionado",
+        rx.text(
+            "Cuando exista un informe ciudadano local disponible, aparecera aqui con resumen, fuentes y evidencia relacionada.",
+            class_name="story-summary",
+        ),
+        subtitle="Estado estable: no se muestran fuentes temporales ni contenido que desaparece al cargar.",
+        class_name="reports-empty-section",
+    )
+    return shell(
+        rx.box(
+            rx.text("Informes ciudadanos", class_name="title"),
+            rx.text(
+                "Informes locales de lectura publica que conectan expediente, seguimiento, fuentes y evidencia navegable.",
+                class_name="subtitle",
+            ),
+            rx.hstack(
+                rx.button("Abrir expediente", on_click=AppState.open_report_investigation, class_name="button"),
+                rx.button("Ver seguimiento", on_click=rx.redirect("/tracking"), class_name="button button-secondary"),
+                rx.button("Ver demo", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+                class_name="hero-actions",
+            ),
+            class_name="hero",
+        ),
+        page_section(
+            "Informes disponibles",
+            rx.cond(
+                AppState.citizen_reports,
+                rx.grid(
+                    rx.foreach(AppState.citizen_reports, citizen_report_card),
+                    columns="2",
+                    spacing="3",
+                    class_name="responsive-grid",
+                ),
+                rx.text("No hay informes ciudadanos locales disponibles.", class_name="muted small"),
+            ),
+            subtitle="Prototipos read-only marcados como datos locales de prueba.",
+            class_name="reports-catalog-section",
+        ),
+        rx.cond(AppState.citizen_report_title != "", loaded_report, empty_report),
         on_mount=AppState.load_reports,
         active_page=PAGE_REPORTS,
     )
-
 
 @rx.page(route="/project", title="Estado del proyecto - DatosEnOrden")
 def project() -> rx.Component:
@@ -5619,7 +5661,7 @@ def project() -> rx.Component:
             "Que partes usan datos demo",
             rx.grid(
                 help_card("Expediente demo", "Usa datos locales de prueba para mostrar como se conectarian fuentes y evidencia."),
-                help_card("Mas lecturas demo", "Usa documentos simulados para mostrar resumenes, preguntas y puntos clave."),
+                help_card("Lecturas relacionadas demo", "Usa documentos simulados para mostrar resumenes, preguntas y puntos clave."),
                 help_card("Informes y seguimiento", "Usan contenido local marcado como LOCAL_TEST_DATA / NOT_OFFICIAL_DATA."),
                 columns="3",
                 spacing="3",
@@ -5651,7 +5693,7 @@ def project() -> rx.Component:
                 class_name="story-summary",
             ),
             rx.hstack(
-                rx.button("Revisar Mas lecturas", on_click=rx.redirect("/library"), class_name="button"),
+                rx.button("Explorar Buscar", on_click=rx.redirect("/search"), class_name="button"),
                 rx.button("Leer Informes", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
                 rx.button("Explorar Fuentes", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
                 spacing="3",
@@ -5669,27 +5711,13 @@ def search() -> rx.Component:
         rx.box(
             rx.text("Buscar", class_name="title"),
             rx.text(
-                "Busca una entidad para abrir un expediente con fuentes públicas, evidencia y trazabilidad.",
+                "Empieza por una pregunta guiada. Si ya sabes que buscar, usa el buscador superior.",
                 class_name="subtitle",
             ),
             class_name="hero",
         ),
-        page_section(
-            "Barra de búsqueda",
-            rx.hstack(
-                rx.input(
-                    placeholder="Busca organismo, proveedor, autoridad o cargo público",
-                    value=AppState.query,
-                    on_change=AppState.set_query,
-                    class_name="input search-input",
-                ),
-                rx.button("Buscar", on_click=AppState.run_search, class_name="button search-button"),
-                spacing="3",
-                align="center",
-                class_name="search-bar",
-            ),
-            subtitle="La entrada principal para abrir un expediente.",
-        ),
+        guided_discovery_panel(),
+        what_to_investigate_panel(),
         rx.cond(
             AppState.results,
             page_section(
@@ -5702,9 +5730,8 @@ def search() -> rx.Component:
                 ),
                 subtitle="Selecciona un resultado para abrir el expediente.",
             ),
-            search_empty_state(),
         ),
-        on_mount=AppState.load_search,
+        on_mount=AppState.load_discover,
         active_page=PAGE_SEARCH,
     )
 
@@ -5887,13 +5914,12 @@ style = {
         "backdrop_filter": "blur(18px)",
         "z_index": "45",
         "display": "grid",
-        "grid_template_rows": "auto 1fr",
+        "grid_template_rows": "auto",
         "gap": "14px",
         "transition": "width 220ms ease",
     },
     ".shell.theme-light .app-sidebar": {"background": "rgba(255, 255, 255, 0.96)", "border_right": "1px solid rgba(113, 113, 122, 0.18)"},
     ".app-sidebar-collapsed": {"width": "72px"},
-    ".sidebar-header": {"display": "flex", "align_items": "center", "justify_content": "space-between", "gap": "8px", "padding": "2px 2px 8px"},
     ".sidebar-menu-button": {
         "width": "38px",
         "height": "38px",
@@ -5901,8 +5927,9 @@ style = {
         "border_radius": "8px",
         "border": "1px solid rgba(161, 161, 170, 0.2)",
         "background": "rgba(255, 255, 255, 0.06)",
-    },
-    ".hamburger-icon": {"gap": "4px"},
+        "justify_self": "center",
+        "margin_bottom": "6px",
+    },    ".hamburger-icon": {"gap": "4px"},
     ".hamburger-line": {"width": "18px", "height": "2px", "border_radius": "999px", "background": "#e4e4e7"},
     ".shell.theme-light .hamburger-line": {"background": "#18181b"},
     ".sidebar-collapse-button, .sidebar-toggle": {
@@ -5951,8 +5978,8 @@ style = {
     ".app-sidebar-collapsed .sidebar-advanced-toggle": {"justify_content": "center", "padding": "9px 6px"},
     ".shell-header": {
         "width": "100%",
-        "border_bottom": "1px solid rgba(161, 161, 170, 0.18)",
-        "background": "rgba(24, 24, 27, 0.88)",
+        "border_bottom": "1px solid rgba(161, 161, 170, 0.10)",
+        "background": "rgba(15, 15, 18, 0.72)",
         "backdrop_filter": "blur(18px)",
     },
     ".shell.theme-light .shell-header": {
@@ -5963,7 +5990,7 @@ style = {
         "max_width": "1760px",
         "margin": "0 auto",
         "width": "min(calc(100% - 48px), 1760px)",
-        "padding": "16px 0",
+        "padding": "10px 0",
         "gap": "16px",
     },
     ".page": {"max_width": "1760px", "margin": "0 auto", "width": "min(calc(100% - 48px), 1760px)"},
@@ -6048,15 +6075,17 @@ style = {
     },
     ".shell-alert": {"width": "min(calc(100% - 48px), 1760px)", "max_width": "1760px", "margin": "16px auto 0"},
     ".hero": {
-        "border": "1px solid rgba(161, 161, 170, 0.14)",
-        "border_radius": "18px",
+        "border": "1px solid rgba(161, 161, 170, 0.10)",
+        "border_radius": "10px",
         "padding": "28px",
-        "background": "linear-gradient(180deg, rgba(31, 31, 36, 0.92), rgba(24, 24, 27, 0.92))",
+        "background": "rgba(24, 24, 27, 0.72)",
     },
     ".page-home .hero": {
-        "padding": "46px 34px",
-        "border_left": "4px solid rgba(228, 228, 231, 0.34)",
-        "background": "linear-gradient(180deg, rgba(31, 31, 36, 0.96), rgba(18, 18, 22, 0.94))",
+        "padding": "54px 0 34px",
+        "border": "0",
+        "border_radius": "0",
+        "background": "transparent",
+        "max_width": "960px",
     },
     ".page-investigation .hero": {"border_left": "4px solid rgba(45, 212, 191, 0.55)"},
     ".page-library .hero": {"border_left": "4px solid rgba(167, 139, 250, 0.58)"},
@@ -6077,7 +6106,7 @@ style = {
         "background": "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 248, 0.98))",
         "border_color": "rgba(113, 113, 122, 0.18)",
     },
-    ".title": {"font_size": "34px", "font_weight": "800", "line_height": "1.1"},
+    ".title": {"font_size": "42px", "font_weight": "850", "line_height": "1.08"},
     ".subtitle": {"color": "#a1a1aa", "max_width": "820px", "line_height": "1.55"},
     ".shell.theme-light .subtitle": {"color": "#71717a"},
     ".section-title": {"font_size": "20px", "font_weight": "700", "margin_bottom": "12px", "color": "#f4f4f5"},
@@ -6094,7 +6123,7 @@ style = {
     ".page-section": {
         "display": "grid",
         "gap": "14px",
-        "padding": "4px 0 10px",
+        "padding": "10px 0 22px",
     },
     ".page-home .page-section": {"padding": "12px 0 18px"},
     ".page-reports .page-section": {
@@ -6127,7 +6156,7 @@ style = {
         "border_top": "1px solid rgba(161, 161, 170, 0.14)",
     },
     ".current-topic-card": {
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border": "1px solid rgba(161, 161, 170, 0.10)",
         "border_radius": "8px",
         "padding": "16px",
         "background": "#18181b",
@@ -6137,7 +6166,7 @@ style = {
     },
     ".shell.theme-light .current-topic-card": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
     ".topic-answer-card": {
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border": "1px solid rgba(161, 161, 170, 0.10)",
         "border_radius": "8px",
         "padding": "14px",
         "background": "#18181b",
@@ -6175,10 +6204,12 @@ style = {
         "box_shadow": "0 14px 40px rgba(0, 0, 0, 0.22)",
     },
     ".scroll-top-button.scroll-top-visible": {"opacity": "1", "pointer_events": "auto", "transform": "translateY(0)"},
-    ".home-pulse-hero": {"padding_bottom": "22px"},
+    ".home-pulse-hero": {"padding_bottom": "34px"},
+    ".hero-action-note": {"color": "#a1a1aa", "font_size": "14px", "align_self": "center"},
+    ".primary-action": {"padding": "13px 18px", "border_radius": "8px"},
     ".topic-mode-selector": {
         "padding": "6px",
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border": "1px solid rgba(161, 161, 170, 0.10)",
         "border_radius": "8px",
         "background": "rgba(255, 255, 255, 0.04)",
         "width": "fit-content",
@@ -6211,7 +6242,7 @@ style = {
     ".document-sheet": {
         "border": "1px solid rgba(113, 113, 122, 0.18)",
         "border_radius": "8px",
-        "padding": "30px",
+        "padding": "38px",
         "background": "#f8fafc",
         "color": "#18181b",
         "box_shadow": "0 18px 60px rgba(0, 0, 0, 0.18)",
@@ -6238,7 +6269,7 @@ style = {
     ".live-timeline-strip .tracking-event-card": {"flex": "0 0 270px", "scroll_snap_align": "start"},
     ".topic-document-first-layout": {
         "display": "grid",
-        "grid_template_columns": "minmax(0, 48fr) minmax(88px, 0.12fr) minmax(0, 52fr)",
+        "grid_template_columns": "minmax(0, 58fr) minmax(64px, 0.08fr) minmax(0, 42fr)",
         "gap": "14px",
         "align_items": "start",
         "width": "100%",
@@ -6247,9 +6278,9 @@ style = {
     ".topic-source-panel": {
         "position": "sticky",
         "top": "72px",
-        "max_height": "80vh",
+        "max_height": "86vh",
         "overflow_y": "auto",
-        "border": "1px solid rgba(45, 212, 191, 0.26)",
+        "border": "1px solid rgba(45, 212, 191, 0.18)",
         "border_radius": "8px",
         "padding": "14px",
         "background": "#18181b",
@@ -6265,14 +6296,14 @@ style = {
     ".topic-source-excerpt": {"color": "#27272a", "font_size": "14px", "line_height": "1.55"},
     ".topic-document-page": {"gap": "12px"},
     ".topic-original-link": {"width": "fit-content"},
-    ".topic-context-rail": {"position": "sticky", "top": "72px", "max_height": "80vh", "display": "grid", "gap": "7px", "align_content": "start", "padding": "8px 6px", "border_left": "1px solid rgba(161, 161, 170, 0.16)", "border_right": "1px solid rgba(161, 161, 170, 0.10)"},
+    ".topic-context-rail": {"position": "sticky", "top": "72px", "max_height": "86vh", "display": "grid", "gap": "7px", "align_content": "start", "padding": "8px 6px", "border_left": "1px solid rgba(161, 161, 170, 0.16)", "border_right": "1px solid rgba(161, 161, 170, 0.10)"},
     ".topic-rail-label": {"font_size": "11px", "font_weight": "850", "text_transform": "uppercase", "letter_spacing": "0.04em", "color": "#a1a1aa"},
     ".topic-rail-link": {"font_size": "12px", "line_height": "1.25", "color": "#ccfbf1", "border_radius": "6px", "padding": "5px 6px", "background": "rgba(45, 212, 191, 0.07)"},
     ".shell.theme-light .topic-rail-link": {"color": "#0f766e", "background": "rgba(45, 212, 191, 0.08)"},
     ".topic-reading-column": {"min_width": "0", "display": "grid", "gap": "16px"},
     ".topic-reading-flow": {"width": "100%"},
     ".topic-reading-section": {
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border": "1px solid rgba(161, 161, 170, 0.10)",
         "border_radius": "8px",
         "padding": "16px",
         "background": "#18181b",
@@ -6285,7 +6316,7 @@ style = {
     ".topic-evidence-grid": {"align_items": "stretch"},
     ".shell.theme-light .topic-answer-card": {"background": "#ffffff", "border_color": "rgba(113, 113, 122, 0.18)"},
     ".card": {
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border": "1px solid rgba(161, 161, 170, 0.10)",
         "border_radius": "16px",
         "padding": "16px",
         "background": "#18181b",
@@ -6505,7 +6536,7 @@ style = {
     ".document-side-column": {"min_width": "0", "position": "sticky", "top": "88px"},
     ".official-document-viewer": {"display": "grid", "gap": "14px"},
     ".reading-context-bar": {
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border": "1px solid rgba(161, 161, 170, 0.10)",
         "border_radius": "8px",
         "padding": "12px",
         "background": "#18181b",
@@ -6589,7 +6620,7 @@ style = {
         "width": "fit-content",
         "border_radius": "6px",
         "background": "rgba(45, 212, 191, 0.12)",
-        "border": "1px solid rgba(45, 212, 191, 0.26)",
+        "border": "1px solid rgba(45, 212, 191, 0.18)",
         "color": "#ccfbf1",
         "font_weight": "850",
         "font_size": "12px",
@@ -6862,7 +6893,7 @@ style = {
         "background": "linear-gradient(90deg, rgba(45, 212, 191, 0.05), #18181b 32%)",
     },
     ".explorer-panel": {
-        "border": "1px solid rgba(161, 161, 170, 0.16)",
+        "border": "1px solid rgba(161, 161, 170, 0.10)",
         "border_radius": "16px",
         "padding": "16px",
         "background": "#18181b",
@@ -6954,4 +6985,6 @@ style = {
 
 
 app = rx.App(style=style)
+
+
 

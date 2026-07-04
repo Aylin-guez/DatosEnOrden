@@ -68,6 +68,7 @@ from datosenorden.models import Entity
 
 LEGISLATIVE_PROJECT_ENTITY_TYPE = "PUBLIC_PROJECT"
 LEGISLATIVE_SOURCE_LABEL = "Datos Abiertos Legislativos"
+SOURCE_POPULATION_PATH = Path(__file__).resolve().parents[3] / "data" / "source_population" / "infolobby_minimal.json"
 REAL_DOCUMENT_PUBLICATION_PATH = (
     Path(__file__).resolve().parents[3]
     / "data"
@@ -328,7 +329,8 @@ def get_real_data_readiness() -> dict[str, Any]:
 
 def get_data_ecosystem() -> dict[str, Any]:
     with _session_scope() as session:
-        return _jsonify(build_ecosystem_registry(session))
+        ecosystem = _jsonify(build_ecosystem_registry(session))
+    return _apply_source_population_to_ecosystem(ecosystem)
 
 
 def get_discovery_cases() -> dict[str, Any]:
@@ -402,6 +404,7 @@ def search_workspace(query: str) -> dict[str, Any]:
                 }
             )
         matches.append(enriched)
+    matches.extend(_source_population_search_matches(query))
     workspace["matches"] = matches
     return workspace
 
@@ -510,6 +513,74 @@ def get_knowledge_documents() -> list[dict[str, Any]]:
     return _jsonify([official_document_to_dict(document) for document in _list_knowledge_documents()])
 
 
+def _load_source_population() -> dict[str, Any]:
+    if not SOURCE_POPULATION_PATH.exists():
+        return {}
+    try:
+        payload = json.loads(SOURCE_POPULATION_PATH.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _apply_source_population_to_ecosystem(ecosystem: dict[str, Any]) -> dict[str, Any]:
+    population = _load_source_population()
+    source_id = str(population.get("source_id", ""))
+    if not source_id:
+        return ecosystem
+    records = _jsonify(population.get("records", []))
+    for source in ecosystem.get("sources", []):
+        if source.get("slug") != source_id:
+            continue
+        source["display_name_populated"] = str(population.get("display_name", source.get("name", "")))
+        source["population_mode"] = str(population.get("population_mode", ""))
+        source["population_status_label"] = str(population.get("status_label", ""))
+        source["population_summary"] = str(population.get("summary", ""))
+        source["population_records"] = len(records)
+        source["coverage"] = "partial" if records else source.get("coverage", "")
+    return ecosystem
+
+
+def _source_population_search_matches(query: str) -> list[dict[str, Any]]:
+    normalized_query = _normalize_for_population(query)
+    if not normalized_query:
+        return []
+    population = _load_source_population()
+    matches: list[dict[str, Any]] = []
+    for row in _jsonify(population.get("ui", {}).get("search_entities", [])):
+        haystack = _normalize_for_population(" ".join([str(row.get("entity_name", "")), str(row.get("entity_id", "")), " ".join(row.get("datasets", []))]))
+        if not _population_query_matches(normalized_query, haystack):
+            continue
+        matches.append(
+            {
+                **row,
+                "canonical_entity_id": row.get("entity_id", ""),
+                "canonical_entity_name": row.get("entity_name", ""),
+                "canonical_entity_type": row.get("entity_type", ""),
+                "source_hint": str(population.get("status_label", "")),
+                "official_status": str(population.get("official_status", "")),
+                "source_label": str(population.get("display_name", "InfoLobby")),
+            }
+        )
+    return matches
+
+
+def _population_query_matches(normalized_query: str, haystack: str) -> bool:
+    if normalized_query in haystack:
+        return True
+    tokens = [token for token in normalized_query.split() if token]
+    return bool(tokens) and all(token in haystack for token in tokens)
+
+
+def _source_population_pulse_events() -> list[dict[str, Any]]:
+    population = _load_source_population()
+    event = population.get("ui", {}).get("pulse_event", {}) if isinstance(population.get("ui", {}), dict) else {}
+    return [_jsonify(event)] if event else []
+
+
+def _normalize_for_population(value: str) -> str:
+    return " ".join(str(value or "").strip().lower().split())
+
 def _load_real_document_publication() -> dict[str, Any]:
     if not REAL_DOCUMENT_PUBLICATION_PATH.exists():
         return {}
@@ -526,7 +597,12 @@ def _load_real_document_publication() -> dict[str, Any]:
 
 
 def get_current_topics(limit: int = 3) -> list[dict[str, Any]]:
-    return _jsonify(_list_current_topics(limit=limit))
+    topics = _jsonify(_list_current_topics(limit=limit))
+    for event in _source_population_pulse_events():
+        if len(topics) >= limit:
+            break
+        topics.append(event)
+    return topics[:limit]
 
 
 def get_current_topic(slug: str) -> dict[str, Any]:

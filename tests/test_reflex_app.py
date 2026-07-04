@@ -152,9 +152,10 @@ def test_home_is_public_topic_entry() -> None:
     assert "Eventos recientes" in source
     assert "Abrir lectura principal" in source
     assert 'rx.redirect("/topic")' in source
-    assert "Ver todas las lecturas" in source
+    assert "Documento oficial visible en menos de un minuto" in source
+    assert "Ver todas las lecturas" not in source
     assert "home_pulse_card" in source
-    assert "current_topic_card" in source
+    assert "current_topic_card" not in source
     assert "Microscopio documental" not in source
     assert "Que responde cada lectura" not in source
     assert "Fuentes que sostienen la lectura" not in source
@@ -287,17 +288,19 @@ def test_nav_expediente_points_to_empty_investigation_and_search_is_header_actio
     shell_source = inspect.getsource(reflex_app.shell)
     sidebar_source = inspect.getsource(reflex_app.app_sidebar)
 
-    assert 'rx.link("Pulso", href="/"' in shell_source
-    assert 'rx.link("Lectura", href="/topic"' in shell_source
+    assert 'rx.link("Pulso", href="/"' not in shell_source
+    assert 'sidebar_nav_link("Pulso", "/"' in sidebar_source
+    assert 'rx.link("Lectura", href="/topic"' not in shell_source
+    assert 'sidebar_nav_link("Lectura", "/topic"' in sidebar_source
     assert 'sidebar_nav_link("Expediente", "/investigation"' in sidebar_source
-    assert 'sidebar_nav_link("Mas lecturas", "/library"' in sidebar_source
+    assert 'sidebar_nav_link("Mas lecturas", "/library"' not in sidebar_source
     assert 'sidebar_nav_link("Cronologia", "/tracking"' in sidebar_source
     assert 'sidebar_nav_link("Informes", "/reports"' in sidebar_source
     assert 'sidebar_nav_link("Proyecto", "/project"' in sidebar_source
     assert 'rx.link("Buscar", href="/search"' not in shell_source
     assert "header_search" in shell_source
     assert "toggle_header_search" in shell_source
-    assert "toggle_sidebar" in shell_source
+    assert "toggle_sidebar" in sidebar_source
 
 
 def test_router_query_value_reads_raw_path() -> None:
@@ -849,6 +852,7 @@ def test_library_and_project_routes_are_registered() -> None:
     assert 'route="/project"' in project_source
     assert "Estado del proyecto" in project_source
     assert "Que significa MVP" in project_source
+    assert "Revisar Mas lecturas" not in project_source
 
 
 def test_load_dashboard_populates_summary_metrics(monkeypatch) -> None:
@@ -935,6 +939,7 @@ def test_official_document_route_stays_available_but_not_primary_nav() -> None:
 
 def test_topic_route_uses_requested_sections_and_navigation() -> None:
     shell_source = inspect.getsource(reflex_app.shell)
+    sidebar_source = inspect.getsource(reflex_app.app_sidebar)
     page_source = inspect.getsource(reflex_app.topic)
     nav_source = inspect.getsource(reflex_app.topic_nav)
     source_panel = inspect.getsource(reflex_app.topic_source_panel)
@@ -942,8 +947,9 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     evidence_source = inspect.getsource(reflex_app.topic_evidence_card)
     fragment_source = inspect.getsource(reflex_app.document_fragment_card)
 
-    assert 'rx.link("Lectura", href="/topic"' in shell_source
-    assert "sidebar-ready-nav" in shell_source
+    assert 'rx.link("Lectura", href="/topic"' not in shell_source
+    assert 'sidebar_nav_link("Lectura", "/topic"' in sidebar_source
+    assert "sidebar-ready-nav" not in shell_source
     assert '@rx.page(route="/topic"' in page_source
     assert "topic_mode_selector" in page_source
     assert "topic_mode_body" in page_source
@@ -961,8 +967,9 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert "Documento Fuente" in source_panel
     assert "Fragmento seleccionado" not in source_panel
     assert "topic-source-guidance" in source_panel
-    assert "knowledge_fragments" in source_panel
-    assert "document_fragment_card" in source_panel
+    assert "knowledge_document_paragraphs" in source_panel
+    assert "document_paragraph" in source_panel
+    assert "document_fragment_card" not in source_panel
     assert "Documento original" in source_panel
     assert "Vista avanzada" not in source_panel
     assert "Resumen" in reading_source
@@ -1172,3 +1179,65 @@ def test_select_document_anchor_updates_reading_context() -> None:
     assert state.knowledge_selected_evidence[0]["excerpt"] == "B"
     assert state.knowledge_selected_connections[0]["label"] == "Expediente"
 
+
+
+
+
+def test_topic_prefers_published_document_view_as_continuous_document() -> None:
+    paragraphs = reflex_app._load_document_paragraphs([])
+    panel_source = inspect.getsource(reflex_app.topic_source_panel)
+
+    fragments, source_path, is_fallback = reflex_app._load_document_fragments_with_source([])
+    assert reflex_app.PUBLISHED_DOCUMENT_VIEW_PATH.as_posix().endswith("data/official_documents/published/senado-docto-9000-mensaje_mocion/document_view.json")
+    assert source_path == str(reflex_app.PUBLISHED_DOCUMENT_VIEW_PATH)
+    assert is_fallback is False
+    assert len(fragments) > 20
+    assert len(paragraphs) > 20
+    assert paragraphs[0]["text"]
+    assert "knowledge_document_paragraphs" in panel_source
+    assert "document_paragraph" in panel_source
+    assert "document_fragment_card" not in panel_source
+
+
+def test_discover_is_search_alias_and_search_is_guided_entry() -> None:
+    discover_source = inspect.getsource(reflex_app.discover)
+    search_source = inspect.getsource(reflex_app.search)
+    guide_source = inspect.getsource(reflex_app.guided_discovery_panel)
+
+    assert "return search()" in discover_source
+    assert "Preguntas guia" in guide_source
+    assert "guided_discovery_panel" in search_source
+    assert "Usar entrada guiada" not in search_source
+
+
+def test_reports_has_stable_empty_state_until_report_is_loaded() -> None:
+    reports_source = inspect.getsource(reflex_app.reports)
+
+    assert "Sin informe seleccionado" in reports_source
+    assert 'AppState.citizen_report_title != ""' in reports_source
+    assert "reports-empty-section" in reports_source
+
+
+def test_header_search_replaces_theme_toggle_and_closes_when_empty() -> None:
+    shell_source = inspect.getsource(reflex_app.shell)
+    submit_source = inspect.getsource(reflex_app.AppState.submit_header_search.fn)
+
+    assert "theme-toggle" not in shell_source
+    assert "toggle_theme" not in shell_source
+    assert "header-search-popover-open" in shell_source
+    assert "header_search_open = False" in submit_source
+    assert "return None" in submit_source
+
+def test_sidebar_has_single_hamburger_control() -> None:
+    shell_source = inspect.getsource(reflex_app.shell)
+    sidebar_source = inspect.getsource(reflex_app.app_sidebar)
+
+    assert "header-menu-icon" not in shell_source
+    assert "sidebar-menu-button" in sidebar_source
+    assert sidebar_source.index("hamburger_icon()") < sidebar_source.index("sidebar_nav_link(\"Pulso\"")
+
+def test_ecosystem_source_card_shows_population_note() -> None:
+    source = inspect.getsource(reflex_app.ecosystem_source_card)
+
+    assert "population_label" in source
+    assert "source-population-note" in source

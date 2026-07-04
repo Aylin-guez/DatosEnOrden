@@ -1,0 +1,1685 @@
+{
+  "document": {
+    "id": "senado-docto-9000-mensaje_mocion",
+    "title": "Mensaje o mocion: Ley de Presupuestos del sector público para el año 2013.",
+    "source": "Senado de la Republica de Chile",
+    "document_type": "legislative_mensaje_mocion",
+    "official_url": "https://tramitacion.senado.cl/appsenado/index.php?mo=tramitacion&ac=getDocto&iddocto=9000&tipodoc=mensaje_mocion",
+    "published_at": "2026-07-02",
+    "hash_sha256": "3d5345fae93c0a60e879b6b075f38366c2e1aa91dd0bf7915113569dbc041b55"
+  },
+  "source_format": "doc",
+  "source_original_path": "data/official_documents/incoming/senado-docto-9000-mensaje_mocion/document.doc",
+  "published_from": "data/official_documents/published/senado-docto-9000-mensaje_mocion/reading.json",
+  "viewer_kind": "original_text_view",
+  "conversion_status": "text_view_from_published_reading",
+  "viewer_notice": "Vista de texto publicada desde reading.json. El archivo original es .doc; no hay conversor Word instalado en este entorno para preservar formato visual.",
+  "blocks": [
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0001-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0001",
+      "marker": "Fragmento 01",
+      "text": "MENSAJE DE S.E. EL PRESIDENTE DE LA REPÚBLICA, CON EL QUE INICIA EL PROYECTO DE ley DE PRESUPUESTOS DEL SECTOR PUBLICO PARA EL AÑO 2013.\n________________________________\nSANTIAGO, Septiembre 30 de 2012.",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0001-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0001",
+      "marker": "",
+      "text": "MENSAJE Nº 217-360/",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0001-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0001",
+      "marker": "",
+      "text": "Honorable Cámara de Diputados:\nA S.E. EL\nPRESIDENTE\nDE LA H.\nCÁMARA DE\nDIPUTADOS.\nEn uso de mis facultades constitucionales, tengo el honor de someter a vuestra consideración el proyecto de ley de Presupuestos para el sector público para el año 2013.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0001-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0001",
+      "marker": "",
+      "text": "FUNDAMENTOS DEL PROYECTO DE LEY.\nEl proyecto de ley de Presupuestos para el año 2013 que vengo en presentar, constituye una herramienta fundamental en el proceso de consolidación de los avances conseguidos por el país en políticas sociales y en el progreso general de la sociedad y de su nivel de bienestar.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0001-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0001",
+      "marker": "",
+      "text": "En los párrafos que siguen se sintetiza el entorno económico global en que prevemos se desarrollará este presupuesto y, luego, sus principales énfasis.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0001-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0001",
+      "marker": "",
+      "text": "1.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0001-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0001",
+      "marker": "",
+      "text": "Contexto económico global.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0001-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0001",
+      "marker": "",
+      "text": "Desde el punto de vista de la economía global, la situación esperable para 2013 es compleja. Si bien las autoridades económicas de los países líderes han tomado acciones que están dirigiendo la economía internacional en la dirección correcta, la situación sigue siendo inestable y el grado de incertidumbre alto. La Unión Europea es en estos momentos el centro de una difícil situación económica que no termina por resolverse; Estados Unidos, si bien transita por una senda algo más positiva, enfrenta un importante desequilibrio fiscal y no logra tampoco dejar atrás la fase de crecimiento lento e inestable. Las economías emergentes, por su parte, que han sido el pilar del crecimiento mundial en años recientes, están reduciendo su ritmo de expansión.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0001-p9",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0001",
+      "marker": "",
+      "text": "En definitiva, el contexto económico internacional no es particularmente positivo y con la información disponible en este momento, la senda que siga la economía mundial tiene todavía un importante nivel de incertidumbre. A pesar de ello la economía chilena ha mostrado un dinamismo significativamente mayor al del resto de la OECD y esta situación proyectamos persistirá en 2013.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0002-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0002",
+      "marker": "Fragmento 02",
+      "text": "Evidentemente, la desaceleración y la inestabilidad de las principales economías del mundo nos han afectado y continuarán haciéndolo. No obstante, la magnitud de los impactos de la situación económica internacional sobre Chile en los meses que vienen es difícil de precisar, pero sin duda los riesgos que enfrentamos son significativos. En esta situación, el presupuesto del gobierno central debe combinar cautela con la continuación del esfuerzo que se ha venido realizando en la profundización de la agenda social del país y en la implementación de políticas destinadas a generar un ritmo de crecimiento económico más alto y estable, y fortalecer nuestra capacidad productiva.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0002-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0002",
+      "marker": "",
+      "text": "El Presupuesto 2013 ha sido formulado considerando un déficit estructural de 1% del Producto Interno Bruto. Esto demuestra nuevamente el compromiso del Gobierno con la responsabilidad fiscal, habiendo ya logrado la meta que inicialmente nos fijamos conseguir en 2014. El presupuesto para el año 2013 arroja un déficit efectivo de 0,7% del producto.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0002-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0002",
+      "marker": "",
+      "text": "El proyecto de ley de Presupuestos para 2013 pone particular énfasis en: generación de oportunidades, desarrollo social, infraestructura e innovación.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0002-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0002",
+      "marker": "",
+      "text": "Dentro del ámbito de generación de oportunidades, el presupuesto otorga especial relevancia a la cobertura y calidad de la educación en todos sus niveles. De esta forma se continúa avanzando hacia la consecución de mayores y mejores oportunidades para todos los niños y jóvenes de nuestro país; paso esencial para el logro de mayor equidad y bienestar. El segundo eje, desarrollo social, profundiza nuestro avance en salud, seguridad ciudadana y protección social, destacando dentro de esto último el programa de Ingreso Ético Familiar.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0002-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0002",
+      "marker": "",
+      "text": "Respecto de infraestructura, continúan los avances que hemos realizado en conectividad, apoyo a las actividades económicas regionales y calidad de carreteras, aeropuertos, puertos e infraestructura social en general.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0003-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0003",
+      "marker": "Fragmento 03",
+      "text": "Por último, este proyecto de Ley de Presupuestos para 2013 hará de éste, el año de la innovación y el emprendimiento, elementos fundamentales para promover una mayor tasa de crecimiento de nuestro país y un mayor nivel de bienestar de la sociedad toda.\n2. Un presupuesto para avanzar en la construcción de oportunidades",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0003-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0003",
+      "marker": "",
+      "text": "Este proyecto de ley propone un presupuesto para avanzar en la construcción de oportunidades, especialmente en las siguientes materias:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0003-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0003",
+      "marker": "",
+      "text": "a.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0003-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0003",
+      "marker": "",
+      "text": "El Presupuesto 2013 consolida el progresivo esfuerzo que viene realizando el Gobierno en materia educacional, eje central de un real cambio en las oportunidades de todos. Por ello, y entre otras medidas, se incrementan coberturas para la educación preescolar y escolar, y se aumentan las becas para la educación superior.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0003-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0003",
+      "marker": "",
+      "text": "El presupuesto para educación en 2013 crece 9,4% respecto de 2012. De esta manera, el presupuesto del Ministerio de Educación alcanza alrededor de 21% del gasto presupuestario total y a 4,6% del PIB.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0003-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0003",
+      "marker": "",
+      "text": "Los esfuerzos estarán concentrados en reforzar la calidad y equidad en todos los niveles educativos, lo que implica entregar más oportunidades a los estudiantes, con un énfasis especial en aquellos que pertenecen a los hogares más vulnerables y de clase media.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0003-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0003",
+      "marker": "",
+      "text": "Este avance en educación preescolar, escolar y superior, será posible, en buena medida, gracias a los nuevos recursos recientemente aprobados por el Congreso en el contexto de la reforma tributaria.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0003-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0003",
+      "marker": "",
+      "text": "Educación Parvularia:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0003-p9",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0003",
+      "marker": "",
+      "text": "Entendiendo la importancia de la educación temprana y las consecuencias positivas que ésta tiene en el desarrollo de habilidades posteriores, los recursos destinados a salas cunas y jardines infantiles crecen 18% respecto al año 2012, alcanzando más de $505 mil millones. Este incremento se destina, básicamente, al aumento de la cobertura en 10.000 niños y a la mejora en la calidad de la atención de ellos. Adicionalmente, con el objetivo de lograr durante este gobierno un 100% de cobertura en pre-kínder y kínder entre los niños pertenecientes a las familias del 60% más vulnerable del país, se contemplan recursos para financiar un aumento de cobertura de 25.000 niños.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0004-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0004",
+      "marker": "Fragmento 04",
+      "text": "Además de incrementar la cobertura, se financia un aumento de la subvención regular de pre-kínder y kínder en casi un 20%, incremento que es mayor al de la subvención para el resto de los niveles educativos.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0004-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0004",
+      "marker": "",
+      "text": "Educación Escolar:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0004-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0004",
+      "marker": "",
+      "text": "El foco en educación escolar es potenciar la calidad y con ello, finalmente, la equidad del sistema educativo. Es por esto que el gasto en subvenciones crece 10,9% respecto de 2012.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0004-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0004",
+      "marker": "",
+      "text": "Dentro de ese incremento, se contemplan recursos destinados a financiar un aumento, tanto de la subvención general como de la preferencial (SEP), para todos los niveles de educación. Incluido en éste, destaca el aumento en 51% de la subvención escolar preferencial para 5° y 6° básico, y en un 100% en la subvención escolar preferencial para 7° y 8° básico. Se adelanta además para el año 2013 el acceso de los estudiantes de 1° medio a la subvención preferencial.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0004-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0004",
+      "marker": "",
+      "text": "Educación Superior:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0004-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0004",
+      "marker": "",
+      "text": "Para la educación superior los recursos aumentan en alrededor de 11% respecto a 2012. El compromiso del Gobierno es garantizar el acceso a becas de educación superior a todos los jóvenes con mérito pertenecientes a los hogares del 60% más vulnerable del país. Por ello, el crecimiento en esta materia es de 16%. Esto implica que para el año 2013 habrá unas 314.000 becas disponibles, es decir, 164 mil becas más que en 2010.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0004-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0004",
+      "marker": "",
+      "text": "Este Gobierno se propuso mejorar las condiciones del sistema de créditos de educación superior, tanto para las universidades tradicionales, como para las universidades privadas e institutos técnicos. Para esto, se redujo el costo del Crédito con Aval del Estado (CAE) para los estudiantes, desde un 5,6% a un 2% anual. Además se estableció el pago contingente a sus ingresos futuros, con lo cual las cuotas de pago no podrán superar el 10% del ingreso del deudor (cifra considerablemente inferior al 30% actual). La rebaja de la tasa del CAE beneficiará a cerca de 365.000 de estudiantes.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0004-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0004",
+      "marker": "",
+      "text": "b.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0004-p9",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0004",
+      "marker": "",
+      "text": "Cultura: énfasis en infraestructura regional para el desarrollo cultural.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "Fragmento 05",
+      "text": "Para continuar con el trabajo desarrollado entre el Consejo Nacional de la Cultura y las Artes (CNCA) y los municipios, el año 2013 se contemplan recursos para co-financiar la programación artística de 24 Centros Culturales comunales a lo largo de todo Chile, tales como Coyhaique, Padre las Casas, Punta Arenas, Los Andes, entre otros, mediante Convenios de Programación Artística.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "",
+      "text": "Complementariamente, se destinan $7.440 millones para la construcción de Centros Culturales Municipales y Teatros Regionales, además del apoyo a la reconstrucción del patrimonio.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "",
+      "text": "En 2013 se incrementa en 10% el presupuesto de los fondos concursables, alcanzando $22.893 millones. Estos se destinarán a los fondos del Libro, de la Música, de Fomento Audiovisual y al Fondo Nacional para el Desarrollo Cultural y de las Artes (FONDART).",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "",
+      "text": "Se destinarán también $24.652 millones a diversas instituciones y actividades culturales de todo el país, tales como: el Parque Cultural Valparaíso, el Teatro Municipal de Santiago, el Centro Cultural Gabriela Mistral, las Orquestas Juveniles e Infantiles de Chile, entre otras.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "",
+      "text": "3.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "",
+      "text": "Un presupuesto para avanzar en desarrollo social",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "",
+      "text": "Este proyecto de ley propone un presupuesto para avanzar en desarrollo social, especialmente en las siguientes materias:\na. Salud",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "",
+      "text": "El Gobierno ha asumido el compromiso de mejorar la cobertura y calidad de la atención de salud en Chile. Así, el proyecto de Presupuesto 2013 para Salud crece en 5,6% respecto al año 2012, alcanzando a un 15,6% del gasto presupuestario total y un 3,4% del PIB.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p9",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "",
+      "text": "Fortalecimiento de la Atención Primaria:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0005-p10",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0005",
+      "marker": "",
+      "text": "Uno de los objetivos centrales en materia de salud pública del Gobierno ha sido fortalecer la Atención Primaria de Salud, su presupuesto superará el billón de pesos, lo que representa un incremento de 7,7% en relación a 2012. En este crecimiento se destaca el aumento de la transferencia per cápita basal en 5,6%, que considera aumentos de cobertura del Examen de Medicina Preventiva y de enfermedades respiratorias de niños y adultos, además de un mejoramiento de la calidad de las prestaciones odontológicas, entre otras.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0006-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0006",
+      "marker": "Fragmento 06",
+      "text": "Con el objetivo de fortalecer la capacidad resolutiva del nivel primario de atención, se crearán 8 nuevas unidades de atención oftalmológica, además de 10 Servicios de Atención Primaria de Urgencia (SAPU) y 10 Servicios de Urgencia Rural (SUR). Finalmente, para el año 2013 se consideran alrededor de $3.800 millones adicionales para dar cumplimiento a la construcción de 56 Centros de Salud Familiar (CESFAM) en el período presidencial.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0006-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0006",
+      "marker": "",
+      "text": "Mejores hospitales y más especialistas para el sistema público de salud:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0006-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0006",
+      "marker": "",
+      "text": "Una parte muy relevante del Presupuesto 2013 se destinará a mejorar los niveles de atención secundario y terciario, para los cuales se incrementan los recursos en más de $136 mil millones, alcanzando de esta manera alrededor de $2.660.000 millones.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0006-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0006",
+      "marker": "",
+      "text": "El sistema de salud dispondrá de los dos primeros hospitales concesionados del país. Los vecinos de las comunas de Maipú y La Florida podrán atenderse en hospitales públicos de gran calidad, lo que permitirá mejorar la respuesta ante los problemas de salud de unas 700.000 personas. Para su puesta en marcha el Presupuesto 2013 contempla del orden de $50 mil millones. Adicionalmente, en 2013 entrará en operación la normalización de seis hospitales, entre ellos, los hospitales de Talca y Puerto Montt, además de la unidad de emergencia del futuro Hospital de Puerto Natales.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0006-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0006",
+      "marker": "",
+      "text": "Para lograr acoger oportunamente las necesidades de las personas, familias y comunidades, es necesario mejorar la disponibilidad, distribución y competencias del personal de salud. Para la formación y contratación de médicos especialistas se destinan recursos que permiten financiar un total de 830 becas de especialidad el año 2013. Con esto se habrá completado, entre 2010 y 2013, la formación de un total de 2.810 especialistas. Nuestra meta era 3.000 especialistas a 2014; meta que sobrecumpliremos.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0007-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0007",
+      "marker": "Fragmento 07",
+      "text": "Adicionalmente, se incrementan los recursos para Prestaciones de Seguridad Social, lo que incluye la cobertura de la Modalidad Libre Elección; esto es, atención de salud por prestadores privados, financiándose el acceso de los pensionados pertenecientes al Pilar Básico Solidario (alrededor de medio millón de beneficiarios que no podían acceder a esta modalidad), y la incorporación de 21 nuevos paquetes de Pago Asociado a Diagnóstico (PAD), plan que permite a los beneficiarios conocer el total de su cuenta antes de contratar la atención con un prestador privado de salud.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0007-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0007",
+      "marker": "",
+      "text": "AUGE:",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0007-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0007",
+      "marker": "",
+      "text": "En el Presupuesto 2013, se incrementan en más de $41.500 millones los recursos para el Programa de Garantías Explícitas en Salud (GES). De éstos, algo más de la mitad se destinan a financiar un aumento en el número de casos por variaciones en la prevalencia de los problemas AUGE y el incremento de la población beneficiaria de FONASA.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0007-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0007",
+      "marker": "",
+      "text": "Se continúa también con la expansión del Programa GES Preventivo en Atención Primaria, incrementando la prevención y pesquisa de problemas de salud relevantes, mediante intervenciones para reducir el consumo de alcohol, la promoción y prevención en Salud Bucal para niños en edad preescolar, el control de niño sano y la intervención en factores de riesgo de enfermedades crónicas no transmisibles.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0007-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0007",
+      "marker": "",
+      "text": "b.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0007-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0007",
+      "marker": "",
+      "text": "La extensión del postnatal ha permitido que nuestro país cuente con un permiso parental moderno y flexible, que aumenta la cobertura, entrega a los padres la libertad de decidir cómo hacer uso de su postnatal, y permite compatibilizar de mejor manera la familia y el trabajo. A partir del 1 de Enero de 2013, tendrán acceso al permiso Pre-Natal, Post-Natal y Post-Natal Parental más de 20.000 nuevas mujeres, entre las cuales se destacan las trabajadoras temporeras, destinándose alrededor de $7.000 millones para financiar esta nueva cobertura.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0007-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0007",
+      "marker": "",
+      "text": "Con el fin de colaborar con las familias en el cuidado de los hijos después de clases, el Presupuesto 2013 incrementa en un 39% los recursos del Programa",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0007-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0007",
+      "marker": "",
+      "text": ", que forma parte del Programa Presupuestario",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0008-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0008",
+      "marker": "Fragmento 08",
+      "text": ". Este favorece la inserción laboral y permanencia de las mujeres trabajadoras con hijos de entre 6 y 13 años. De esta manera, se podrá beneficiar adicionalmente a cerca de 2.500 niños y 1.800 madres.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0008-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0008",
+      "marker": "",
+      "text": "c.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0008-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0008",
+      "marker": "",
+      "text": "La seguridad ciudadana es un componente central en el bienestar de las familias. Por lo mismo, una de las tareas prioritarias del Gobierno es continuar mejorando la situación objetiva y la percepción de seguridad en la población.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0008-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0008",
+      "marker": "",
+      "text": "Un componente fundamental para el desarrollo de estrategias de prevención y control adecuado de las distintas formas de delincuencia es la existencia de información precisa y en poder de todos los entes involucrados. Para dar el paso definitivo en este sentido, el Presupuesto 2013 financia la construcción del Banco Unificado de Datos. Este es un sistema que permitirá compilar y homologar información de todas las instituciones pertenecientes al sistema de justicia criminal. La existencia de este Banco hará disponible, por primera vez, información normalizada a las instituciones que tienen competencia en el ámbito de la seguridad pública y la prevención del delito.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0008-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0008",
+      "marker": "",
+      "text": "El Presupuesto 2013 asigna $1.026.000 millones a Carabineros y a la Policía de Investigaciones, los que permitirán continuar el proceso de incorporación de nuevos efectivos, como se planteó en nuestro programa, y el mejoramiento de la estrategia de prevención que se ha desarrollado intensamente en estos ya tres años de gobierno. Destacan también los recursos para la reposición de cuarteles y se continúa con el financiamiento de los Proyectos Estrella de los Andes, Bioseguridad y Seguridad Inteligente.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0008-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0008",
+      "marker": "",
+      "text": "Plan Cuadrante",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0008-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0008",
+      "marker": "",
+      "text": "El Plan Cuadrante de Seguridad Preventiva se ampliará en trece comunas en 2013, logrando cubrir 150 comunas a nivel nacional, lo que implica un incremento de 50% desde 2010. Asimismo, en conjunto con Carabineros de Chile, se potenciará y perfeccionará el Sistema Táctico de Análisis del Delito.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0008-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0008",
+      "marker": "",
+      "text": "Barrio en Paz Residencial y Comercial",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0009-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0009",
+      "marker": "Fragmento 09",
+      "text": "Se destinan alrededor de $10 mil millones para consolidar el trabajo de prevención en barrios, mediante los programas Barrio en Paz Residencial y Comercial. Además, se ampliará la intervención en Barrios Críticos y se sistematizará el programa para su extensión.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0009-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0009",
+      "marker": "",
+      "text": "Plan Frontera Norte",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0009-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0009",
+      "marker": "",
+      "text": "Un componente significativo en la generación de mayor seguridad ciudadana es el combate al tráfico de sustancias ilícitas. Por esta razón, en el Presupuesto 2013 se fortalecerá el Plan Frontera Norte; esfuerzo conjunto de las instituciones policiales dedicado a controlar el ingreso de sustancias ilegales y la inmigración ilegal en las regiones de Arica y Parinacota, Tarapacá y Antofagasta. Como parte de este plan se han creado puestos estratégicos en los pasos fronterizos, habilitados con escáneres, cámaras de visión nocturna y vehículos todo terreno, entre otros.\nEn el marco del programa de apoyo a víctimas del delito, se destinarán recursos para aumentar la cobertura y los puntos de atención. Estos recursos también permitirán la implementación de nuevos Centros de Apoyo A Víctimas (CAVD), los cuales se sumarán a los 46 centros ya existentes.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0009-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0009",
+      "marker": "",
+      "text": "Para el Servicio Nacional para la Prevención y Rehabilitación del Consumo de Drogas y Alcohol (SENDA) el presupuesto se incrementa en más de un 23%, lo que se explica principalmente por el aumento de los recursos destinados a los programas de Tratamiento y Rehabilitación.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0009-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0009",
+      "marker": "",
+      "text": "Adicionalmente, se expandirá el Sistema Integrado de Prevención, Chile Previene en la escuela (155 nuevos colegios), el trabajo (143 nuevos municipios) y comunidad (5 nuevos municipios). Asimismo, se consolidará tanto el Sistema Nacional de Tratamiento para las Adicciones, aumentando cobertura y calidad de los tratamientos, así como el Plan Calle Sin Alcohol, el cual se expandirá a regiones para fortalecer los operativos de control.\nd.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0009-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0009",
+      "marker": "",
+      "text": "Superación de la Pobreza",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0010-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0010",
+      "marker": "Fragmento 10",
+      "text": "La superación de la pobreza es un objetivo esencial del gobierno. El año 2012 se promulgó la ley N° 20.595, sobre Ingreso Ético Familiar, que beneficia directamente a miles de personas que hoy se encuentran en situación de pobreza, extrema pobreza e incluso a quienes pertenecen a la clase media emergente. En este programa se contemplan para 2013 del orden de $124 mil millones, lo que representa un incremento cercano a 48% respecto de 2012.\nPor su parte, para los adultos mayores se consideran recursos para financiar la exención, total o parcial, del pago de las cotizaciones de salud a pensionados, alcanzando una cobertura que llega hasta el cuarto quintil. Con un incremento de 21,4% en los montos de recursos asignados se espera beneficiar a cerca de un millón de pensionados el año 2013. Adicionalmente, se contemplan casi $980 mil millones para el Pilar Solidario de la Reforma Previsional, el cual, a través de las Pensiones Básicas Solidarias y Aportes Previsionales Solidarios de Vejez e Invalidez, tienen como objetivo aliviar la pobreza de la población adulta de nuestro país. Dada la importancia que el Gobierno asigna a los adultos mayores, se destinarán recursos para fortalecer la atención domiciliaria, los centros diurnos y una subvención para las instituciones que atienden adultos mayores vulnerables que no pueden valerse por sí mismos. Se espera beneficiar a alrededor de 8.400 personas.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0010-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0010",
+      "marker": "",
+      "text": "El programa Plan Noche Digna ha permitido que muchas personas tengan un techo para pasar las noches. Para 2013 se contemplan recursos que permitirán completar el proyecto, agregando 7 centros a los 5 ya existentes.\nPara mejorar las oportunidades laborales de personas en situación de pobreza, se destinan $9.444 millones al Programa",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0010-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0010",
+      "marker": "",
+      "text": "del Fondo de Solidaridad e Inversión Social (FOSIS).\nEstos recursos permitirán aumentar la cobertura del programa en 800 beneficiarios, con lo que se llegaría, el año 2013, a un total de 12.311.\nLos discapacitados también se ven beneficiados con un 8% más en los recursos para las ayudas técnicas a personas discapacitadas de familias vulnerables y de escasos recursos.\n4.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0010-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0010",
+      "marker": "",
+      "text": "Un presupuesto para aumentar y mejorar la infraestructura nacional.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0011-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0011",
+      "marker": "Fragmento 11",
+      "text": "El Presupuesto 2013 destina más de $1.650.000 millones en inversiones en infraestructura, lo que representa un incremento de un 5% respecto de 2012. Destacan las obras de vialidad, para las cuales se destinan alrededor de $795 mil millones representando un aumento de 7,3% respecto de 2012. Aquí se incluye el mejoramiento de caminos rurales y de comunidades indígenas, con lo que se alcanzará un total de 3.500 kilómetros mejorados durante el período 2010-2013.\na.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0011-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0011",
+      "marker": "",
+      "text": "Red Austral\nDe los recursos mencionados, alrededor de $33 mil millones estarán destinados a la Red Austral, los que sumados a los más de $5.200 millones que dan continuidad a los Proyectos La Arena-Puelche y Caleta Gonzalo-Pichanco, complementan la construcción y mejoramiento de la Ruta 7.\nb.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0011-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0011",
+      "marker": "",
+      "text": "Recursos Hídricos\nEl Gobierno, consciente de la relevancia que implica el agua para el futuro de Chile, está desarrollando una Estrategia Nacional de Recursos Hídricos.\nAsí, en 2013 se consideran alrededor de $95 mil millones para la Dirección de Obras Hidráulicas. De esta cifra, cerca de $34 mil millones serán destinados a Obras de Riego que permitirán financiar el Plan de Embalses, el cual tiene como objetivo evitar que el 85% de las aguas que corren por nuestros ríos se pierdan en el mar. Además se consideran recursos para continuar con la construcción del embalse Chacrillas, los estudios para la construcción del embalse Valle Hermoso en la Región de Coquimbo, el embalse Punilla en la Región del Maule, y el embalse Chironta en la Región de Arica y Parinacota. Para aguas lluvia, se consideran del orden de $37.500 millones, que se destinarán a diversas obras de entubamiento, dentro de las cuales destaca el entubamiento del Canal de Azapa.\nRespecto del Programa de Agua Potable Rural (APR), se aumentan los recursos en casi un 26% respecto de 2012.\nDe esta forma, se estará incrementando sustantivamente el programa de abastecimiento de agua potable del sector rural, con un enorme impacto en la salubridad. Con estos recursos, se dará inicio en 2013 a un programa de 5.000 nuevas localidades, donde se espera abordar al menos 21 nuevos sistemas que benefician a alrededor de 2.900 familias.\nc.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0012-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0012",
+      "marker": "Fragmento 12",
+      "text": "Sistema de Concesiones\nEl Presupuesto 2013 considera $444.754 millones para la Administración del Sistema de Concesiones. Del mismo modo, se incluyen $15 mil millones adicionales para financiar estudios tendientes al desarrollo de nuevos proyectos. De estos recursos, se destinará una cifra significativa al Programa de Concesiones de Hospitales, los que dotarán y modernizarán la estructura hospitalaria en regiones y en diversas comunas de la Región Metropolitana.\nd.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0012-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0012",
+      "marker": "",
+      "text": "Infraestructura aeroportuaria\nFinalmente, en cuanto a infraestructura aeroportuaria, el Presupuesto 2013 considera alrededor de $36 mil millones para la conservación de pistas de la red nacional, ampliación y reposición de aeródromos y construcción y mejoramiento de las redes. De estos recursos, destacan los destinados al Aeropuerto Arturo Merino Benítez y Aviación Corporativa, la reposición del Aeródromo de Chaitén y la pista del Aeropuerto de Calama, entre otros.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0012-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0012",
+      "marker": "",
+      "text": "e.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0013-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0013",
+      "marker": "Fragmento 13",
+      "text": "Conectividad e infraestructura productiva\nEl terremoto de 2010 afectó severamente cerca de 1.554 kilómetros de caminos públicos y otros 92 kilómetros de vías concesionadas, además de 212 puentes. Para ello, el Ministerio de Obras Públicas elaboró un Programa de Emergencia y Reconstrucción, a ejecutarse en el período 2010-2014.\nActualmente, se ha restablecido la conectividad de 717 obras viales, caminos y puentes, lo que corresponde al 100% de los puntos de conectividad dañados por el terremoto. En este contexto, se consideran recursos para las obras más relevantes de reconstrucción. De estos, una fracción significativa será destinada a financiar la reposición de 5 Puentes: Tubul, Raqui-Dos, Cohinco, Niágara y Biobío. El Puente Bicentenario, sobre el Río Biobío, tiene asignados alrededor de $ 23.500 millones, y estará terminado en diciembre de 2013.\nRespecto a los bordes costeros y puertos marítimos, fluviales y lacustres, el Presupuesto 2013 contempla recursos para el término de 7 obras definitivas, entre los que se enumeran las reparaciones de los espigones en el Río Tirúa, del Muelle pesquero en Lo Rojas en Coronel, del muelle Lota Bajo y de la Caleta Llico. Además, se incluyen $11.628 millones para las principales obras de reconstrucción portuaria, dentro de las que se encuentra la reposición del Borde Costero de Dichato, el mejoramiento del Borde Costero La Poza en Talcahuano, la reposición de la Caleta Pesquera Río Lebu y la Construcción del Muelle Pesquero Artesanal en la Caleta Maguellines, entre otros.\n5. Un presupuesto para el Emprendimiento, la Innovación y el Desarrollo.\nChile se ha planteado el desafío de cruzar el umbral del desarrollo en esta década. Para eso, es necesario continuar impulsando la productividad y el crecimiento del país. Con el fin de avanzar en estos objetivos, el año 2012 se definió como el",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0013-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0013",
+      "marker": "",
+      "text": ". El Presupuesto 2013 contempla cerca de $394 mil millones para el Ministerio de Economía, Fomento y Turismo, los cuales estarán destinados, primordialmente, hacia la promoción y consolidación de políticas de innovación y emprendimiento.\na.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0013-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0013",
+      "marker": "",
+      "text": "Año de la Innovación",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0014-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0014",
+      "marker": "Fragmento 14",
+      "text": "Chile necesita promover una cultura de innovación, acorde con las necesidades de un mundo globalizado, competitivo y tecnológicamente cada vez más exigente. Mediante el Programa Start Up Chile de Innova Corfo, se han financiado 402 emprendimientos de 70 países. El presupuesto 2013 destina $5.000 millones para alcanzar la meta de atraer mil emprendedores a 2014.\nEn el año de la Innovación, destacan los recursos asignados a CONICYT, además de $4.100 millones a través de INNOVA, que aportarán financiamiento para la implementación de 4 nuevos centros de excelencia internacional, similares a los que se han instalado en Chile durante los últimos dos años en Biotecnología (Fraunhofer), Minería (Csiro), Tecnologías de Información (Inria) y Comunicaciones y Agroalimentos (Wageningen). A estos recursos se sumarán dos Centros de I",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0014-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0014",
+      "marker": "",
+      "text": "D corporativos los que buscan establecer en Chile Centros de I",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0014-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0014",
+      "marker": "",
+      "text": "D empresariales.\nb. Investigación y Desarrollo",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0014-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0014",
+      "marker": "",
+      "text": "Para incentivar la Investigación y Desarrollo en las empresas, desde septiembre de 2012 está disponible la nueva ley N° 20.570 de incentivo tributario a la Investigación y Desarrollo (I",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0014-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0014",
+      "marker": "",
+      "text": "D), la que flexibiliza y amplía las posibilidades de realizar I",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0014-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0014",
+      "marker": "",
+      "text": "D en empresas, terceros subcontratados y consorcios. Como apoyo a la investigación de nuestros científicos, además de los recursos que ya entrega Conicyt, se encuentra disponible el Fondo de Equipamiento Científico y Tecnológico (FONDEQUIP). Para consolidar estas políticas de innovación y desarrollo, el Presupuesto 2013 considera en torno a $ 6.000 millones.\nc. Formación de Competitividad\nAdicionalmente, el Presupuesto 2013 destina cerca de $9 mil millones para el Programa de Formación de Competitividad de la CORFO, donde se destaca el aumento de 40% respecto a 2012 en los recursos para las becas de inglés, alcanzando la meta de 10.000 becas.\nRespecto de los programas del Servicio de Cooperación Técnica (SERCOTEC), es particularmente relevante el financiamiento de los programas de Capital Semilla en sus versiones",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0015-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0015",
+      "marker": "Fragmento 15",
+      "text": ", con recursos que aumentan casi 46% respecto a 2012, creciendo la cobertura en alrededor de 1.500 beneficiarios.\nLos Programas de Fomento de CORFO incorporan un incremento en su Presupuesto 2013 de más $6.200 millones. Aquí cabe destacar la reformulación del programa e inclusión del nuevo subsidio Fondo de Asistencia Técnica, cuyo fin es facilitar el mejoramiento de la productividad y la gestión de las empresas chilenas, reduciendo los costos e incrementando las utilidades de las PYME.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0015-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0015",
+      "marker": "",
+      "text": "Contenido del Proyecto de ley.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0016-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0016",
+      "marker": "Fragmento 16",
+      "text": "En primer lugar, el proyecto contiene el Presupuesto de Ingresos y Gastos del Sector Público para 2013, que conforma los presupuestos de ingresos y gastos del Fisco y de los servicios e instituciones regidos por la Ley de Administración Financiera del Estado. El total neto asciende a $ 32.429.507 millones y US$ 6.445 millones.\nEn el subtítulo Gastos en Personal, de cada uno de los presupuestos de los servicios e instituciones que se proponen, se incorpora el efecto año de los mejoramientos sectoriales y generales aprobados en anualidades anteriores y en la presente y, en su caso, las provisiones correspondientes, lo que se refleja en la cifra pertinente en moneda nacional contenida en este artículo 1°.\nEn segundo lugar, se incluyen los ingresos generales de la Nación y los programas de gastos en subsidios, operaciones complementarias, servicio de deuda y transferencias de aportes fiscales a los organismos que aprueban presupuesto en esta ley. Este agregado presupuestario, denominado Tesoro Público, presenta niveles de ingresos y gastos del orden de $28.167.283 millones y US$10.918 millones.\nEn tercer lugar, se autoriza al Presidente de la República para contraer, hasta por el monto que se señala, obligaciones de carácter financiero en el exterior o en el país. Por las características de este tipo de operaciones en cuanto al plazo de los compromisos que se contraen, resulta indispensable que esta norma de la ley, sea aprobada por el H. Congreso Nacional con quórum calificado, según lo dispuesto en el artículo 63, N° 7 de la Constitución Política de la República.\nLuego, se contienen disposiciones complementarias sobre materias de orden presupuestario.\nSe establecen limitaciones al gasto, en cuanto a que sólo en virtud de ley puede incrementarse la suma de determinados conceptos de egresos corrientes. Asimismo, se dispone similar exigencia respecto de gastos en inversión, cuando se haya alcanzado el 10% por sobre la suma aprobada en esta ley para esos fines, sin perjuicio de las excepciones o exclusiones que establece. Con ello, se da cumplimiento al inciso tercero del artículo 26 del decreto ley N° 1.263, de 1975, en cuanto a que en la Ley de Presupuestos corresponde fijar limitaciones al gasto y las exclusiones y autorizaciones de su variación que procedan. El inciso final perfecciona las limitaciones del nivel de gasto, disponiendo que aquel monto en que se disminuya la suma determinada conforme al inciso primero de esta disposición (gasto corriente), para incrementar las cantidades a que se refiere este inciso (gasto de capital), constituirá una reducción definitiva del nivel autorizado en el citado inciso primero.\nSe dispone la obligación de los órganos y servicios públicos de informar al Gobierno Regional correspondiente, las iniciativas de inversión que realizarán en la región y que hayan identificado conforme a lo dispuesto en el inciso cuarto del artículo 19 bis del decreto ley N° 1.263, de 1975.\nSe regulan los procedimientos de licitación a que estarán afectos los servicios públicos para adjudicar durante el año 2013 la realización de estudios para inversiones y proyectos de inversión, distinguiendo, en relación a sus montos, la utilización de licitación pública o privada.\nSe resguarda el interés fiscal, al facultar a la autoridad correspondiente para que, en los decretos que dispongan transferencias de recursos, se puedan incorporar condiciones de uso o destino de éstos e información periódica sobre su aplicación y reintegros cuando corresponda. No se permite que, con las transferencias que constituyan asignaciones globales a unidades de un servicio o a programas ejecutados total o parcialmente por éste, se destinen recursos para gastos en personal y bienes y servicios de consumo, excepto aquellos que estén expresamente autorizados en el respectivo presupuesto.\nSe prohíbe a los organismos y servicios públicos, la adquisición, arrendamiento o construcción de viviendas destinadas a sus funcionarios, con las excepciones que se señalan.\nSe establece un mecanismo de flexibilización de las dotaciones máximas de personal, permitiendo reasignar dotación entre servicios de cada ministerio sin que se pueda superar la dotación total del conjunto de aquellos. Adicionalmente, se otorga la facultad de reasignar recursos con tal objeto.\nSe propone un mecanismo para posibilitar el reemplazo del personal contratado que, por cualquier causa, no pueda desempeñar su cargo por un período de treinta días corridos. El objetivo de esta norma es evitar la disminución de servicios causada por tales ausencias, estableciéndose en la misma disposición el resguardo de mayores gastos y el procedimiento de justificación de tales reemplazos.\nSe regula la provisión de cargos vacantes durante el año 2013, estableciendo que sólo podrán reponerse el 50 % de las vacantes que se produzcan en los servicios públicos que tengan fijada dotación máxima de personal en esta ley, con las excepciones que allí se señalan.\nSe dispone un procedimiento para convocar a los procesos de selección para la provisión de los cargos de Alta Dirección Pública, regulados en la norma que se cita de la ley N° 19.882, precisando cuales son los mecanismos e instancias más idóneas, públicas y de menor costo, en los cuales incluir toda la información relativa a los procesos de selección de los respectivos cargos y los requisitos exigidos, sin apartarse del espíritu que informa la citada norma.\nSe regula la adquisición y arrendamiento de los vehículos motorizados que señala, como también el procedimiento para reasignar dotación de vehículos entre los servicios dependientes de un mismo Ministerio, sin alterar la dotación máxima total de la respectiva cartera.\nSe regula el destino del producto de las ventas de bienes inmuebles fiscales que, de acuerdo a sus facultades, efectúe durante el año 2013 el Ministerio de Bienes Nacionales.\nAsimismo, se mantiene la excepción respecto del destino de los ingresos producto de las enajenaciones de bienes inmuebles de las Fuerzas Armadas y de Orden y Seguridad Pública, estableciéndose además que las aplicaciones que se efectúen con cargo a estos recursos deben incorporarse anualmente en la Ley de Presupuestos, en los respectivos capítulos de las Partidas presupuestarias correspondientes.\nSe establece que la Dirección de Presupuestos deberá proporcionar a las Comisiones de Hacienda del Senado y de la Cámara de Diputados, y a la Comisión Especial Mixta de Presupuestos, información relativa a la ejecución del presupuesto, deuda pública y del Banco Central, copia de los balances y estados financieros de las empresas del Estado, además de otra información que se detalla en dicho artículo.\nEn concordancia con lo dispuesto en el inciso segundo del artículo 5° de la ley N° 19.908, se solicita autorización por el monto que se señala para efectuar las operaciones allí autorizadas y reguladas.\nSe autoriza al Presidente de la República para otorgar la garantía del Estado a los créditos que contraigan o a los bonos que emitan las empresas del sector público y las universidades estatales, hasta por la cantidad de US$300.000.000 (quinientos millones de dólares de los Estados Unidos de América), o su equivalente en otras monedas.\nSe regula la forma de ejercer esta facultad, y la extensión de la garantía que se puede otorgar.\nAsimismo, se establece que todas aquellas empresas que reciban la garantía estatal para las operaciones de deuda que contraten, deberán suscribir, previamente, un convenio de programación con el Comité Sistema de Empresas de Corporación de Fomento de la Producción, con el objeto de que el Gobierno cuente con una instancia de análisis y evaluación uniforme de la gestión y del desarrollo de los planes y las políticas de las aludidas empresas.\nSe propone un procedimiento autorizatorio destinado a centralizar la procedencia y gasto producto de la afiliación o incorporación de los organismos públicos a diferentes organismos internacionales, radicándolo en el ministerio del ramo y en la cartera de Relaciones Exteriores.\nSe identifican los mecanismos reglamentarios y administrativos necesarios para la ejecución del presupuesto del Sector Público para el año 2013.\nSe fija la fecha de entrada en vigencia de la presente ley, permitiendo no obstante dictar a partir de la fecha de su publicación, los decretos a que se refiere el artículo 3° y los decretos y resoluciones que, por disposiciones de esta ley, se requieren para posibilitar la ejecución presupuestaria.\nSe señala el porcentaje de los recursos destinados a avisaje y publicaciones, que las reparticiones públicas podrán realizar en medios de comunicación con clara identificación local.\nSe otorga la calidad de agentes públicos a los encargados de programas presupuestarios previstos en esta ley que se encuentren contratados a honorarios.\nSe contiene una norma que obliga a los órganos y servicios públicos de la administración civil del Estado incluidos en esta ley a remitir a la Biblioteca del Congreso Nacional, en soporte electrónico, una copia de informes derivados de estudios e investigaciones que se contraten con cargo a la asignación 22.11.001.\nFinalmente, se establece la obligación de los organismos públicos de informar, a más tardar el 31 de marzo de 2013, a las Comisiones de Hacienda de la Cámara de Diputados y del Senado y a la Comisión Especial Mixta de Presupuestos, la nómina de los proyectos y programas de inversión financiados con el subtítulo 31, su calendario de ejecución y si fuera pertinente, su calendario de licitación.\nEn consecuencia, tengo el honor de someter a vuestra consideración, el siguiente:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "Fragmento 17",
+      "text": "PROYECTO DE LEY:",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "ESTIMACION DE INGRESOS Y CÁLCULO DE GASTOS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "Artículo 1°.- Apruébase el Presupuesto de ingresos y gastos del sector público para el año 2013, según el detalle que se indica:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "En moneda Nacional\nEn Miles de $",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "Resumen de los Presupuestos de las Partidas",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "Deducciones de Transferencias",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "IMPOSICIONES PREVISIONALES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "TRANSFERENCIAS CORRIENTES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p9",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "OTROS INGRESOS CORRIENTES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p10",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "VENTA DE ACTIVOS NO FINANCIEROS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p11",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "VENTA DE ACTIVOS FINANCIEROS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p12",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "RECUPERACION DE PRESTAMOS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p13",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "TRANSFERENCIAS PARA GASTOS DE CAPITAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p14",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "BIENES Y SERVICIOS DE CONSUMO",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p15",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "PRESTACIONES DE SEGURIDAD SOCIAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p16",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "TRANSFERENCIAS CORRIENTES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p17",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "ADQUISICION DE ACTIVOS NO FINANCIEROS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p18",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "ADQUISICION DE ACTIVOS FINANCIEROS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p19",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "TRANSFERENCIAS DE CAPITAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p20",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "B.- En Moneda Extranjera convertida a dólares:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p21",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "Resumen de los Presupuestos de las Partidas",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p22",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "Deducciones de Transferencias",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p23",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "OTROS INGRESOS CORRIENTES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p24",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "VENTA DE ACTIVOS FINANCIEROS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p25",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "RECUPERACIÓN DE PRESTAMOS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p26",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "BIENES Y SERVICIOS DE CONSUMO",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p27",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "PRESTACIONES DE SEGURIDAD SOCIAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p28",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "TRANSFERENCIAS CORRIENTES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p29",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "ADQUISICIÓN DE ACTIVOS NO FINANCIEROS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p30",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "ADQUISICIÓN DE ACTIVOS FINANCIEROS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p31",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "INICIATIVAS DE INVERSIÓN",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p32",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "TRANSFERENCIAS DE CAPITAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p33",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "Artículo 2°.-Apruébanse los ingresos generales de la Nación y los Aportes Fiscales en moneda nacional y en moneda extranjera, convertida a dólares, para el año 2013, a las Partidas que se indican:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p34",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "INGRESOS GENERALES DE LA NACION:",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p35",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "TRANSFERENCIAS CORRIENTES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p36",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "OTROS INGRESOS CORRIENTES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p37",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "VENTA DE ACTIVOS NO FINANCIEROS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p38",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "VENTA DE ACTIVOS FINANCIEROS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p39",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "RECUPERACION DE PRESTAMOS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p40",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "TRANSFERENCIAS PARA GASTOS DE CAPITAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p41",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "PRESIDENCIA DE LA REPUBLICA",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p42",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "CONTRALORIA GENERAL DE LA REPUBLICA",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p43",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DEL INTERIOR Y SEGURIDAD PUBLICA",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p44",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DE RELACIONES EXTERIORES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p45",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DE ECONOMIA, FOMENTO Y TURISMO",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p46",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DE DEFENSA NACIONAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p47",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DE OBRAS PUBLICAS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p48",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DE AGRICULTURA",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p49",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DE BIENES NACIONALES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p50",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DEL TRABAJO Y PREVISION SOCIAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p51",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DE VIVIENDA Y URBANISMO",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p52",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DE TRANSPORTES Y TELECOMUNICACIONES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p53",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO SECRETARIA GENERAL DE GOBIERNO",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p54",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DE DESARROLLO SOCIAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p55",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO SECRETARIA GENERAL DE LA PRESIDENCIA DE LA REPUBLICA",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p56",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "MINISTERIO DEL MEDIO AMBIENTE",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p57",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "Programas Especiales del Tesoro Público:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p58",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "FONDO DE ESTABILIZACION ECONOMICA Y SOCIAL",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p59",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "FONDO DE RESERVA DE PENSIONES",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0017-p60",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0017",
+      "marker": "",
+      "text": "OPERACIONES COMPLEMENTARIAS",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0018-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0018",
+      "marker": "Fragmento 18",
+      "text": "SERVICIO DE LA DEUDA PUBLICA",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0018-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0018",
+      "marker": "",
+      "text": "Artículo 3°.- Autorízase al Presidente de la República para contraer obligaciones, en el país o en el exterior, en moneda nacional o en monedas extranjeras, hasta por la cantidad de US$ 6.000.000 miles que, por concepto de endeudamiento, se incluye en los Ingresos Generales de la Nación.\nAutorícesele, además, para contraer obligaciones, en el país o en el exterior, hasta por la cantidad de US$ 300.000 miles o su equivalente en otras monedas extranjeras o en moneda nacional.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0018-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0018",
+      "marker": "",
+      "text": "Para los fines de este artículo podrán emitirse y colocarse bonos y otros documentos en moneda nacional o extranjera, los cuales podrán llevar impresa la firma del Tesorero General de la República.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0018-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0018",
+      "marker": "",
+      "text": "La parte de las obligaciones contraídas en virtud de esta autorización que sea amortizada dentro del ejercicio presupuestario 2013 y aquellas que se contraigan para efectuar pago anticipado de deudas constituidas en ejercicios anteriores, deducidas las amortizaciones incluidas en esta ley para el año 2013, no serán consideradas en el cómputo del margen de endeudamiento fijado en los incisos anteriores.\nNo se imputarán a la suma de las cantidades señaladas en los incisos primero y segundo de este artículo, las obligaciones que se contraigan para solventar el pago de bonos de reconocimiento a que alude el artículo tercero transitorio del decreto ley N° 3.500 de 1980, hasta por un monto del equivalente a US$ 1.500.000 miles.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0018-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0018",
+      "marker": "",
+      "text": "La autorización que se otorga al Presidente de la República será ejercida mediante decretos supremos expedidos a través del Ministerio de Hacienda, en los cuales se identificará el destino específico de las obligaciones que se contraigan, indicando las fuentes de recursos con cargo a los cuales debe hacerse el servicio de la deuda. Copia de estos decretos serán enviados a las Comisiones de Hacienda del Senado y de la Cámara de Diputados dentro de los quince días siguientes al de su total tramitación.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0019-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0019",
+      "marker": "Fragmento 19",
+      "text": "Artículo 4°.- En conformidad con lo dispuesto en el inciso tercero del artículo 26 del decreto ley N° 1.263, de 1975, sólo en virtud de autorización otorgada por ley podrá incrementarse la suma del valor neto de los montos para los gastos en personal, bienes y servicios de consumo, prestaciones de seguridad social, transferencias corrientes, integros al Fisco y otros gastos corrientes incluidos en el artículo 1° de esta ley, en moneda nacional y moneda extranjera convertida a dólares.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0020-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0020",
+      "marker": "Fragmento 20",
+      "text": "No regirá lo dispuesto en el inciso precedente respecto de los mayores egresos que se produzcan en los ítem de los referidos subtítulos que sean legalmente excedibles de acuerdo al artículo 28 del decreto ley N° 1.263, de 1975, y a la glosa 01, Programa Operaciones Complementarias de esta ley ni a los incrementos originados en la asignación de mayores saldos iniciales de caja, excepto el correspondiente a la Partida Tesoro Público, en venta de activos financieros, en ingresos propios asignables a prestaciones o gastos, en recursos obtenidos de fondos concursables de entes públicos o en virtud de lo dispuesto en el artículo 21 del decreto ley N° 1.263, de 1975. Los mayores gastos efectivos o incrementos que se dispongan por tales conceptos, en la cantidad que excedan lo presupuestado, incrementarán los montos máximos señalados en el inciso precedente, según corresponda.\nIgual autorización legal se requerirá para aumentar la suma de las cantidades, aprobadas en el citado artículo 1°, de los subtítulos de adquisición de activos no financieros, iniciativas de inversión y transferencias de capital a organismos o empresas no incluidas en esta ley, en un monto superior al 10% de dicha suma, salvo que los incrementos se financien con reasignaciones presupuestarias provenientes del monto máximo establecido en el inciso primero de este artículo o por incorporación de mayores saldos iniciales de caja, excepto el correspondiente a la Partida Tesoro Público, del producto de venta de activos, de recursos obtenidos de fondos concursables de entes públicos o de recuperación de anticipos. Los incrementos que provengan de las referidas reasignaciones disminuirán en igual cantidad el monto máximo establecido en el inciso primero de este artículo. Los aportes a cada una de las empresas incluidas en esta ley podrán elevarse hasta en 10%.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0021-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0021",
+      "marker": "Fragmento 21",
+      "text": "Artículo 5°.- Los órganos y servicios públicos deberán informar mensualmente al Gobierno Regional correspondiente, los estudios básicos, proyectos y programas de inversión que realizarán en la región y que hayan identificado conforme a lo dispuesto en el artículo 19 bis del decreto ley N° 1.263, de 1975. Tal información comprenderá el nombre del estudio, proyecto o programa, su monto y demás características, y se remitirá dentro de los quince días siguientes al término del mes de total tramitación de los respectivos decretos.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0021-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0021",
+      "marker": "",
+      "text": "Artículo 6°.- La propuesta o licitación pública será obligatoria respecto de los proyectos y programas de inversión y de los estudios básicos a realizar en el año 2013, cuando el monto total de éstos, contenido en el decreto o resolución de identificación, sea superior al equivalente en pesos de mil unidades tributarias mensuales respecto de los proyectos y programas de inversión, y de quinientas de dichas unidades en el caso de los estudios básicos, salvo las excepciones por situaciones de emergencia contempladas en la legislación correspondiente. Tratándose de los incluidos en las partidas Ministerio de Obras Públicas y Ministerio de Vivienda y Urbanismo, las referidas cantidades serán de diez mil unidades tributarias mensuales para los proyectos y programas de inversión y de tres mil de tales unidades en los estudios básicos.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0021-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0021",
+      "marker": "",
+      "text": "Cuando el monto respectivo fuere inferior a los señalados en el inciso precedente, la adjudicación será efectuada conforme al procedimiento establecido en el decreto supremo N° 151, de 2003, del Ministerio de Hacienda.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0021-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0021",
+      "marker": "",
+      "text": "Las empresas contratistas y subcontratistas que ejecuten obras o presten servicios financiados con recursos fiscales, que incurran en incumplimientos de las leyes laborales y previsionales durante el desarrollo de tales contratos, y sin perjuicio de las sanciones administrativas existentes, serán calificadas con nota deficiente en el área de administración del contrato; calificación que pasará a formar parte de los registros respectivos y se considerará en futuras licitaciones y adjudicaciones de contratos.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0022-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0022",
+      "marker": "Fragmento 22",
+      "text": "Las instituciones privadas, cualquiera sea su naturaleza, al momento de contratar con el Estado deberán acompañar un certificado de cumplimiento de obligaciones laborales y de remuneración. En el evento que la institución privada se encuentre incorporada en algún registro por incumplimientos laborales o de remuneraciones, o bien no acompañe los referidos certificados en el momento correspondiente, no podrá contratar con el Estado mientras no subsane el incumplimiento que la afecte.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0022-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0022",
+      "marker": "",
+      "text": "Artículo 7°.- En los decretos que dispongan transferencias con imputación a los ítem 01, 02 y 03, de los subtítulos 24 Transferencias Corrientes y 33 Transferencias de Capital de este presupuesto para los órganos y servicios públicos, se podrá indicar el uso o destino que deberá dar a los recursos la institución receptora; las condiciones o modalidades de reintegro de éstos a que quedará afecta dicha entidad y la información sobre su aplicación que deberá remitir al organismo que se señale en el respectivo decreto.\nAquellas transferencias incluidas en el subtítulo 24, que constituyan asignaciones globales a unidades de un Servicio o a programas ejecutados total o parcialmente por éste, deberán desglosarse en forma previa a la ejecución presupuestaria, en los distintos conceptos de gasto, visado por la Dirección de Presupuestos, y remitirse mensualmente a esta última un informe sobre avance de egresos y actividades, conjuntamente con la información de ejecución presupuestaria mensual. Dicho desglose constituirá la autorización máxima de gasto en los respectivos conceptos, sin perjuicio de las modificaciones que se le introduzcan mediante igual procedimiento. La visación podrá efectuarse a contar de la fecha de publicación de esta ley. Con todo, en los conceptos de gastos antes señalados no podrán incluirse recursos para gastos en personal y bienes y servicios de consumo, salvo que estén autorizados por norma expresa en el respectivo presupuesto.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0023-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0023",
+      "marker": "Fragmento 23",
+      "text": "Artículo 8°.- Prohíbese a los órganos y servicios públicos, la adquisición, construcción o arrendamiento de edificios para destinarlos a casas habitación de su personal. No regirá esta prohibición respecto de los programas sobre esta materia incorporados en los presupuestos del Poder Judicial, del Ministerio de Defensa Nacional, de Carabineros de Chile, de la Policía de Investigaciones de Chile y en los de inversión regional de los gobiernos regionales en lo que respecta a viviendas para personal de educación y de la salud en zonas apartadas y localidades rurales.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0023-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0023",
+      "marker": "",
+      "text": "Artículo 9°.- No obstante la dotación máxima de personal o de horas semanales fijadas en este presupuesto a los servicios públicos, por decreto supremo expedido por intermedio del Ministerio del ramo, el que deberá llevar también la firma del Ministro de Hacienda, podrá aumentarse la dotación u horas semanales de alguno o algunos de ellos con cargo a la disminución de otro u otros, sin que pueda, en ningún caso, aumentarse la dotación máxima o número de horas semanales del conjunto de los servicios del Ministerio respectivo. En el mismo decreto supremo podrá disponerse la transferencia, desde el o los presupuestos de los servicios en que disminuya la dotación, al o a los servicios en que se aumente, de los recursos necesarios para afrontar en éste o éstos el gasto correspondiente al aumento de dotación, o efectuar las reasignaciones presupuestarias que procedan con igual objeto.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0023-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0023",
+      "marker": "",
+      "text": "Artículo 10.- Los órganos y servicios públicos podrán contratar personal que reemplace a funcionarios contratados que, por cualquier razón, se encuentren imposibilitados para desempeñar sus cargos por un período superior a 30 días corridos. Dichas contrataciones no se imputarán a la respectiva dotación máxima de personal y sólo podrán efectuarse si la entidad cuenta con disponibilidad de recursos para tal efecto, lo que deberá ser certificado por la autoridad superior de la institución, sobre la base del informe de su unidad de finanzas. Tal certificación se acompañará al respectivo acto administrativo.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0024-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0024",
+      "marker": "Fragmento 24",
+      "text": "Artículo 11.- Durante el año 2013, sólo podrá reponerse el 50% de las vacantes que se produzcan en los servicios públicos que tengan fijada dotación máxima de personal en esta ley, por la dejación voluntaria de sus cargos que realicen sus funcionarios, salvo en aquellos casos que la Dirección de Presupuestos autorice previamente la reposición de un porcentaje mayor de dichas vacantes.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0024-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0024",
+      "marker": "",
+      "text": "Con todo, para efectuar las reposiciones que procedan conforme al inciso precedente, la institución respectiva deberá contar con disponibilidad presupuestaria suficiente para financiar las reposiciones, lo que será certificado por la autoridad del servicio, sobre la base del informe de su unidad de finanzas. Tal certificación se acompañará al respectivo acto administrativo.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0024-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0024",
+      "marker": "",
+      "text": "Lo dispuesto en los incisos precedentes no se aplicará respecto de las vacantes que se produzcan por tales causas en los cargos de las plantas de directivos de carrera, como asimismo a las dotaciones máximas fijadas para el personal regido por las leyes N°19.664 y N° 15.076.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0024-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0024",
+      "marker": "",
+      "text": "El acto administrativo que disponga la reposición deberá contener la identificación de los decretos o resoluciones de cesación de funciones en que se fundamenta.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0024-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0024",
+      "marker": "",
+      "text": "Artículo 12.- Para los efectos de proveer durante el año 2013 las vacantes de los cargos a que se refiere el artículo cuadragésimo octavo de la ley N° 19.882, se convocará a los procesos de selección a través de las páginas web institucionales u otras que se creen, donde se dará información suficiente, entre otras materias, respecto de las funciones del cargo, el perfil profesional, las competencias y aptitudes requeridas para desempeñarlo, el nivel referencial de remuneraciones, el plazo para la postulación y la forma en que deberán acreditarse los requisitos. Adicionalmente, se publicará en diarios de circulación nacional, avisos de la convocatoria del proceso de selección, los que deberán hacer referencia a las correspondientes páginas web para conocer las condiciones de postulación y requisitos solicitados.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0025-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0025",
+      "marker": "Fragmento 25",
+      "text": "Artículo 13.- Los órganos y servicios públicos de la administración civil del Estado incluidos en esta ley necesitarán autorización previa del Ministerio de Hacienda para la adquisición, a cualquier título, de toda clase de vehículos motorizados destinados al transporte terrestre de pasajeros y de carga, cuyo precio supere los que fije dicho Ministerio.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0025-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0025",
+      "marker": "",
+      "text": "Igual autorización previa requerirán los órganos y servicios que tengan fijada dotación máxima de vehículos motorizados, para tomar en arrendamiento tales vehículos o para convenir, en cualquier tipo de contratos, que éstos les sean proporcionados por la otra parte, para su utilización en funciones inherentes al servicio.\nLas adquisiciones a título gratuito que sean autorizadas, incrementarán la dotación máxima de vehículos motorizados a que se refiere el siguiente inciso, hasta en la cantidad que se consigne en la autorización y se fije mediante decreto supremo del Ministerio de Hacienda.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0025-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0025",
+      "marker": "",
+      "text": "La dotación máxima de vehículos motorizados fijada en las Partidas de esta ley para los servicios públicos comprende a todos los destinados al transporte terrestre de pasajeros y de carga, incluidos los adquiridos directamente con cargo a proyectos de inversión. La dotación podrá ser aumentada respecto de alguno o algunos de éstos, mediante decreto supremo expedido por intermedio del Ministerio correspondiente, dictado con la fórmula \"Por orden del Presidente de la República\", el cual deberá ser visado por el Ministerio de Hacienda, con cargo a la disminución de la dotación máxima de otros de dichos servicios, sin que pueda ser aumentada, en ningún caso, la dotación máxima del Ministerio de que se trate.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0025-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0025",
+      "marker": "",
+      "text": "En el decreto supremo respectivo, podrá disponerse el traspaso del o de los vehículos correspondientes desde el servicio en que se disminuye a aquel en que se aumenta. Al efecto, los vehículos deberán ser debidamente identificados y el decreto servirá de suficiente título para transferir el dominio de ellos, debiendo inscribirse en el Registro de Vehículos Motorizados.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0026-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0026",
+      "marker": "Fragmento 26",
+      "text": "Artículo 14.- El producto de las ventas de bienes inmuebles fiscales que no estén destinados por aplicación de lo dispuesto en el artículo 56 del decreto ley N° 1.939, de 1977, que efectúe durante el año 2013 el Ministerio de Bienes Nacionales, y las cuotas que se reciban en dicho año por ventas efectuadas desde 1986 a 2012, se incorporarán transitoriamente como ingreso presupuestario de dicho Ministerio. Esos recursos se destinarán a los siguientes objetivos:\n65% al Gobierno Regional de la Región en la cual está ubicado el inmueble enajenado, para su programa de inversión;\n10% al Ministerio de Bienes Nacionales, y",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0026-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0026",
+      "marker": "",
+      "text": "25% a beneficio fiscal, que ingresará a rentas generales de la Nación.\nLa norma establecida en este artículo no regirá respecto de las ventas que efectúe dicho Ministerio a órganos y servicios públicos, o a empresas en que el Estado, sus instituciones o empresas tengan aporte de capital igual o superior al 50%, destinadas a satisfacer necesidades propias del adquirente.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0026-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0026",
+      "marker": "",
+      "text": "No obstante lo anterior, si las empresas a que se refiere el inciso precedente enajenaren todo o parte de los bienes inmuebles adquiridos al Ministerio de Bienes Nacionales dentro del plazo de un año contado desde la fecha de inscripción del dominio a su nombre, el Fisco aportará al gobierno regional respectivo el 65% del precio pagado al referido Ministerio, o la proporción correspondiente si la venta fuere parcial.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0027-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0027",
+      "marker": "Fragmento 27",
+      "text": "Los ingresos producto de las enajenaciones de los bienes inmuebles de las Fuerzas Armadas y de Orden y Seguridad Publica no estarán afectos a lo dispuesto en los incisos anteriores y las aplicaciones que se efectúen con cargo a estos recursos se incorporarán anualmente en la Ley de Presupuestos, en los respectivos capítulos de la Partida Ministerio de Defensa Nacional y de la Partida Ministerio del Interior y Seguridad Pública según corresponda, identificando los ingresos y gastos estimados en cada caso. Estas enajenaciones se efectuarán por licitación pública y los recursos sólo podrán emplearse en proyectos de infraestructura, incluidos proyectos de inversión social, tales como habitabilidad y mejoramiento de las condiciones de vida de todo el personal integrante de estas instituciones, y en proyectos de infraestructura militar. La proporción de proyectos militares será inferior a la de proyectos de inversión social, salvo autorización expresa del Ministerio de Defensa. Trimestralmente el Ministerio de Defensa Nacional y el Ministerio del Interior y Seguridad Pública en su caso, deberán informar a la Comisión Especial Mixta de Presupuestos de las enajenaciones y los proyectos de infraestructura financiados con los recursos a que se refiere este inciso.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0027-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0027",
+      "marker": "",
+      "text": "Artículo 15.- La Dirección de Presupuestos proporcionará a las Comisiones de Hacienda del Senado y de la Cámara de Diputados y a la Comisión Especial Mixta de Presupuestos los informes y documentos que se señalan, en la forma y oportunidades que a continuación se indican:",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0027-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0027",
+      "marker": "",
+      "text": "1.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0027-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0027",
+      "marker": "",
+      "text": "Informe de ejecución presupuestaria mensual de ingresos y gastos del Gobierno Central, a nivel de Subtítulos, dentro de los treinta días siguientes al término del respectivo mes.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0027-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0027",
+      "marker": "",
+      "text": "2.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0027-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0027",
+      "marker": "",
+      "text": "Nómina mensual de los decretos que dispongan transferencias con cargo a la asignación Provisión para Financiamientos Comprometidos, de la Partida Tesoro Público, totalmente tramitados en el período, dentro de los quince días siguientes al término del mes respectivo.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0027-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0027",
+      "marker": "",
+      "text": "3.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0028-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0028",
+      "marker": "Fragmento 28",
+      "text": "Informe de ejecución presupuestaria trimestral de ingresos y gastos del Gobierno Central, a nivel de Subtítulos, dentro de los treinta días siguientes al término del respectivo trimestre, incluyendo en anexos un desglose de los ingresos tributarios del período, otras fuentes de financiamiento y comportamiento de la deuda bruta del Gobierno Central.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0028-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0028",
+      "marker": "",
+      "text": "4.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0028-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0028",
+      "marker": "",
+      "text": "Informe de la ejecución trimestral del presupuesto de ingresos y de gastos de las partidas de esta ley, al nivel de partidas, capítulos y programas aprobados respecto de cada una de ellas, estructurado en presupuesto inicial, presupuesto vigente y monto ejecutado a la fecha respectiva, incluido el gasto de todas las glosas de esta ley, dentro de los treinta días siguientes al término del respectivo trimestre.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0028-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0028",
+      "marker": "",
+      "text": "5.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0028-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0028",
+      "marker": "",
+      "text": "Informe financiero trimestral de las empresas del Estado y de aquellas en que el Estado, sus instituciones o empresas tengan aporte de capital igual o superior al cincuenta por ciento, que comprenderá un balance consolidado por empresa y estado de resultados a nivel consolidado y por empresa. Dicho informe será elaborado por el Comité Sistema de Empresas de la Corporación de Fomento de la Producción o quien lo suceda o reemplace, y será remitido dentro de los quince días siguientes a la fecha de vencimiento del respectivo plazo de presentación fijado por la Superintendencia de Valores y Seguros.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0028-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0028",
+      "marker": "",
+      "text": "6.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0028-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0028",
+      "marker": "",
+      "text": "Informe semestral de la deuda pública bruta y neta del Gobierno Central y de la deuda bruta y neta del Banco Central, con sus notas explicativas y antecedentes complementarios, dentro de los sesenta días y noventa días siguientes al término del correspondiente semestre, respectivamente.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0028-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0028",
+      "marker": "",
+      "text": "7.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "Fragmento 29",
+      "text": "Copia de los balances anuales y estados financieros semestrales de las empresas del Estado, Televisión Nacional de Chile, el Banco del Estado de Chile, la Corporación del Cobre de Chile, de todas aquellas en que el Estado, sus instituciones o empresas tengan aporte de capital igual o superior al cincuenta por ciento, realizados y auditados de acuerdo a las normas establecidas para las sociedades anónimas abiertas, y de las entidades a que se refiere la ley N° 19.701. Dichas copias serán remitidas dentro de los quince días siguientes a la fecha de vencimiento del respectivo plazo de presentación fijado por la Superintendencia de Valores y Seguros.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "",
+      "text": "8.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "",
+      "text": "Copia de los contratos de préstamo que se suscriban con organismos multilaterales en uso de la autorización otorgada en el artículo 3° de esta ley, dentro de los quince días siguientes al de su total tramitación.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "",
+      "text": "9.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "",
+      "text": "Informe trimestral de las operaciones de cobertura de riesgo de activos y pasivos autorizados en el artículo 5° de la ley N° 19.908, dentro de los treinta días siguientes al término del respectivo trimestre.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "",
+      "text": "Informe Trimestral sobre los Activos Financieros del Tesoro Público, dentro de los 30 días siguientes al término del respectivo trimestre.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "",
+      "text": "11.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "",
+      "text": "Informe trimestral sobre el Fondo de Reserva de Pensiones y el Fondo de Estabilización Económica y Social, dentro de los 90 días siguientes al término del respectivo trimestre.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p9",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "",
+      "text": "En el caso del Fondo de Estabilización Económica y Social, el informe deberá ser presentado ante la Comisión Especial Mixta de Presupuestos y contener, al menos, el detalle de aportes y retiros del período, debiendo identificarse y fundamentarse el destino de estos últimos.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0029-p10",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0029",
+      "marker": "",
+      "text": "12.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0030-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0030",
+      "marker": "Fragmento 30",
+      "text": "Informe trimestral, dentro de los 30 días siguientes al término del respectivo trimestre, de las asignaciones comprendidas en los subtítulos 24 y 33, para cada uno de los programas de esta ley. Adicionalmente y en las mismas fechas, los organismos responsables de dichos programas, deberán publicar en su página web institucional la individualización de los proyectos beneficiados, nómina de beneficiarios, metodología de elección de éstos, las personas o entidades ejecutoras de los recursos, los montos asignados y la modalidad de asignación.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0030-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0030",
+      "marker": "",
+      "text": "Si las asignaciones a las que hace mención el párrafo precedente corresponden a transferencias a municipios, el informe respectivo también deberá contener una copia de los convenios firmados con los alcaldes, el desglose por municipio de los montos transferidos y el criterio bajo el cual éstos fueron distribuidos.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0030-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0030",
+      "marker": "",
+      "text": "13. Informe, antes del 31 de diciembre de 2012, de los gastos considerados para el año 2013 en iniciativas de inversión en las zonas comprendidas en el decreto supremo N° 150, de 2010, del Ministerio del Interior y Seguridad Pública, especificando el tipo de obra, región y comuna de ubicación, costo y plazo de ejecución. Asimismo, estado de avance trimestral, dentro de los 30 días siguientes al término del respectivo trimestre, de cada una de las obras especificadas.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0030-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0030",
+      "marker": "",
+      "text": "14. La Dirección de Presupuestos, en el marco del Plan Araucanía, informará a más tardar el 31 de marzo de 2013 a la Comisión Especial Mixta de Presupuestos acerca de las iniciativas de inversión sectoriales consideradas en la Ley de Presupuestos del Sector Público para el año 2013 que se contempla desarrollar en la IX Región.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0030-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0030",
+      "marker": "",
+      "text": "15. Trimestralmente, copia de los decretos de modificaciones presupuestarias totalmente tramitados en el período, dentro de los 30 días siguientes al término del trimestre, y un informe consolidado de las modificaciones presupuestarias efectuadas en el trimestre anterior, especificando los montos incrementados o disminuidos por subtítulo y partida.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0031-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0031",
+      "marker": "Fragmento 31",
+      "text": "16. Informe trimestral de los ingresos fiscales asociados a las medidas adoptadas para el financiamiento de la reconstrucción, incluyendo la ley N° 20.469, que introduce modificaciones a la tributación de la actividad minera, la ley N° 20.455, que modifica diversos cuerpos legales para obtener recursos destinados al financiamiento de la reconstrucción del país, y la ley N° 20.444, que crea el Fondo Nacional de la Reconstrucción y establece mecanismos de incentivo tributario a las donaciones efectuadas en caso de catástrofe.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0031-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0031",
+      "marker": "",
+      "text": "17.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0031-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0031",
+      "marker": "",
+      "text": "Trimestralmente, dentro de los treinta días siguientes al término del período correspondiente, deberá enviarse un informe sobre el estado de cumplimiento del Plan Arica Parinacota y del Plan Arauco, en el que se indicará el estado de ejecución, montos transferidos, avance real de las obras que contemplen, todo ello desglosado según cada una de las áreas de intervención comprendidas.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0031-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0031",
+      "marker": "",
+      "text": "18.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0031-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0031",
+      "marker": "",
+      "text": "La Dirección de Presupuestos deberá remitir a la Comisión Especial Mixta de Presupuestos un informe trimestral sobre el gasto devengado en el Gobierno Central en la asignación 22-07-001, dentro de los 30 días siguientes al término del trimestre respectivo, detallando el gasto por partida y su variación real respecto de igual trimestre del año anterior.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0031-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0031",
+      "marker": "",
+      "text": "Para dar cumplimiento a lo señalado en los párrafos anteriores, la información indicada deberá ser entregada por los organismos correspondientes, debiendo además ser publicada en los mismos plazos en la página web de los organismos obligados a proporcionarla.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0031-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0031",
+      "marker": "",
+      "text": "El reglamento a que se refiere el inciso tercero del artículo 7° de la N° 19.862, deberá establecer que la inscripción de cada operación de transferencia deberá señalar el procedimiento utilizado en su asignación, si es por concurso, asignación directa u otro. Trimestralmente, la Subsecretaría de Hacienda enviará un informe sobre la base de la información proporcionada por el Registro Central de Colaboradores del Estado, identificando el total de asignaciones directas ejecutadas en el período a nivel de programa.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0032-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0032",
+      "marker": "Fragmento 32",
+      "text": "Toda información que en virtud de otras disposiciones de esta ley deba ser remitida a Comisiones del Senado y de la Cámara de Diputados, será proporcionada por los respectivos organismos a la Comisión Especial Mixta de Presupuestos, quién la pondrá a disposición de la o las Comisiones a que se refieren dichas disposiciones, sin perjuicio de su publicación en la página web del organismo respectivo.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0032-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0032",
+      "marker": "",
+      "text": "La información deberá ser atingente e incluir las advertencias de porcentajes de cumplimientos de objetivos o indicadores.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0032-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0032",
+      "marker": "",
+      "text": "Artículo 16.- Durante el año 2013, la suma de los montos involucrados en operaciones de cobertura de riesgos financieros que celebren las entidades autorizadas en el artículo 5° de la ley N° 19.908, no podrá exceder de US$1.500.000 miles o su equivalente en moneda nacional. Tales operaciones se deberán efectuar con sujeción a lo dispuesto en la citada norma legal.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0032-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0032",
+      "marker": "",
+      "text": "Artículo 17.- Durante el año 2013 el Presidente de la República podrá otorgar la garantía del Estado a los créditos que contraigan o a los bonos que emitan las empresas del sector público y universidades estatales, hasta por la cantidad de US$300.000.000 (quinientos millones de dólares de los Estados Unidos de América) o su equivalente en otras monedas extranjeras o en moneda nacional.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0032-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0032",
+      "marker": "",
+      "text": "La autorización que se otorga al Presidente de la República, será ejercida mediante uno o más decretos supremos expedidos a través del Ministerio de Hacienda, en los cuales se identificará el destino específico de las obligaciones por contraer, indicando las fuentes de los recursos con cargo a los cuales debe hacerse el servicio de la deuda.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0032-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0032",
+      "marker": "",
+      "text": "Las garantías que otorgue el Estado en conformidad con este artículo se extenderán al capital, reajustes e intereses que devenguen los créditos y los bonos mencionados precedentemente, comisiones, contratos de canje de monedas y demás gastos que irroguen, cualquiera sea su denominación presente o futura, hasta el pago efectivo de dichas obligaciones.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0033-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0033",
+      "marker": "Fragmento 33",
+      "text": "Las empresas señaladas en el inciso primero, para obtener la garantía estatal señalada, deberán suscribir previamente un convenio de programación con el Comité Sistema de Empresas de la Corporación de Fomento de la Producción, en que se especificarán los objetivos y los resultados esperados de su operación y programa de inversiones, en la forma que se establezca mediante instrucciones del Ministerio de Hacienda. A estos convenios les será aplicable la disposición del inciso segundo del artículo 2° de la ley N° 19.847.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0033-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0033",
+      "marker": "",
+      "text": "Autorízase a las universidades estatales para contratar, durante el año 2013, empréstitos por períodos de hasta 20 años, de forma que, con los montos que se contraten, el nivel de endeudamiento total en cada una de ellas no exceda del setenta por ciento (70%) de sus patrimonios. El servicio de la deuda se realizará con cargo al patrimonio de las mismas universidades estatales que las contraigan. Estos empréstitos deberán contar con la visación previa del Ministerio de Hacienda. Con todo, los empréstitos no comprometerán de manera directa ni indirecta el crédito y la responsabilidad financiera del Estado.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0033-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0033",
+      "marker": "",
+      "text": "Copia de los antedichos empréstitos, indicando el monto y las condiciones bajo las cuales fueron suscritos, además de un informe que especifique los objetivos y los resultados esperados de cada operación y su programa de inversiones asociado, serán enviados al Ministerio de Educación y a la Comisión Especial Mixta de Presupuestos, dentro de los treinta días siguientes al de su contratación.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0033-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0033",
+      "marker": "",
+      "text": "Artículo 18.- Los órganos y servicios públicos incluidos en esta ley necesitarán autorización previa del Ministerio del ramo, visada por el Ministerio de Relaciones Exteriores, para afiliarse o asociarse a organismos internacionales, renovar las existentes o convenir aumento de sus cuotas. En el evento que la incorporación les demande efectuar contribuciones o aportes, se deberá certificar la disponibilidad de recursos para afrontar tales gastos.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0034-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0034",
+      "marker": "Fragmento 34",
+      "text": "Artículo 19.- Los decretos supremos del Ministerio de Hacienda que deban dictarse en cumplimiento de lo dispuesto en los diferentes artículos de esta ley y los que correspondan para la ejecución presupuestaria, se ajustarán a lo establecido en el artículo 70 del decreto ley N° 1.263, de 1975.\nLas aprobaciones y autorizaciones del Ministerio de Hacienda establecidas en esta ley, para cuyo otorgamiento no se exija expresamente que se efectúen por decreto supremo, las autorizaciones que prescriben los artículos 22 y 24 del decreto ley N° 3.001, de 1979, el párrafo final del inciso segundo del artículo 8° del decreto ley N° 1.056, de 1975, y el artículo 4° de la ley N° 19.896, la excepción a que se refiere el inciso final del artículo 9° de la ley N° 19.104 y el artículo 14 de la ley N° 20.128, se cumplirán mediante oficio o visación del Subsecretario de Hacienda, quien podrá delegar tales facultades, total o parcialmente, en el Director de Presupuestos.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0034-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0034",
+      "marker": "",
+      "text": "Las visaciones dispuestas en el artículo 5° de la ley N° 19.896 serán efectuadas por el Subsecretario respectivo, quien podrá delegar tal facultad en el Secretario Regional Ministerial correspondiente y, en el caso de los gobiernos regionales, en el propio Intendente.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0034-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0034",
+      "marker": "",
+      "text": "Artículo 20.- Las disposiciones de esta ley regirán a contar del 1 de enero del año 2013, sin perjuicio de que puedan dictarse a contar de la fecha de su publicación los decretos a que se refiere el artículo 3°, y los decretos y resoluciones que en virtud de esta ley sean necesarios para posibilitar la ejecución presupuestaria a partir del año 2013.\nArtículo 21.- Los órganos y servicios públicos, cuando realicen avisaje y publicaciones en medios de comunicación social, deberán efectuarlos, al menos en un 20% en medios de comunicación con clara identificación local. Los mismos se distribuirán territorialmente de manera equitativa.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0035-p1",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0035",
+      "marker": "Fragmento 35",
+      "text": "Los órganos y servicios a que se refiere este artículo, deberán dar cumplimiento de lo establecido en el inciso anterior, por medio de sus respectivas páginas web. Asimismo, trimestralmente, deberán informar en las mismas páginas web acerca del gasto devengado en la asignación 22-07-001, dentro de los 30 días siguientes al término del trimestre respectivo.\nArtículo 22.- Los encargados de los programas presupuestarios previstos en esta ley que se encuentren contratados a honorarios, tendrán la calidad de agentes públicos, con la consecuente responsabilidad penal y administrativa, y sin perjuicio de la responsabilidad correspondiente de su superior jerárquico.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0035-p2",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0035",
+      "marker": "",
+      "text": "Artículo 23.- Los órganos y servicios públicos de la administración civil del Estado incluidos en esta ley deberán remitir a la Biblioteca del Congreso Nacional, en soporte electrónico, una copia de los informes derivados de estudios e investigaciones contratados en virtud de la asignación 22.11.001, dentro de los 180 días siguientes a la recepción de su informe final.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0035-p3",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0035",
+      "marker": "",
+      "text": "Artículo 24.- En caso de contar con asignaciones correspondientes al subtítulo 31, la entidad responsable de la ejecución de los recursos deberá informar a las Comisiones de Hacienda del Senado y de la Cámara de Diputados y a la Comisión Especial Mixta de Presupuestos, a más tardar el 31 de marzo de 2013, la nómina de los proyectos y programas financiados con cargo a los recursos señalados, su calendario de ejecución y también, en caso de ser pertinente, su calendario de licitación.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0035-p4",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0035",
+      "marker": "",
+      "text": "La información señalada en el inciso previo, desglosada por Ministerio, deberá estar disponible en el sitio web de la Dirección de Presupuestos, y deberá ser acompañada, en el plazo que corresponda, por la ejecución trimestral de los recursos indicados.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0035-p5",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0035",
+      "marker": "",
+      "text": ".",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0035-p6",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0035",
+      "marker": "",
+      "text": "Dios guarde a V.E.",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0035-p7",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0035",
+      "marker": "",
+      "text": "SEBASTIAN PIÑERA ECHENIQUE",
+      "is_heading": true
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0035-p8",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0035",
+      "marker": "",
+      "text": "Presidente de la República",
+      "is_heading": false
+    },
+    {
+      "id": "senado-docto-9000-mensaje_mocion-fragment-0035-p9",
+      "source_fragment_id": "senado-docto-9000-mensaje_mocion-fragment-0035",
+      "marker": "",
+      "text": "FELIPE LARRAIN BASCUÑAN\nMinistro de Hacienda",
+      "is_heading": false
+    }
+  ]
+}
