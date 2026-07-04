@@ -26,7 +26,11 @@ class _SessionContext:
 def test_load_chilecompra_file_maps_local_json_without_real_db(monkeypatch, tmp_path, capsys) -> None:
     module = _load_script_module()
     payload_path = tmp_path / "sample.json"
-    payload_path.write_text('[{"Codigo": "LOCAL-1", "Comprador": {"NombreOrganismo": "Entidad demo"}}]', encoding="utf-8")
+    payload_path.write_text(
+        '[{"Codigo": "LOCAL-1", "Comprador": {"CodigoOrganismo": "B1", "NombreOrganismo": "Entidad demo"}, '
+        '"Proveedor": {"CodigoEmpresa": "S1", "NombreEmpresa": "Proveedor demo"}}]',
+        encoding="utf-8",
+    )
     calls: dict[str, object] = {}
 
     class FakeNormalizer:

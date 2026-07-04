@@ -14,6 +14,9 @@ if str(SRC) not in sys.path:
 from datosenorden.adapters.legislature.parser import canonical_bill_id, normalize_bulletin_id
 from datosenorden.db.session import SessionLocal
 from datosenorden.models import Claim, Dataset, Entity, Evidence, SourceRecord
+from datosenorden.web.app_services import get_investigation
+from datosenorden.web.app_services import get_investigation_timeline
+from datosenorden.web.app_services import search_workspace
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -64,6 +67,8 @@ def main(argv: list[str] | None = None) -> int:
             ) or 0
             document_count = evidence_count
 
+    visibility = _verify_visibility(bulletin_id, external_id)
+
     print("verify_legislative_bill:")
     print(f"  bulletin={bulletin_id}")
     print(f"  expected_external_id={external_id}")
@@ -74,7 +79,56 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  evidencias={evidence_count}")
     print(f"  source_records={source_record_count}")
     print(f"  documentos={document_count}")
-    return 0 if exists and resolved else 1
+    print(f"  busqueda_encuentra_boletin={visibility['search_found']}")
+    print(f"  expediente_con_datos={visibility['investigation_found']}")
+    print(f"  timeline_no_vacia={visibility['timeline_non_empty']}")
+    print(f"  expediente_evidencias={visibility['evidence_count']}")
+    print(f"  expediente_fuentes={visibility['source_count']}")
+    if visibility["error"]:
+        print(f"  visibility_error={visibility['error']}")
+    visible = (
+        visibility["search_found"]
+        and visibility["investigation_found"]
+        and visibility["timeline_non_empty"]
+        and visibility["evidence_count"] > 0
+        and visibility["source_count"] > 0
+    )
+    return 0 if exists and resolved and visible else 1
+
+
+def _verify_visibility(bulletin_id: str, external_id: str) -> dict[str, object]:
+    result = {
+        "search_found": False,
+        "investigation_found": False,
+        "timeline_non_empty": False,
+        "evidence_count": 0,
+        "source_count": 0,
+        "error": "",
+    }
+    try:
+        queries = (bulletin_id, f"boletin {bulletin_id.split('-', 1)[0]}", external_id)
+        for query in queries:
+            matches = search_workspace(query).get("matches", [])
+            if any(
+                str(match.get("canonical_entity_id", "")) == external_id
+                or str(match.get("entity_name", "")).lower() == f"boletin {bulletin_id}".lower()
+                or str(match.get("action_href", "")).endswith(external_id)
+                for match in matches
+            ):
+                result["search_found"] = True
+                break
+
+        investigation = get_investigation(external_id)
+        result["investigation_found"] = bool(investigation.get("found")) and bool(investigation.get("entity"))
+        compact = investigation.get("compact_metrics", {})
+        result["evidence_count"] = int(compact.get("evidence_count", 0) or 0)
+        legislative = investigation.get("legislative", {})
+        result["source_count"] = int(legislative.get("source_records_count", 0) or len(investigation.get("dataset_badges", [])) or 0)
+        timeline = get_investigation_timeline(external_id)
+        result["timeline_non_empty"] = bool(timeline.get("years"))
+    except Exception as exc:  # noqa: BLE001
+        result["error"] = f"{type(exc).__name__}: {exc}"
+    return result
 
 
 def _resolve_bulletin_arg(positional: str | None, named: str | None) -> str:

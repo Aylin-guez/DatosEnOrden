@@ -137,6 +137,18 @@ def test_verify_legislative_bill_passes_with_detached_objects(monkeypatch, capsy
         return FakeSession()
 
     monkeypatch.setattr(_SessionContext, "__enter__", enter_session)
+    monkeypatch.setattr(
+        module,
+        "_verify_visibility",
+        lambda bulletin_id, external_id: {
+            "search_found": True,
+            "investigation_found": True,
+            "timeline_non_empty": True,
+            "evidence_count": 3,
+            "source_count": 3,
+            "error": "",
+        },
+    )
 
     exit_code = module.main(["8575-05"])
 
