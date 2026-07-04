@@ -1,0 +1,25 @@
+{
+  "documents": [
+    {
+      "slot": "document_a",
+      "document_id": "knowledge-doc-arauco-hospital-demo-2026",
+      "source_path": "data/sample/official_documents_sample.json",
+      "status": "available",
+      "description": "Documento estructurado local de demostracion para la lectura documentada V1."
+    },
+    {
+      "slot": "document_b",
+      "document_id": "",
+      "source_path": "",
+      "status": "reserved",
+      "description": "Entrada reservada para un futuro documento estructurado."
+    },
+    {
+      "slot": "document_c",
+      "document_id": "",
+      "source_path": "",
+      "status": "reserved",
+      "description": "Entrada reservada para un futuro documento estructurado."
+    }
+  ]
+}
