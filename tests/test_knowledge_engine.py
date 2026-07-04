@@ -21,10 +21,10 @@ def test_load_official_documents_from_local_sample() -> None:
 def test_build_knowledge_digest_creates_rule_based_outputs() -> None:
     digest = knowledge_engine.build_knowledge_demo()
 
-    assert "lectura es neutral" in digest.citizen_summary
+    assert "no agrega antecedentes externos" in digest.citizen_summary
     assert len(digest.key_points) >= 4
-    assert len(digest.citizen_questions) == 3
-    assert len(digest.claims) == 3
+    assert len(digest.citizen_questions) >= 3
+    assert len(digest.claims) >= 3
     assert len(digest.evidence) == len(digest.document.sections)
     assert digest.connections["expediente"] == knowledge_engine.DEMO_ENTITY_NAME
     assert digest.connections["seguimiento"] == knowledge_engine.DEMO_TRACKING_ITEM_ID
@@ -43,7 +43,9 @@ def test_claims_are_verifiable_and_linked_to_evidence() -> None:
         assert "riesgo" not in claim.claim.lower()
 
 
-def test_knowledge_services_return_json_safe_payloads() -> None:
+def test_knowledge_services_return_json_safe_payloads(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(app_services, "REAL_DOCUMENT_PUBLICATION_PATH", tmp_path / "missing-publication.json")
+
     demo = app_services.get_knowledge_demo()
     documents = app_services.get_knowledge_documents()
     digest = app_services.get_knowledge_digest(knowledge_engine.DEMO_KNOWLEDGE_DOCUMENT_ID)
@@ -94,7 +96,9 @@ def test_document_experience_contract_links_summary_to_fragments() -> None:
         assert set(claim.citation_ids) <= citation_ids
 
 
-def test_knowledge_payload_exposes_viewer_references() -> None:
+def test_knowledge_payload_exposes_viewer_references(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(app_services, "REAL_DOCUMENT_PUBLICATION_PATH", tmp_path / "missing-publication.json")
+
     payload = app_services.get_knowledge_demo()
 
     assert payload["pages"][0]["page"] == 18

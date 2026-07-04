@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
@@ -228,8 +229,8 @@ def build_knowledge_digest(document: OfficialDocument | str, path: Path | str = 
             "fuente_publica": document.public_source,
         },
         notice=(
-            "Digest local de prueba. No representa datos oficiales, no afirma irregularidad "
-            "y cada afirmacion debe revisarse contra la evidencia original."
+            "Lectura documental automatica basada solo en fragmentos extraidos. No afirma irregularidad, "
+            "responsabilidad ni efectos juridicos; cada afirmacion debe revisarse contra el documento original."
         ),
     )
 
@@ -270,6 +271,7 @@ def get_knowledge_vocabulary(config: PlatformConfig | None = None) -> dict[str, 
 
 
 def knowledge_digest_to_dict(digest: KnowledgeDigest) -> dict[str, Any]:
+    evidence_by_id = {anchor.id: anchor for anchor in digest.evidence}
     return {
         "document": official_document_to_dict(digest.document),
         "document_reference": digest.document_reference.__dict__,
@@ -281,13 +283,30 @@ def knowledge_digest_to_dict(digest: KnowledgeDigest) -> dict[str, Any]:
         "key_points": [point.__dict__ for point in digest.key_points],
         "citizen_questions": [question.__dict__ for question in digest.citizen_questions],
         "claims": [
-            {**claim.__dict__, "evidence_ids": list(claim.evidence_ids)}
+            {
+                **claim.__dict__,
+                "evidence_ids": list(claim.evidence_ids),
+                "fragment_id": _claim_fragment_id(claim, evidence_by_id),
+                "page": _claim_page(claim, evidence_by_id),
+            }
             for claim in digest.claims
         ],
         "evidence": [anchor.__dict__ for anchor in digest.evidence],
         "connections": dict(digest.connections),
         "notice": digest.notice,
     }
+
+
+def _claim_fragment_id(claim: KnowledgeClaim, evidence_by_id: dict[str, EvidenceAnchor]) -> str:
+    first_id = claim.evidence_ids[0] if claim.evidence_ids else ""
+    anchor = evidence_by_id.get(first_id)
+    return anchor.fragment_id if anchor is not None else ""
+
+
+def _claim_page(claim: KnowledgeClaim, evidence_by_id: dict[str, EvidenceAnchor]) -> int | None:
+    first_id = claim.evidence_ids[0] if claim.evidence_ids else ""
+    anchor = evidence_by_id.get(first_id)
+    return anchor.page if anchor is not None else None
 
 
 def official_document_to_dict(document: OfficialDocument) -> dict[str, Any]:
@@ -329,11 +348,15 @@ def _official_document_from_dict(row: dict[str, Any]) -> OfficialDocument:
 
 
 def _build_citizen_summary(document: OfficialDocument) -> str:
-    section_titles = ", ".join(section.title for section in document.sections[:3])
+    opening = _summary_opening(document)
+    themes = ", ".join(_content_title(section) for section in _representative_sections(document.sections, limit=4))
+    if themes:
+        return (
+            f"{opening} La lectura destaca materias presentes en el texto: {themes}. "
+            "El resumen no agrega antecedentes externos ni interpreta responsabilidades."
+        )
     return (
-        f"{document.title} es un documento local de demostracion asociado a {document.related_expediente_target}. "
-        f"Resume informacion ya presente en metadata y secciones como {section_titles}. "
-        "La lectura es neutral y sirve para orientar revision ciudadana con evidencia original."
+        f"{opening} La lectura se limita al contenido extraido del documento y mantiene referencias por fragmento."
     )
 
 
@@ -434,13 +457,13 @@ def _build_evidence(
     return tuple(evidence)
 def _build_key_points(document: OfficialDocument, evidence: tuple[EvidenceAnchor, ...]) -> tuple[KeyPoint, ...]:
     points: list[KeyPoint] = []
-    for index, section in enumerate(document.sections[:5], start=1):
+    for index, section in enumerate(_representative_sections(document.sections, limit=6), start=1):
         anchor = _anchor_for_section(evidence, section.id)
         points.append(
             KeyPoint(
                 id=f"key-point-{index}",
-                title=section.title,
-                detail=_first_sentence(section.text) or document.summary,
+                title=_content_title(section),
+                detail=_section_detail(section) or document.summary,
                 section_id=section.id,
                 evidence_id=anchor.id if anchor is not None else "",
                 document_id=document.id,
@@ -457,33 +480,20 @@ def _build_citizen_questions(
     document: OfficialDocument,
     evidence: tuple[EvidenceAnchor, ...],
 ) -> tuple[CitizenQuestion, ...]:
-    templates = (
-        (
-            "Que objetivo declara este documento?",
-            "Ayuda a separar el proposito informado de interpretaciones externas.",
-        ),
-        (
-            "Que fuente publica deberia revisarse antes de citarlo?",
-            "Permite volver al registro original y no depender del resumen.",
-        ),
-        (
-            "Con que expediente o seguimiento se conecta?",
-            "Ayuda a navegar entre documento, historia del caso y reporte ciudadano.",
-        ),
-    )
     questions: list[CitizenQuestion] = []
-    for index, (question, why) in enumerate(templates, start=1):
-        anchor = evidence[min(index - 1, len(evidence) - 1)] if evidence else None
+    selected = _representative_evidence(evidence, limit=5)
+    for index, anchor in enumerate(selected, start=1):
+        question, why = _question_from_evidence(anchor)
         questions.append(
             CitizenQuestion(
                 id=f"citizen-question-{index}",
                 question=question,
                 why_it_matters=why,
-                evidence_id=anchor.id if anchor is not None else "",
+                evidence_id=anchor.id,
                 document_id=document.id,
-                page=anchor.page if anchor is not None else section.page,
-                fragment_id=anchor.fragment_id if anchor is not None else _fragment_id(document, section),
-                citation_id=anchor.citation_id if anchor is not None else "",
+                page=anchor.page,
+                fragment_id=anchor.fragment_id,
+                citation_id=anchor.citation_id,
                 reference_label=_reference_label(anchor),
             )
         )
@@ -495,32 +505,22 @@ def _build_claims(
     evidence: tuple[EvidenceAnchor, ...],
     citations: tuple[Citation, ...],
 ) -> tuple[KnowledgeClaim, ...]:
-    evidence_ids = tuple(anchor.id for anchor in evidence)
-    citation_ids = tuple(citation.id for citation in citations)
-    first_evidence = evidence_ids[:1]
-    return (
-        KnowledgeClaim(
-            id="claim-document-identity",
-            claim=f"El documento demo se identifica como {document.title}.",
-            evidence_ids=first_evidence,
-            review_note="Revisar y verificar titulo, fuente y URL en el registro original antes de reutilizar.",
-            citation_ids=citation_ids[:1],
-        ),
-        KnowledgeClaim(
-            id="claim-related-expediente",
-            claim=f"El documento se conecta al expediente {document.related_expediente_target}.",
-            evidence_ids=evidence_ids[:2],
-            review_note="La conexion es metadata local de prueba y debe revisarse con evidencia original.",
-            citation_ids=citation_ids[:2],
-        ),
-        KnowledgeClaim(
-            id="claim-public-source",
-            claim=f"La fuente publica declarada para este digest es {document.public_source}.",
-            evidence_ids=evidence_ids[-1:] if evidence_ids else (),
-            review_note="No usar esta afirmacion como conclusion automatica; revisar la fuente original.",
-            citation_ids=citation_ids[-1:] if citation_ids else (),
-        ),
-    )
+    citation_by_fragment = {citation.fragment_id: citation.id for citation in citations}
+    claims: list[KnowledgeClaim] = []
+    for index, anchor in enumerate(_representative_evidence(evidence, limit=5), start=1):
+        claims.append(
+            KnowledgeClaim(
+                id=f"claim-document-content-{index}",
+                claim=_claim_from_evidence(anchor),
+                evidence_ids=(anchor.id,),
+                review_note=(
+                    f"Afirmacion derivada del fragment_id {anchor.fragment_id}; "
+                    f"pagina {anchor.page}. Revisar el texto original antes de citar."
+                ),
+                citation_ids=(citation_by_fragment.get(anchor.fragment_id, anchor.citation_id),),
+            )
+        )
+    return tuple(claims)
 
 
 def _render_knowledge_html(digest: KnowledgeDigest) -> str:
@@ -611,15 +611,279 @@ def _reference_label(anchor: EvidenceAnchor | None) -> str:
     return f"Pagina {anchor.page} - {anchor.label}"
 
 
+def _representative_sections(
+    sections: tuple[DocumentSection, ...],
+    limit: int,
+) -> tuple[DocumentSection, ...]:
+    if not sections:
+        return ()
+    topic_needles = (
+        ("deficit", "deficit estructural"),
+        ("educacion", "educaci"),
+        ("salud", "salud"),
+        ("seguridad", "seguridad ciudadana"),
+        ("infraestructura", "infraestructura"),
+        ("innovacion", "innovacion"),
+        ("contenido", "presupuesto de ingresos y gastos"),
+        ("informes", "informe de ejecucion presupuestaria"),
+    )
+    selected: list[DocumentSection] = []
+    normalized_rows = [(section, _normalize_text(section.text)) for section in sections]
+    for _topic, needle in topic_needles:
+        candidates = [
+            (text.index(needle), section)
+            for section, text in normalized_rows
+            if section not in selected and needle in text
+        ]
+        match = min(candidates, default=(0, None), key=lambda item: item[0])[1]
+        if match is not None and match not in selected:
+            selected.append(match)
+            if len(selected) >= limit:
+                return tuple(selected)
+    for section in sections:
+        if section not in selected:
+            selected.append(section)
+            if len(selected) >= limit:
+                break
+    return tuple(selected)
+
+
+def _representative_evidence(
+    evidence: tuple[EvidenceAnchor, ...],
+    limit: int,
+) -> tuple[EvidenceAnchor, ...]:
+    if not evidence:
+        return ()
+    topic_needles = (
+        "deficit estructural",
+        "educaci",
+        "salud",
+        "seguridad ciudadana",
+        "infraestructura",
+        "innovacion",
+        "informe de ejecucion presupuestaria",
+    )
+    selected: list[EvidenceAnchor] = []
+    normalized_rows = [(anchor, _normalize_text(anchor.excerpt)) for anchor in evidence]
+    for needle in topic_needles:
+        candidates = [
+            (text.index(needle), anchor)
+            for anchor, text in normalized_rows
+            if anchor not in selected and needle in text
+        ]
+        match = min(candidates, default=(0, None), key=lambda item: item[0])[1]
+        if match is not None and match not in selected:
+            selected.append(match)
+            if len(selected) >= limit:
+                return tuple(selected)
+    for anchor in evidence:
+        if anchor not in selected:
+            selected.append(anchor)
+            if len(selected) >= limit:
+                break
+    return tuple(selected)
+
+
+def _content_title(section: DocumentSection) -> str:
+    explicit = section.title.strip()
+    if explicit and not explicit.lower().startswith("fragmento "):
+        return explicit
+    text = " ".join(section.text.split())
+    markers = (
+        "deficit estructural",
+        "innovacion",
+        "Educacion Parvularia",
+        "Educacion Escolar",
+        "Educacion Superior",
+        "seguridad ciudadana",
+        "Sistema de Concesiones",
+        "infraestructura",
+        "Presupuesto de Ingresos y Gastos",
+        "informe de ejecucion presupuestaria",
+        "Educacion Parvularia",
+        "Educacion Escolar",
+        "Educacion Superior",
+        "Cultura",
+        "Salud",
+        "AUGE",
+        "Plan Cuadrante",
+        "Presupuesto 2013",
+        "Contexto economico global",
+        "Articulo",
+    )
+    lowered = _normalize_text(text)
+    for marker in markers:
+        if _normalize_text(marker) in lowered:
+            return _title_from_marker(marker)
+    first = _first_sentence(text)
+    return first[:90].rstrip(" .") or f"Fragmento {section.order:02d}"
+
+
+def _point_detail(text: str) -> str:
+    sentences = _sentences(text)
+    if not sentences:
+        return ""
+    numeric = next((sentence for sentence in sentences if any(char.isdigit() for char in sentence)), "")
+    return numeric or sentences[0]
+
+
+def _section_detail(section: DocumentSection) -> str:
+    title = _normalize_text(_content_title(section))
+    text = section.text
+    if "deficit" in title:
+        return _sentence_containing(text, "deficit estructural")
+    if "educacion" in title:
+        return _sentence_containing(text, "educaci")
+    if "salud" in title:
+        return _sentence_containing(text, "salud") or _sentence_containing(text, "auge")
+    if "seguridad" in title:
+        return _sentence_containing(text, "seguridad ciudadana") or _sentence_containing(text, "carabineros")
+    if "infraestructura" in title:
+        return _sentence_containing(text, "infraestructura") or _sentence_containing(text, "vialidad")
+    if "innovacion" in title:
+        return _sentence_containing(text, "innovacion") or _sentence_containing(text, "emprendimiento")
+    if "cultura" in title:
+        return _sentence_containing(text, "cultura") or _sentence_containing(text, "centros culturales")
+    if "informes" in title:
+        return _sentence_containing(text, "informe de ejecucion")
+    return _point_detail(text)
+
+
+def _question_from_evidence(anchor: EvidenceAnchor) -> tuple[str, str]:
+    text = _normalize_text(anchor.excerpt)
+    if "deficit" in text:
+        return (
+            "Que regla fiscal y deficit declara el mensaje presupuestario?",
+            "Permite revisar el marco fiscal informado por el Ejecutivo en el propio texto.",
+        )
+    if "educacion" in text:
+        return (
+            "Que aumentos y coberturas educacionales anuncia el presupuesto 2013?",
+            "Ayuda a distinguir montos, porcentajes y grupos beneficiarios mencionados.",
+        )
+    if "salud" in text or "auge" in text:
+        return (
+            "Que compromisos de salud y atencion publica aparecen financiados?",
+            "Ubica recursos, programas y coberturas sanitarias descritas en el documento.",
+        )
+    if "seguridad ciudadana" in text or "carabineros" in text:
+        return (
+            "Que medidas de seguridad ciudadana se financian en el presupuesto?",
+            "Permite seguir programas, instituciones y montos de seguridad mencionados.",
+        )
+    if "infraestructura" in text or "concesiones" in text or "vialidad" in text:
+        return (
+            "Que obras, conectividad o concesiones menciona el presupuesto?",
+            "Permite ubicar las lineas de infraestructura que el texto declara financiar.",
+        )
+    if "innovacion" in text or "emprendimiento" in text:
+        return (
+            "Que recursos se orientan a innovacion y emprendimiento?",
+            "Ayuda a revisar programas, montos y metas economicas mencionadas.",
+        )
+    if "informe" in text or "comision especial mixta" in text:
+        return (
+            "Que obligaciones de informacion y rendicion establece el articulado?",
+            "Sirve para identificar plazos, destinatarios y antecedentes exigidos.",
+        )
+    return (
+        f"Que afirma este fragmento sobre {_short_topic(anchor.label)}?",
+        "La respuesta debe salir del fragmento citado, sin antecedentes externos.",
+    )
+
+
+def _claim_from_evidence(anchor: EvidenceAnchor) -> str:
+    text = anchor.excerpt
+    normalized = _normalize_text(text)
+    if "deficit estructural" in normalized:
+        detail = _sentence_containing(text, "deficit estructural")
+    elif "educaci" in normalized:
+        detail = _sentence_containing(text, "educaci")
+    elif "salud" in normalized or "auge" in normalized:
+        detail = _sentence_containing(text, "salud") or _sentence_containing(text, "auge")
+    elif "seguridad ciudadana" in normalized:
+        detail = _sentence_containing(text, "seguridad ciudadana")
+    elif "infraestructura" in normalized or "concesiones" in normalized:
+        detail = _sentence_containing(text, "infraestructura") or _sentence_containing(text, "concesiones")
+    elif "innovacion" in normalized:
+        detail = _sentence_containing(text, "innovacion")
+    else:
+        detail = _point_detail(text) or text
+    detail = detail or _point_detail(text) or text
+    return f"El documento senala que {detail.rstrip('.')}."
+
+
+def _short_topic(value: str) -> str:
+    text = " ".join(value.split())
+    return text[:70].rstrip(" .") or "esta materia"
+
+
+def _summary_opening(document: OfficialDocument) -> str:
+    normalized_title = _normalize_text(document.title)
+    if "presupuestos" in normalized_title and "2013" in normalized_title:
+        return (
+            "El documento presenta el mensaje presidencial que inicia el proyecto de Ley "
+            "de Presupuestos del sector publico para 2013."
+        )
+    return _first_sentence(document.summary) or _first_sentence(document.sections[0].text if document.sections else "")
+
+
+def _title_from_marker(marker: str) -> str:
+    mapping = {
+        "deficit estructural": "Regla fiscal y deficit",
+        "seguridad ciudadana": "Seguridad ciudadana",
+        "informe de ejecucion presupuestaria": "Informes de ejecucion presupuestaria",
+        "innovacion": "Innovacion y emprendimiento",
+        "infraestructura": "Infraestructura",
+    }
+    return mapping.get(marker, marker)
+
+
+def _sentence_containing(text: str, needle: str) -> str:
+    normalized_needle = _normalize_text(needle)
+    return next(
+        (
+            sentence
+            for sentence in _sentences(text)
+            if normalized_needle in _normalize_text(sentence) and len(sentence) > 40
+        ),
+        "",
+    )
+
+
+def _normalize_text(text: str) -> str:
+    replacements = {
+        "á": "a",
+        "é": "e",
+        "í": "i",
+        "ó": "o",
+        "ú": "u",
+        "Á": "a",
+        "É": "e",
+        "Í": "i",
+        "Ó": "o",
+        "Ú": "u",
+        "ñ": "n",
+        "Ñ": "n",
+    }
+    normalized = "".join(replacements.get(char, char.lower()) for char in text)
+    return " ".join(normalized.split())
+
+
 def _first_sentence(text: str) -> str:
+    sentences = _sentences(text)
+    return sentences[0] if sentences else ""
+
+
+def _sentences(text: str) -> list[str]:
     cleaned = " ".join(text.split())
     if not cleaned:
-        return ""
-    first, separator, _rest = cleaned.partition(".")
-    return first + separator if separator else cleaned
+        return []
+    parts = [part.strip() for part in re.split(r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ0-9])", cleaned) if part.strip()]
+    return parts
 
 
-def _excerpt(text: str, limit: int = 220) -> str:
+def _excerpt(text: str, limit: int = 700) -> str:
     cleaned = " ".join(text.split())
     if len(cleaned) <= limit:
         return cleaned
