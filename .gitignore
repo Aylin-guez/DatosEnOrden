@@ -49,3 +49,9 @@ client_configs/
 client_data/
 data/watch_runs/*
 !data/watch_runs/.gitkeep
+data/topic_updates/*
+!data/topic_updates/.gitkeep
+data/state_events/*
+!data/state_events/.gitkeep
+data/daily_briefs/*
+!data/daily_briefs/.gitkeep
