@@ -78,7 +78,7 @@ INVESTIGATION_STATUS_ERROR = "error"
 INVESTIGATION_STATUS_EMPTY = "empty"
 DEMO_INVESTIGATION_TARGET = "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
 DEMO_INVESTIGATION_URL = f"http://localhost:3000/investigation?id={quote_plus(DEMO_INVESTIGATION_TARGET)}"
-SUPPORT_DONATION_URL = "https://link.mercadopago.cl/datosenorden"
+SUPPORT_DONATION_URL = os.getenv("DATOSENORDEN_SUPPORT_URL", "https://link.mercadopago.cl/datosenorden")
 SUPPORT_SOURCE_SUGGESTION_URL = "mailto:datosenorden@gmail.com?subject=Sugerir%20fuente%20oficial"
 STUDIO_CONVERSATION_URL = "mailto:datosenorden@gmail.com?subject=DatosEnOrden%20Studio"
 STUDIO_CONTACT_EMAIL = "datosenorden@gmail.com"
@@ -1953,7 +1953,7 @@ class AppState(rx.State):
             self.knowledge_document_source_is_fallback = document_source_is_fallback
             self.knowledge_document_has_pdf = PUBLISHED_DOCUMENT_PDF_ASSET_PATH.exists()
             self.knowledge_document_pdf_path = str(PUBLISHED_DOCUMENT_PDF_PATH) if self.knowledge_document_has_pdf else ""
-            self.knowledge_document_pdf_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, self.knowledge_selected_page) if self.knowledge_document_has_pdf else ""
+            self.knowledge_document_pdf_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, 1) if self.knowledge_document_has_pdf else ""
             self.knowledge_document_pdf_page_href = self.knowledge_document_pdf_href
             self.knowledge_fragment_contexts = _json_list(demo.get("fragment_contexts", []))
             selected_context = _json_dict(demo.get("selected_context", {}))
@@ -1976,6 +1976,8 @@ class AppState(rx.State):
             self.knowledge_selected_claims = _json_list(selected_context.get("claims", []))
             self.knowledge_selected_evidence = _json_list(selected_context.get("evidence", []))
             self.knowledge_selected_connections = _json_list(selected_context.get("connections", []))
+            self.knowledge_document_pdf_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, 1) if self.knowledge_document_has_pdf else ""
+            self.knowledge_document_pdf_page_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, self.knowledge_selected_page) if self.knowledge_document_has_pdf else ""
             self.knowledge_connections = [
                 {"label": str(key), "value": str(value)}
                 for key, value in _json_dict(demo.get("connections", {})).items()
@@ -4278,6 +4280,35 @@ def document_page_button(row: dict) -> rx.Component:
     )
 
 
+
+
+def official_document_pdf_viewer(page: int, fragment_id: str, highlight: str) -> rx.Component:
+    return rx.box(
+        reading_context_bar(),
+        rx.box(
+            rx.hstack(
+                rx.text("Documento oficial PDF", class_name="document-label"),
+                rx.link("Abrir PDF", href=AppState.knowledge_document_pdf_page_href, class_name="document-inline-link"),
+                justify="between",
+                align="center",
+                wrap="wrap",
+            ),
+            rx.el.iframe(
+                src=AppState.knowledge_document_pdf_page_href,
+                title="Documento oficial PDF",
+                class_name="official-document-pdf-frame",
+            ),
+            rx.box(
+                rx.text(f"Pagina {page}", class_name="document-page-label"),
+                rx.text(highlight, class_name="document-highlight"),
+                rx.text(fragment_id, class_name="mono id-line"),
+                class_name="document-current-anchor",
+            ),
+            class_name="document-paper official-document-pdf-paper",
+        ),
+        class_name="official-document-viewer official-document-pdf-viewer",
+    )
+
 def official_document_viewer(document_id: str, page: int, fragment_id: str, highlight: str) -> rx.Component:
     return rx.box(
         reading_context_bar(),
@@ -5719,11 +5750,19 @@ def official_document() -> rx.Component:
         ),
         rx.box(
             rx.box(
-                official_document_viewer(
-                    AppState.knowledge_document["id"],
-                    AppState.knowledge_selected_page,
-                    AppState.knowledge_selected_fragment_id,
-                    AppState.knowledge_selected_excerpt,
+                rx.cond(
+                    AppState.knowledge_document_has_pdf,
+                    official_document_pdf_viewer(
+                        AppState.knowledge_selected_page,
+                        AppState.knowledge_selected_fragment_id,
+                        AppState.knowledge_selected_excerpt,
+                    ),
+                    official_document_viewer(
+                        AppState.knowledge_document["id"],
+                        AppState.knowledge_selected_page,
+                        AppState.knowledge_selected_fragment_id,
+                        AppState.knowledge_selected_excerpt,
+                    ),
                 ),
                 class_name="document-main-column",
             ),

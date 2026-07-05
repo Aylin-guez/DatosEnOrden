@@ -1261,6 +1261,23 @@ def test_ecosystem_source_card_shows_connector_label() -> None:
     assert "connector_label" in source
 
 
+
+def test_official_document_prefers_published_pdf_when_available() -> None:
+    page_source = inspect.getsource(reflex_app.official_document)
+    pdf_viewer_source = inspect.getsource(reflex_app.official_document_pdf_viewer)
+    load_source = inspect.getsource(reflex_app.AppState.load_knowledge.fn)
+
+    assert "knowledge_document_has_pdf" in page_source
+    assert "official_document_pdf_viewer" in page_source
+    assert "official_document_viewer" in page_source
+    assert "rx.el.iframe" in pdf_viewer_source
+    assert "knowledge_document_pdf_page_href" in pdf_viewer_source
+    assert "official-document-pdf-frame" in inspect.getsource(reflex_app)
+    assert "document_view.json" in str(reflex_app.PUBLISHED_DOCUMENT_VIEW_PATH)
+    assert "document.pdf" in str(reflex_app.PUBLISHED_DOCUMENT_PDF_PATH)
+    assert "_document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, self.knowledge_selected_page)" in load_source
+
+
 def test_topic_pdf_viewer_uses_published_pdf_and_fragment_context() -> None:
     viewer_source = inspect.getsource(reflex_app.topic_pdf_document_viewer)
     panel_source = inspect.getsource(reflex_app.topic_source_panel)
@@ -1303,6 +1320,7 @@ def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
     assert 'Contactar por colaboración' not in support_source
     assert 'SUPPORT_COLLABORATION_URL' not in inspect.getsource(reflex_app)
     assert reflex_app.SUPPORT_DONATION_URL == "https://link.mercadopago.cl/datosenorden"
+    assert 'os.getenv("DATOSENORDEN_SUPPORT_URL", "https://link.mercadopago.cl/datosenorden")' in inspect.getsource(reflex_app)
     assert 'Las donaciones no compran influencia' in support_source
     assert 'Evidencia primero' in support_source
     assert 'Proyecto público' in support_source

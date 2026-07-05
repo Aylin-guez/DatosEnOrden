@@ -18,7 +18,11 @@ def test_prelaunch_public_check_validates_required_env_and_documents(tmp_path: P
     module = _load_script()
     env = tmp_path / ".env.example"
     env.write_text(
-        "DATOSENORDEN_ENV=production\nDATABASE_URL=postgresql://example\nDATOSENORDEN_DATABASE_URL=postgresql://example\n",
+        "DATOSENORDEN_ENV=production\n"
+        "DATABASE_URL=postgresql://example\n"
+        "DATOSENORDEN_DATABASE_URL=postgresql://example\n"
+        "DATOSENORDEN_PUBLIC_BASE_URL=https://datosenorden.cl\n"
+        "DATOSENORDEN_SUPPORT_URL=https://link.mercadopago.cl/datosenorden\n",
         encoding="utf-8",
     )
     published = tmp_path / "published"
@@ -34,6 +38,32 @@ def test_prelaunch_public_check_validates_required_env_and_documents(tmp_path: P
 
     assert module._env_example_check().ok is True
     assert module._published_document_check().ok is True
+
+
+def test_prelaunch_public_check_validates_stable_document_source(tmp_path: Path, monkeypatch) -> None:
+    module = _load_script()
+    published = tmp_path / "published"
+    published.mkdir()
+    reading = published / "reading.json"
+    document_view = published / "document_view.json"
+    pdf = published / "document.pdf"
+    asset = tmp_path / "assets" / "document.pdf"
+    reading.write_text("{}", encoding="utf-8")
+    document_view.write_text("{}", encoding="utf-8")
+    pdf.write_bytes(b"%PDF")
+    asset.parent.mkdir(parents=True)
+    asset.write_bytes(b"%PDF")
+
+    monkeypatch.setattr(module, "PUBLISHED_READING", reading)
+    monkeypatch.setattr(module, "PUBLISHED_DOCUMENT_VIEW", document_view)
+    monkeypatch.setattr(module, "PUBLISHED_PDF", pdf)
+    monkeypatch.setattr(module, "PUBLIC_PDF_ASSET", asset)
+
+    result = module._document_source_stability_check()
+
+    assert result.ok is True
+    assert "incoming/processing not required" in result.detail
+    assert "PDF is published" in result.detail
 
 
 def test_prelaunch_public_check_pdf_is_optional_but_asset_required_when_present(tmp_path: Path, monkeypatch) -> None:

@@ -18,6 +18,8 @@ REQUIRED_ENV_KEYS = (
     "DATOSENORDEN_ENV",
     "DATABASE_URL",
     "DATOSENORDEN_DATABASE_URL",
+    "DATOSENORDEN_PUBLIC_BASE_URL",
+    "DATOSENORDEN_SUPPORT_URL",
 )
 PUBLIC_ROUTES = (
     "/",
@@ -47,6 +49,7 @@ def main() -> int:
         _asset_check(),
         _published_document_check(),
         _pdf_strategy_check(),
+        _document_source_stability_check(),
         _env_example_check(),
         _tracked_cache_check(),
         _large_asset_check(),
@@ -89,6 +92,19 @@ def _pdf_strategy_check() -> Check:
     ok = PUBLIC_PDF_ASSET.exists()
     detail = "public asset copy ok" if ok else f"missing public asset copy: {PUBLIC_PDF_ASSET.relative_to(ROOT)}"
     return Check("official PDF strategy", ok, detail)
+
+
+def _document_source_stability_check() -> Check:
+    missing = []
+    for path in (PUBLISHED_READING, PUBLISHED_DOCUMENT_VIEW):
+        if not path.exists():
+            missing.append(str(path.relative_to(ROOT)))
+    if missing:
+        return Check("public document source is stable", False, "missing=" + ", ".join(missing))
+    detail = "uses published artifacts; incoming/processing not required for public launch"
+    if PUBLISHED_PDF.exists() and PUBLIC_PDF_ASSET.exists():
+        detail += "; PDF is published and served from assets"
+    return Check("public document source is stable", True, detail)
 
 
 def _env_example_check() -> Check:
