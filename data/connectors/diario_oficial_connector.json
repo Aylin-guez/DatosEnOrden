@@ -1,0 +1,133 @@
+{
+  "id": "diario_oficial",
+  "display_name": "Diario Oficial Connector",
+  "priority": 3,
+  "status": "demo_controlled_connector",
+  "mode": "demo_controlled_from_existing_local_sample",
+  "source_dataset_name": "diario-oficial-sample",
+  "source_name": "DatosEnOrden Diario Oficial Sample",
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "summary": "Connector local de publicaciones del Diario Oficial que transforma actos administrativos de muestra en entidades, relaciones, evidencia y eventos.",
+  "produces": {
+    "entities": [
+      "Organismo",
+      "Persona",
+      "Cargo",
+      "Publicación",
+      "Documento"
+    ],
+    "relationships": [
+      "OFFICIAL_PUBLICATION_REFERENCES_ENTITY",
+      "PERSON_APPOINTED_TO_PUBLIC_OFFICE",
+      "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION"
+    ],
+    "evidence": [
+      "official_publication",
+      "decree_record",
+      "local_sample_payload"
+    ],
+    "events": [
+      "Nueva publicación oficial"
+    ]
+  },
+  "feeds": [
+    "Buscar",
+    "Expediente",
+    "Pulso",
+    "Fuentes",
+    "Cronología",
+    "Relaciones"
+  ],
+  "entities": [
+    {
+      "id": "diario-oficial:organization:servicio-salud-arauco",
+      "name": "Servicio de Salud Arauco",
+      "entity_type": "Organismo",
+      "model_entity_type": "PUBLIC_ORGANIZATION"
+    },
+    {
+      "id": "diario-oficial:person:persona-muestra-uno",
+      "name": "Persona de Muestra Uno",
+      "entity_type": "Persona",
+      "model_entity_type": "PERSON"
+    },
+    {
+      "id": "diario-oficial:role:directora-servicio-muestra",
+      "name": "Directora de servicio de muestra",
+      "entity_type": "Cargo",
+      "model_entity_type": "ROLE"
+    },
+    {
+      "id": "diario-oficial:publication:diario-2026-0001",
+      "name": "Decreto exento de nombramiento de muestra",
+      "entity_type": "Publicación",
+      "model_entity_type": "OFFICIAL_PUBLICATION"
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "OFFICIAL_PUBLICATION_REFERENCES_ENTITY",
+      "subject_id": "diario-oficial:publication:diario-2026-0001",
+      "subject_name": "Decreto exento de nombramiento de muestra",
+      "object_id": "diario-oficial:organization:servicio-salud-arauco",
+      "object_name": "Servicio de Salud Arauco",
+      "description": "La publicación oficial referencia al organismo en la muestra local controlada."
+    },
+    {
+      "predicate": "PERSON_APPOINTED_TO_PUBLIC_OFFICE",
+      "subject_id": "diario-oficial:person:persona-muestra-uno",
+      "subject_name": "Persona de Muestra Uno",
+      "object_id": "diario-oficial:role:directora-servicio-muestra",
+      "object_name": "Directora de servicio de muestra",
+      "description": "La publicación registra un nombramiento de muestra asociado a un cargo público."
+    },
+    {
+      "predicate": "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION",
+      "subject_id": "diario-oficial:role:directora-servicio-muestra",
+      "subject_name": "Directora de servicio de muestra",
+      "object_id": "diario-oficial:organization:servicio-salud-arauco",
+      "object_name": "Servicio de Salud Arauco",
+      "description": "El cargo de muestra aparece asociado al organismo mencionado."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence:diario-oficial:publication:diario-2026-0001",
+      "source": "Diario Oficial",
+      "label": "N° 12.345",
+      "url": "local://sample/diario-oficial/2026-04-10/12345",
+      "excerpt": "Decreto exento de nombramiento de muestra. Servicio de Salud Arauco. Persona de Muestra Uno.",
+      "record_type": "official_publication"
+    }
+  ],
+  "events": [
+    {
+      "id": "event:diario-oficial:publication:diario-2026-0001",
+      "date": "2026-04-10",
+      "status": "published",
+      "title": "Nueva publicación oficial registrada",
+      "description": "Servicio de Salud Arauco aparece en una publicación local de muestra del Diario Oficial asociada a un nombramiento administrativo.",
+      "source": "Diario Oficial Connector",
+      "evidence_ids": [
+        "evidence:diario-oficial:publication:diario-2026-0001"
+      ],
+      "related_entity_names": [
+        "Servicio de Salud Arauco",
+        "Persona de Muestra Uno",
+        "Directora de servicio de muestra",
+        "Decreto exento de nombramiento de muestra"
+      ],
+      "pulse_summary": "Publicación oficial local de muestra: conecta organismo, persona, cargo y acto administrativo sin inferir irregularidad."
+    }
+  ],
+  "audit": {
+    "scripts": [
+      "scripts/load_diario_oficial_sample.py",
+      "scripts/diario_oficial_summary.py"
+    ],
+    "tests": [
+      "tests/test_diario_oficial_prototype.py"
+    ]
+  }
+}

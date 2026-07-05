@@ -731,7 +731,7 @@ def test_source_population_enriches_lobby_surfaces(monkeypatch) -> None:
     ecosystem = app_services.get_data_ecosystem()
     lobby = next(source for source in ecosystem["sources"] if source["slug"] == "lobby")
     search = app_services.search_workspace("MARLENE FLORES")
-    topics = app_services.get_current_topics(limit=4)
+    topics = app_services.get_current_topics(limit=6)
 
     assert lobby["population_records"] == 1
     assert lobby["population_status_label"] == "muestra local controlada"
@@ -790,4 +790,33 @@ def test_infolobby_connector_feeds_core_surfaces(monkeypatch) -> None:
     assert any(match["entity_name"] == "MARLENE BEATRIZ FLORES PATINO" for match in search["matches"])
     assert any(topic["source"] == "InfoLobby Connector" for topic in topics)
     assert any(event["source"] == "InfoLobby Connector" for event in tracking["events"])
+
+
+def test_diario_oficial_connector_feeds_core_surfaces(monkeypatch) -> None:
+    _patch_session(monkeypatch)
+    monkeypatch.setattr(
+        "datosenorden.maintenance.ecosystem_registry.list_datasets",
+        lambda session: (),
+    )
+    monkeypatch.setattr(app_services, "_search_workspace", lambda query: {"matches": []})
+    monkeypatch.setattr(app_services, "_list_current_topics", lambda limit=3: [])
+
+    connector = app_services._load_connector("diario_oficial")
+    ecosystem = app_services.get_data_ecosystem()
+    search = app_services.search_workspace("Persona de Muestra Uno")
+    topics = app_services.get_current_topics(limit=5)
+    tracking = app_services.get_tracking_demo()
+    diario = next(source for source in ecosystem["sources"] if source["slug"] == "diario_oficial")
+
+    assert connector["id"] == "diario_oficial"
+    assert connector["produces"]["entities"] == ["Organismo", "Persona", "Cargo", "Publicaci\u00f3n", "Documento"]
+    assert connector["produces"]["relationships"] == ["OFFICIAL_PUBLICATION_REFERENCES_ENTITY", "PERSON_APPOINTED_TO_PUBLIC_OFFICE", "PUBLIC_OFFICE_BELONGS_TO_ORGANIZATION"]
+    assert connector["feeds"] == ["Buscar", "Expediente", "Pulso", "Fuentes", "Cronolog\u00eda", "Relaciones"]
+    assert diario["connector_entities"] == 4
+    assert diario["connector_relationships"] == 3
+    assert diario["connector_events"] == 1
+    assert any(match["source_label"] == "Diario Oficial Connector" for match in search["matches"])
+    assert any(match["entity_name"] == "Persona de Muestra Uno" for match in search["matches"])
+    assert any(topic["source"] == "Diario Oficial Connector" for topic in topics)
+    assert any(event["source"] == "Diario Oficial Connector" for event in tracking["events"])
 

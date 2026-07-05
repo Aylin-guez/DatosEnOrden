@@ -9,6 +9,8 @@ PUBLIC_TEXT_FILES = (
     Path("data/source_population/infolobby_minimal.json"),
     Path("data/connectors/chilecompra_connector.json"),
     Path("data/connectors/infolobby_connector.json"),
+    Path("data/connectors/diario_oficial_connector.json"),
+    Path("data/sample/diario_oficial_sample.json"),
 )
 
 BROKEN_TEXT_MARKERS = (
@@ -36,6 +38,11 @@ def test_public_connector_text_keeps_spanish_accents() -> None:
     assert "Reuni\u00f3n" in text
     assert "Cronolog\u00eda" in text
     assert "Presentaci\u00f3n" in text
+
+    diario = Path("data/connectors/diario_oficial_connector.json").read_text(encoding="utf-8")
+    assert "Publicaci\u00f3n" in diario
+    assert "Cronolog\u00eda" in diario
+    assert "N\u00b0 12.345" in diario
 
     source_population = Path("data/source_population/infolobby_minimal.json").read_text(encoding="utf-8")
     assert "organismo p\u00fablico" in source_population
