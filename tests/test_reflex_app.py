@@ -1293,7 +1293,7 @@ def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
     assert 'footer_text_link("+", "Sugerir una fuente", SUPPORT_SOURCE_SUGGESTION_URL)' in footer_source
     assert 'footer_text_link("i", "Sobre el proyecto", "/project")' in footer_source
     assert 'DATOSENORDEN STUDIO' in footer_source
-    assert 'Soluciones para organizaciones.' in footer_source
+    assert 'Puerta para organizaciones que necesitan expedientes, conectores y evidencia verificable.' in footer_source
     assert 'footer_text_link("☁", "Studio", "/studio")' in footer_source
     assert 'footer_text_link("✉", "Contacto comercial", STUDIO_CONVERSATION_URL)' in footer_source
     assert 'support_cta_block()' not in home_source
@@ -1302,6 +1302,7 @@ def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
     assert 'Apoyar el proyecto' in inspect.getsource(reflex_app.support_cta_block)
     assert 'Contactar por colaboración' not in support_source
     assert 'SUPPORT_COLLABORATION_URL' not in inspect.getsource(reflex_app)
+    assert reflex_app.SUPPORT_DONATION_URL == "https://link.mercadopago.cl/datosenorden"
     assert 'Las donaciones no compran influencia' in support_source
     assert 'Evidencia primero' in support_source
     assert 'Proyecto público' in support_source
@@ -1310,13 +1311,15 @@ def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
     assert 'Conocer el proyecto' in support_source
     assert 'No hay pagos reales integrados todavía' in support_source
     assert 'DatosEnOrden Studio' in studio_source
-    assert 'explorar, relacionar y monitorear información pública' in studio_source
-    assert 'conectores privados, nube administrada e instalación privada' in studio_source
-    assert 'conectores privados' in studio_source.lower()
-    assert 'nube administrada' in studio_source.lower()
-    assert 'dashboards internos' in studio_source.lower()
-    assert 'instalación privada futura' in studio_source.lower()
-    assert 'Solicitar conversación' in studio_source
-    assert 'Escribir a correo' in studio_source
+    assert 'forma estructurada y verificable' in studio_source
+    assert 'DatosEnOrden Studio se encuentra en desarrollo activo' in studio_source
+    assert 'fuentes oficiales' in studio_source
+    assert 'Enterprise' in studio_source
+    assert 'Solicitar una' in studio_source
+    assert 'relaciones documentales' in studio_source
+    assert 'Cloud' in studio_source
+    assert 'Municipalidades' in studio_source
+    assert 'Enviar correo' in studio_source
+    assert 'Community' in studio_source
     assert 'sin influencia editorial' in project_source.lower()
 

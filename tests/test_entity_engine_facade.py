@@ -85,6 +85,7 @@ def _patch_entity_engine_services(monkeypatch) -> None:
             "sources": [
                 {"name": "ChileCompra", "slug": "chilecompra", "connector_status": "active", "connector_entities": 7, "connector_relationships": 6, "connector_events": 3},
                 {"name": "Lobby", "slug": "lobby", "connector_status": "demo", "connector_entities": 3, "connector_relationships": 2, "connector_events": 1},
+                {"name": "Diario Oficial", "slug": "diario_oficial", "connector_status": "demo", "connector_entities": 4, "connector_relationships": 3, "connector_events": 1},
             ]
         },
     )
@@ -133,12 +134,13 @@ def test_build_entity_snapshot_groups_dossier_sections_and_coverage(monkeypatch)
     assert snapshot.timeline["years"][0]["events"][0]["id"] == "ev-1"
     assert snapshot.events["current_topics"][0]["id"] == "topic-1"
     assert snapshot.source_contributions["sources"][0]["dataset"] == "ChileCompra"
-    assert {row["slug"] for row in snapshot.connectors} == {"chilecompra", "lobby"}
+    assert {row["slug"] for row in snapshot.connectors} == {"chilecompra", "lobby", "diario_oficial"}
 
     coverage = {item.source: item.available for item in snapshot.coverage}
     assert coverage["ChileCompra"] is True
     assert coverage["Lobby"] is True
     assert coverage["DIPRES"] is True
+    assert coverage["Diario Oficial"] is True
     assert coverage["Contralor\u00eda"] is False
 
     assert snapshot.statistics["contracts"] == 2
@@ -165,3 +167,42 @@ def test_entity_snapshot_handles_missing_entity(monkeypatch) -> None:
     assert snapshot.overview["found"] is False
     assert snapshot.statistics["documents"] == 0
     assert all(item.available is False for item in snapshot.coverage)
+
+
+def test_relationship_discovery_graph_classifies_edges_and_confidence(monkeypatch) -> None:
+    _patch_entity_engine_services(monkeypatch)
+
+    graph = entity_engine.EntityEngine().get_entity_relationship_graph("arauco")
+
+    assert graph["entity_label"] == "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+    assert graph["summary"]["nodes"] >= 7
+    assert graph["summary"]["direct"] >= 1
+    assert graph["summary"]["secondary"] >= 1
+    assert graph["summary"]["documental"] >= 1
+    assert graph["summary"]["temporal"] >= 1
+
+    edges = graph["edges"]
+    classifications = {edge["classification"] for edge in edges}
+    relationship_types = {edge["relationship_type"] for edge in edges}
+
+    assert {"direct", "secondary", "documental", "temporal"}.issubset(classifications)
+    assert "HAS_PURCHASE" in relationship_types
+    assert "HAS_LOBBY_MEETING" in relationship_types
+    assert "MENTIONED_IN_DOCUMENT" in relationship_types
+    assert "HAS_TIMELINE_EVENT" in relationship_types
+    assert all(0.0 < edge["confidence"] <= 0.95 for edge in edges)
+    assert any(edge["evidence"] for edge in edges)
+    assert any(node["label"] == "ACME TECNOLOGIAS SPA" for node in graph["nodes"])
+
+
+def test_relationship_discovery_graph_can_be_built_from_snapshot(monkeypatch) -> None:
+    _patch_entity_engine_services(monkeypatch)
+    engine = entity_engine.EntityEngine()
+    snapshot = engine.build_entity_snapshot("arauco")
+
+    graph = engine.build_relationship_graph(snapshot)
+
+    assert graph.entity_label == snapshot.entity["name"]
+    assert graph.summary["edges"] == len(graph.edges)
+    assert graph.to_dict()["edges"][0]["classification"] in {"direct", "secondary", "documental", "temporal"}
+

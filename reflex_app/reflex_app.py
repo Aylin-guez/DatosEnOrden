@@ -77,7 +77,7 @@ INVESTIGATION_STATUS_ERROR = "error"
 INVESTIGATION_STATUS_EMPTY = "empty"
 DEMO_INVESTIGATION_TARGET = "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
 DEMO_INVESTIGATION_URL = f"http://localhost:3000/investigation?id={quote_plus(DEMO_INVESTIGATION_TARGET)}"
-SUPPORT_DONATION_URL = "https://datosenorden.cl/apoyar/donacion-placeholder"
+SUPPORT_DONATION_URL = "https://link.mercadopago.cl/datosenorden"
 SUPPORT_SOURCE_SUGGESTION_URL = "mailto:datosenorden@gmail.com?subject=Sugerir%20fuente%20oficial"
 STUDIO_CONVERSATION_URL = "mailto:datosenorden@gmail.com?subject=DatosEnOrden%20Studio"
 STUDIO_CONTACT_EMAIL = "datosenorden@gmail.com"
@@ -2492,7 +2492,7 @@ def app_footer() -> rx.Component:
             ),
             rx.box(
                 rx.text("DATOSENORDEN STUDIO", class_name="footer-column-title"),
-                rx.text("Soluciones para organizaciones.", class_name="footer-copy footer-column-copy"),
+                rx.text("Puerta para organizaciones que necesitan expedientes, conectores y evidencia verificable.", class_name="footer-copy footer-column-copy"),
                 footer_text_link("☁", "Studio", "/studio"),
                 footer_text_link("✉", "Contacto comercial", STUDIO_CONVERSATION_URL),
                 class_name="footer-column",
@@ -3558,7 +3558,7 @@ def topic_system_mode() -> rx.Component:
         rx.grid(
             topic_live_stage("Estado actual", AppState.topic_status, "Situacion del tema según la lectura documentada disponible."),
             topic_live_stage("Eventos del tema", AppState.topic_document_count, "Documentos y eventos disponibles para sostener la cronologia."),
-            topic_live_stage("Cronolog?a viva", AppState.topic_updated_at, "Ultima fecha registrada en el recorrido documental."),
+            topic_live_stage("Cronología viva", AppState.topic_updated_at, "Ultima fecha registrada en el recorrido documental."),
             columns="3",
             spacing="3",
             class_name="responsive-grid live-stage-grid",
@@ -3579,7 +3579,7 @@ def topic_system_mode() -> rx.Component:
         ),
         rx.grid(
             rx.box(
-                rx.text("Qu? cambi?", class_name="card-title"),
+                rx.text("Qué cambi?", class_name="card-title"),
                 rx.grid(
                     rx.foreach(AppState.topic_changes_rows, topic_change_card),
                     columns="1",
@@ -3589,7 +3589,7 @@ def topic_system_mode() -> rx.Component:
                 class_name="topic-reading-section topic-card-changes",
             ),
             rx.box(
-                rx.text("Qu? falta", class_name="card-title"),
+                rx.text("Qué falta", class_name="card-title"),
                 rx.grid(
                     rx.foreach(AppState.topic_no_changes_rows, topic_no_change_card),
                     columns="1",
@@ -5887,16 +5887,16 @@ def studio() -> rx.Component:
         rx.box(
             rx.text("DatosEnOrden Studio", class_name="title"),
             rx.text(
-                "DatosEnOrden Studio es la plataforma para organizaciones que necesitan explorar, relacionar y monitorear información pública mediante conectores, expedientes y automatización documental.",
+                "La plataforma para organizaciones que necesitan trabajar con información pública de forma estructurada y verificable.",
                 class_name="subtitle",
             ),
             rx.text(
-                "La base pública ya demuestra lectura documentada, expedientes y trazabilidad; conectores privados, nube administrada e instalación privada se presentan como líneas de trabajo planificadas.",
+                "Permite explorar, relacionar y comprender información pública mediante conectores, expedientes y automatización documental.",
                 class_name="muted small",
             ),
             rx.hstack(
-                rx.link("Solicitar conversación", href=STUDIO_CONVERSATION_URL, class_name="button primary-action"),
-                rx.link("Escribir a correo", href=f"mailto:{STUDIO_CONTACT_EMAIL}", class_name="button button-secondary"),
+                rx.link("Solicitar una conversación", href=STUDIO_CONVERSATION_URL, class_name="button primary-action"),
+                rx.link("Enviar correo", href=f"mailto:{STUDIO_CONTACT_EMAIL}", class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -5904,27 +5904,66 @@ def studio() -> rx.Component:
             class_name="hero studio-hero",
         ),
         page_section(
-            "Qu? podría incluir",
+            "Qué puede hacer",
             rx.grid(
-                help_card("Conectores privados", "Integraciones controladas con fuentes internas o documentos propios."),
-                help_card("Nube administrada", "Operación alojada y mantenida para equipos que no quieren administrar infraestructura."),
-                help_card("Dashboards internos", "Vistas de seguimiento para procesos, fuentes, documentos y evidencia."),
-                help_card("Reportes", "Salidas revisables para equipos, dirección o ciudadanía según el caso."),
-                help_card("Soporte", "Acompañamiento técnico y editorial para operar el sistema con cuidado."),
-                help_card("Instalación privada futura", "Opción a evaluar para organizaciones con requisitos de control o privacidad."),
+                help_card("Conectar múltiples fuentes oficiales", "Unificar conectores públicos y privados bajo una lectura trazable."),
+                help_card("Construir expedientes navegables", "Reunir entidades, fuentes, evidencia, relaciones y cronología."),
+                help_card("Relacionar documentos", "Vincular documentos, publicaciones y eventos con entidades concretas."),
+                help_card("Generar cronologías", "Ordenar cambios y eventos en el tiempo desde registros verificables."),
+                help_card("Buscar entidades", "Encontrar organismos, personas, empresas, compras y documentos."),
+                help_card("Seguir cambios", "Preparar seguimiento documental sin publicar conclusiones automáticas."),
+                help_card("Centralizar evidencia", "Mantener enlaces, fragmentos y fuentes visibles para revisión."),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Capacidades en diseño; no promesas de disponibilidad inmediata.",
+            subtitle="Capacidades basadas en la plataforma pública actual y en líneas de trabajo planificadas.",
         ),
         page_section(
-            "Principios",
+            "Modelos futuros",
+            rx.grid(
+                help_card("Community", "Uso abierto y documentación para comunidades que trabajan con información pública."),
+                help_card("Cloud", "Operación administrada para equipos que necesitan conectores y expedientes sin mantener infraestructura."),
+                help_card("Enterprise", "Instalaciones privadas futuras, soporte y conectores específicos cuando el caso lo justifique."),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Sin precios publicados todavía; estos modelos describen dirección de producto, no disponibilidad inmediata.",
+        ),
+        page_section(
+            "Casos de uso",
+            rx.grid(
+                help_card("Municipalidades", "Ordenar documentos, compras, actos administrativos y seguimiento local."),
+                help_card("Universidades", "Explorar investigación, convenios, fuentes públicas y evidencia institucional."),
+                help_card("ONG", "Monitorear temas públicos con trazabilidad y lenguaje ciudadano."),
+                help_card("Empresas", "Comprender proveedores, licitaciones, publicaciones y contexto regulatorio."),
+                help_card("Consultoras", "Preparar expedientes verificables para análisis y reportes."),
+                help_card("Organismos públicos", "Centralizar evidencia pública y seguimiento documental."),
+                help_card("Fiscalías", "Explorar relaciones documentales y cronologías sin inferencias automáticas."),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Casos orientativos para conversaciones iniciales; cada implementación debe revisarse con evidencia y límites claros.",
+        ),
+        page_section(
+            "Estado del proyecto",
             rx.text(
-                "Studio debe mantener trazabilidad, evidencia verificable y separación entre apoyo comercial y lectura pública. La versión pública de DatosEnOrden no debe ajustar conclusiones por clientes, donaciones o alianzas.",
+                "DatosEnOrden Studio se encuentra en desarrollo activo. Algunas capacidades ya forman parte de la plataforma pública y otras serán incorporadas progresivamente.",
                 class_name="story-summary",
             ),
-            subtitle="La confianza del producto depende de separar evidencia, operación y financiamiento.",
+            subtitle="No se prometen funciones inexistentes: el producto avanza desde conectores, expedientes y automatización documental verificable.",
+        ),
+        page_section(
+            "Conversar sobre Studio",
+            rx.hstack(
+                rx.link("Solicitar una conversación", href=STUDIO_CONVERSATION_URL, class_name="button primary-action"),
+                rx.link("Enviar correo", href=f"mailto:{STUDIO_CONTACT_EMAIL}", class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+            ),
+            subtitle="Para organizaciones que necesitan una puerta de entrada al ecosistema DatosEnOrden.",
         ),
         active_page=PAGE_STUDIO,
     )
