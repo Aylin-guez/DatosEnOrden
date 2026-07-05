@@ -73,6 +73,40 @@ class EntityRelationshipGraph:
 
 
 @dataclass(frozen=True)
+class StateGraphNode:
+    id: str
+    label: str
+    node_type: str
+    sources: list[str] = field(default_factory=list)
+    evidence: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class StateGraphEdge:
+    id: str
+    source: str
+    target: str
+    edge_type: str
+    evidence: list[dict[str, Any]] = field(default_factory=list)
+    confidence: float = 0.0
+    source_connector: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class StateGraph:
+    entity_id: str
+    entity_label: str
+    nodes: list[StateGraphNode] = field(default_factory=list)
+    edges: list[StateGraphEdge] = field(default_factory=list)
+    summary: dict[str, int] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class EntitySnapshot:
     target: str
     found: bool
@@ -219,6 +253,148 @@ class EntityEngine:
     def get_entity_relationship_graph(self, target: str) -> dict[str, Any]:
         return self.build_relationship_graph(self.build_entity_snapshot(target)).to_dict()
 
+    def build_state_graph(self, target: str | EntitySnapshot) -> StateGraph:
+        snapshot = target if isinstance(target, EntitySnapshot) else self.build_entity_snapshot(str(target))
+        relationship_graph = self.build_relationship_graph(snapshot)
+        nodes: dict[str, StateGraphNode] = {}
+        edges: dict[str, StateGraphEdge] = {}
+
+        for node in relationship_graph.nodes:
+            self._add_state_node(
+                nodes,
+                node.id,
+                node.label,
+                _state_node_type(node.node_type, node.label),
+                sources=node.sources,
+                metadata={**node.metadata, "relationship_graph_node_type": node.node_type},
+            )
+        for edge in relationship_graph.edges:
+            self._add_state_edge(
+                edges,
+                edge.source,
+                edge.target,
+                edge.relationship_type,
+                edge.evidence,
+                edge.confidence,
+                _source_connector(edge.evidence, edge.metadata),
+                {**edge.metadata, "classification": edge.classification},
+            )
+
+        main_id = relationship_graph.entity_id
+        for source in snapshot.connectors:
+            source_id = _node_id(f"source:{source.get('slug') or source.get('source')}")
+            self._add_state_node(
+                nodes,
+                source_id,
+                str(source.get("source") or source.get("slug") or "Fuente"),
+                "Fuente",
+                sources=[str(source.get("source") or source.get("slug") or "")],
+                metadata=source,
+            )
+            self._add_state_edge(edges, source_id, main_id, "SOURCE_CONTRIBUTES_TO_ENTITY", [], 0.6, str(source.get("slug", "")), source)
+
+        for purchase in snapshot.purchases:
+            supplier = str(purchase.get("supplier") or purchase.get("supplier_name") or purchase.get("company_name") or "").strip()
+            if supplier:
+                supplier_id = _node_id(supplier)
+                self._add_state_node(nodes, supplier_id, supplier, "Empresa", sources=_sources_from_row(purchase), evidence=_row_evidence(purchase, snapshot.evidence), metadata=purchase)
+                self._add_state_edge(edges, supplier_id, main_id, "COMPANY_APPEARS_IN_PURCHASES", _row_evidence(purchase, snapshot.evidence), 0.82, _source_connector(_row_evidence(purchase, snapshot.evidence), purchase), purchase)
+
+        for meeting in snapshot.meetings:
+            counterparty = str(meeting.get("counterparty_name") or meeting.get("person_name") or meeting.get("company_name") or "").strip()
+            if counterparty:
+                counterparty_id = _node_id(counterparty)
+                self._add_state_node(nodes, counterparty_id, counterparty, "Persona", sources=_sources_from_row(meeting), evidence=_row_evidence(meeting, snapshot.evidence), metadata=meeting)
+                self._add_state_edge(edges, counterparty_id, main_id, "PERSON_APPEARS_IN_LOBBY_MEETING", _row_evidence(meeting, snapshot.evidence), 0.78, _source_connector(_row_evidence(meeting, snapshot.evidence), meeting), meeting)
+
+        for publication in snapshot.publications:
+            publication_id = _node_id(publication.get("id") or publication.get("title") or publication.get("name"))
+            self._add_state_node(nodes, publication_id, str(publication.get("title") or publication.get("name") or "Publicacion"), "Publicacion", sources=_sources_from_row(publication), evidence=_row_evidence(publication, snapshot.evidence), metadata=publication)
+            if _contains_any(publication, ("cargo", "nombramiento", "office", "role")):
+                role_label = str(publication.get("office_name") or publication.get("role") or publication.get("title") or "Cargo mencionado")
+                role_id = _node_id(role_label)
+                self._add_state_node(nodes, role_id, role_label, "Cargo", sources=_sources_from_row(publication), evidence=_row_evidence(publication, snapshot.evidence), metadata=publication)
+                self._add_state_edge(edges, publication_id, role_id, "PUBLICATION_REFERENCES_ROLE", _row_evidence(publication, snapshot.evidence), 0.76, _source_connector(_row_evidence(publication, snapshot.evidence), publication), publication)
+                self._add_state_edge(edges, role_id, main_id, "ROLE_BELONGS_TO_ORGANIZATION", _row_evidence(publication, snapshot.evidence), 0.72, _source_connector(_row_evidence(publication, snapshot.evidence), publication), publication)
+
+        for document in snapshot.documents:
+            document_id = _node_id(document.get("id") or document.get("title") or document.get("name"))
+            if _contains_any(document, ("ley", "law")):
+                law_label = _law_label(document)
+                law_id = _node_id(law_label)
+                self._add_state_node(nodes, law_id, law_label, "Ley", sources=_sources_from_row(document), evidence=_row_evidence(document, snapshot.evidence), metadata=document)
+                self._add_state_edge(edges, document_id, law_id, "DOCUMENT_CITES_LAW", _row_evidence(document, snapshot.evidence), 0.7, _source_connector(_row_evidence(document, snapshot.evidence), document), document)
+
+        for event in snapshot.events.get("timeline_events", []) + snapshot.events.get("current_topics", []) if isinstance(snapshot.events, dict) else []:
+            event_id = _node_id(event.get("id") or event.get("title") or event.get("name"))
+            self._add_state_node(nodes, event_id, str(event.get("title") or event.get("name") or "Evento"), "Evento", sources=_sources_from_row(event), evidence=_row_evidence(event, snapshot.evidence), metadata=event)
+            self._add_state_edge(edges, main_id, event_id, "EVENT_BELONGS_TO_DOSSIER", _row_evidence(event, snapshot.evidence), 0.74, _source_connector(_row_evidence(event, snapshot.evidence), event), event)
+
+        summary = _state_graph_summary(nodes, edges)
+        return StateGraph(entity_id=main_id, entity_label=relationship_graph.entity_label, nodes=list(nodes.values()), edges=list(edges.values()), summary=summary)
+
+    def get_state_graph(self, target: str) -> dict[str, Any]:
+        return self.build_state_graph(target).to_dict()
+
+    def get_neighbors(self, graph_or_target: StateGraph | str, node_id: str) -> list[dict[str, Any]] | None:
+        graph = self._coerce_state_graph(graph_or_target)
+        node_ids = {node.id for node in graph.nodes}
+        if node_id not in node_ids:
+            return None
+        neighbors = []
+        for edge in graph.edges:
+            other_id = edge.target if edge.source == node_id else edge.source if edge.target == node_id else ""
+            if other_id:
+                node = _state_node_by_id(graph, other_id)
+                if node is not None:
+                    neighbors.append({"node": asdict(node), "edge": asdict(edge)})
+        return neighbors
+
+    def get_connected_entities(self, graph_or_target: StateGraph | str, node_id: str) -> list[dict[str, Any]] | None:
+        neighbors = self.get_neighbors(graph_or_target, node_id)
+        if neighbors is None:
+            return None
+        return [item["node"] for item in neighbors if item["node"].get("node_type") not in {"Documento", "Fuente", "Evento"}]
+
+    def get_documents_for_node(self, graph_or_target: StateGraph | str, node_id: str) -> list[dict[str, Any]] | None:
+        return self._nodes_for_type(graph_or_target, node_id, {"Documento", "Publicacion", "Ley"})
+
+    def get_events_for_node(self, graph_or_target: StateGraph | str, node_id: str) -> list[dict[str, Any]] | None:
+        return self._nodes_for_type(graph_or_target, node_id, {"Evento"})
+
+    def get_sources_for_node(self, graph_or_target: StateGraph | str, node_id: str) -> list[dict[str, Any]] | None:
+        return self._nodes_for_type(graph_or_target, node_id, {"Fuente"})
+
+    def get_shortest_path(self, graph_or_target: StateGraph | str, source_node_id: str, target_node_id: str) -> list[dict[str, Any]] | None:
+        graph = self._coerce_state_graph(graph_or_target)
+        node_ids = {node.id for node in graph.nodes}
+        if source_node_id not in node_ids or target_node_id not in node_ids:
+            return None
+        if source_node_id == target_node_id:
+            node = _state_node_by_id(graph, source_node_id)
+            return [{"node": asdict(node), "edge": None}] if node is not None else None
+        adjacency: dict[str, list[tuple[str, StateGraphEdge]]] = {}
+        for edge in graph.edges:
+            adjacency.setdefault(edge.source, []).append((edge.target, edge))
+            adjacency.setdefault(edge.target, []).append((edge.source, edge))
+        queue: list[tuple[str, list[tuple[str, StateGraphEdge | None]]]] = [(source_node_id, [(source_node_id, None)])]
+        visited = {source_node_id}
+        while queue:
+            current, path = queue.pop(0)
+            for next_id, edge in adjacency.get(current, []):
+                if next_id in visited:
+                    continue
+                next_path = [*path, (next_id, edge)]
+                if next_id == target_node_id:
+                    result = []
+                    for path_node_id, path_edge in next_path:
+                        node = _state_node_by_id(graph, path_node_id)
+                        result.append({"node": asdict(node) if node is not None else {"id": path_node_id}, "edge": asdict(path_edge) if path_edge is not None else None})
+                    return result
+                visited.add(next_id)
+                queue.append((next_id, next_path))
+        return None
+
     def build_relationship_graph(self, snapshot: EntitySnapshot) -> EntityRelationshipGraph:
         main_id = _node_id(snapshot.entity.get("id") or snapshot.target or "entity")
         main_label = str(snapshot.entity.get("name") or snapshot.overview.get("entity", {}).get("entity_name") or snapshot.target)
@@ -342,6 +518,35 @@ class EntityEngine:
             evidence=evidence,
             metadata={key: value for key, value in metadata.items() if key not in {"evidence", "evidence_links", "links"}},
         )
+
+    def _coerce_state_graph(self, graph_or_target: StateGraph | str) -> StateGraph:
+        return graph_or_target if isinstance(graph_or_target, StateGraph) else self.build_state_graph(str(graph_or_target))
+
+    def _nodes_for_type(self, graph_or_target: StateGraph | str, node_id: str, node_types: set[str]) -> list[dict[str, Any]] | None:
+        neighbors = self.get_neighbors(graph_or_target, node_id)
+        if neighbors is None:
+            return None
+        return [item["node"] for item in neighbors if item["node"].get("node_type") in node_types]
+
+    def _add_state_node(self, nodes: dict[str, StateGraphNode], node_id: str, label: str, node_type: str, *, sources: list[str] | None = None, evidence: list[dict[str, Any]] | None = None, metadata: dict[str, Any] | None = None) -> StateGraphNode:
+        cleaned_id = _node_id(node_id)
+        existing = nodes.get(cleaned_id)
+        if existing is not None:
+            merged_sources = list(dict.fromkeys([*existing.sources, *(sources or [])]))
+            merged_evidence = _unique_dicts([*existing.evidence, *(evidence or [])], "id", limit=20)
+            nodes[cleaned_id] = StateGraphNode(existing.id, existing.label, existing.node_type, merged_sources, merged_evidence, {**existing.metadata, **(metadata or {})})
+            return nodes[cleaned_id]
+        node = StateGraphNode(cleaned_id, label, node_type, list(dict.fromkeys(sources or [])), evidence or [], metadata or {})
+        nodes[cleaned_id] = node
+        return node
+
+    def _add_state_edge(self, edges: dict[str, StateGraphEdge], source: str, target: str, edge_type: str, evidence: list[dict[str, Any]], confidence: float, source_connector: str, metadata: dict[str, Any]) -> None:
+        source_id = _node_id(source)
+        target_id = _node_id(target)
+        edge_id = f"{source_id}->{target_id}:{edge_type}"
+        if edge_id in edges:
+            return
+        edges[edge_id] = StateGraphEdge(edge_id, source_id, target_id, edge_type, evidence, confidence, source_connector, metadata)
 
     def _documents_for_target(self, target: str, resolution: dict[str, Any]) -> list[dict[str, Any]]:
         terms = {
@@ -611,12 +816,79 @@ def _normalize(value: str) -> str:
     return " ".join(text.replace("_", " ").replace("-", " ").split())
 
 
+def _state_node_type(node_type: str, label: str = "") -> str:
+    type_text = _normalize(node_type)
+    label_text = _normalize(label)
+    text = f"{type_text} {label_text}"
+    if any(token in type_text for token in ("document", "documento")):
+        return "Documento"
+    if any(token in type_text for token in ("publicacion", "publication")):
+        return "Publicacion"
+    if any(token in type_text for token in ("evento", "event", "topic")):
+        return "Evento"
+    if any(token in type_text for token in ("fuente", "source", "connector")):
+        return "Fuente"
+    if any(token in type_text for token in ("ley", "law")):
+        return "Ley"
+    if any(token in type_text for token in ("compra", "purchase")):
+        return "Compra"
+    if any(token in type_text for token in ("contract", "contrato")):
+        return "Contrato"
+    if any(token in type_text for token in ("reunion", "meeting", "lobby")):
+        return "Reunion"
+    if any(token in type_text for token in ("cargo", "role", "office")):
+        return "Cargo"
+    if any(token in text for token in ("organismo", "organization", "hospital", "servicio", "ministerio")):
+        return "Organismo"
+    if any(token in text for token in ("persona", "person", "autoridad")):
+        return "Persona"
+    if any(token in text for token in ("empresa", "proveedor", "company", "supplier", "counterparty")):
+        return "Empresa"
+    return "Entidad"
+
+
+def _source_connector(evidence: list[dict[str, Any]], metadata: dict[str, Any]) -> str:
+    for item in evidence:
+        for key in ("source", "dataset", "source_connector"):
+            value = item.get(key)
+            if value:
+                return str(value)
+    for key in ("source", "dataset", "source_label", "slug"):
+        value = metadata.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def _law_label(document: dict[str, Any]) -> str:
+    for key in ("law", "law_title", "title", "name"):
+        value = str(document.get(key, "")).strip()
+        if value and _contains_any({"value": value}, ("ley", "law")):
+            return value
+    return "Ley citada"
+
+
+def _state_node_by_id(graph: StateGraph, node_id: str) -> StateGraphNode | None:
+    return next((node for node in graph.nodes if node.id == node_id), None)
+
+
+def _state_graph_summary(nodes: dict[str, StateGraphNode], edges: dict[str, StateGraphEdge]) -> dict[str, int]:
+    summary = {"nodes": len(nodes), "edges": len(edges)}
+    for node_type in {node.node_type for node in nodes.values()}:
+        summary[f"nodes_{_normalize(node_type).replace(' ', '_')}"] = sum(1 for node in nodes.values() if node.node_type == node_type)
+    return summary
+
+
 def build_entity_snapshot(target: str) -> EntitySnapshot:
     return get_default_entity_engine().build_entity_snapshot(target)
 
 
 def get_entity_relationship_graph(target: str) -> dict[str, Any]:
     return get_default_entity_engine().get_entity_relationship_graph(target)
+
+
+def build_state_graph(target: str) -> StateGraph:
+    return get_default_entity_engine().build_state_graph(target)
 
 
 def get_default_entity_engine() -> EntityEngine:

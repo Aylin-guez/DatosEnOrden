@@ -206,3 +206,68 @@ def test_relationship_discovery_graph_can_be_built_from_snapshot(monkeypatch) ->
     assert graph.summary["edges"] == len(graph.edges)
     assert graph.to_dict()["edges"][0]["classification"] in {"direct", "secondary", "documental", "temporal"}
 
+
+def test_state_graph_builds_navigable_state_model(monkeypatch) -> None:
+    _patch_entity_engine_services(monkeypatch)
+    engine = entity_engine.EntityEngine()
+    snapshot = engine.build_entity_snapshot("arauco")
+
+    graph = engine.build_state_graph(snapshot)
+    graph_dict = graph.to_dict()
+    main_id = graph.entity_id
+
+    assert graph.entity_label == "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
+    assert graph.summary["nodes"] == len(graph.nodes)
+    assert graph.summary["edges"] == len(graph.edges)
+    assert {"Organismo", "Empresa", "Documento", "Evento", "Fuente"}.issubset({node.node_type for node in graph.nodes})
+    assert any(edge.edge_type == "COMPANY_APPEARS_IN_PURCHASES" for edge in graph.edges)
+    assert any(edge.edge_type == "EVENT_BELONGS_TO_DOSSIER" for edge in graph.edges)
+    assert all(edge.source and edge.target and edge.edge_type for edge in graph.edges)
+    assert all(edge.confidence >= 0 for edge in graph.edges)
+    assert any(edge.source_connector for edge in graph.edges)
+    assert graph_dict["nodes"][0]["id"]
+
+    neighbors = engine.get_neighbors(graph, main_id)
+    assert neighbors is not None
+    assert any(item["node"]["node_type"] == "Empresa" for item in neighbors)
+
+    connected = engine.get_connected_entities(graph, main_id)
+    assert connected is not None
+    assert any(node["label"] == "ACME TECNOLOGIAS SPA" for node in connected)
+
+    documents = engine.get_documents_for_node(graph, main_id)
+    assert documents is not None
+    assert any(node["node_type"] in {"Documento", "Publicacion"} for node in documents)
+
+    events = engine.get_events_for_node(graph, main_id)
+    assert events is not None
+    assert any(node["node_type"] == "Evento" for node in events)
+
+    sources = engine.get_sources_for_node(graph, main_id)
+    assert sources is not None
+    assert any(node["node_type"] == "Fuente" for node in sources)
+
+
+def test_state_graph_shortest_path_and_missing_nodes(monkeypatch) -> None:
+    _patch_entity_engine_services(monkeypatch)
+    engine = entity_engine.EntityEngine()
+    graph = engine.build_state_graph("arauco")
+
+    path = engine.get_shortest_path(graph, graph.entity_id, "acme-tecnologias-spa")
+
+    assert path is not None
+    assert path[0]["node"]["id"] == graph.entity_id
+    assert path[-1]["node"]["id"] == "acme-tecnologias-spa"
+    assert engine.get_neighbors(graph, "missing-node") is None
+    assert engine.get_documents_for_node(graph, "missing-node") is None
+    assert engine.get_shortest_path(graph, graph.entity_id, "missing-node") is None
+
+
+def test_state_graph_module_wrapper_returns_state_graph(monkeypatch) -> None:
+    _patch_entity_engine_services(monkeypatch)
+
+    graph = entity_engine.build_state_graph("arauco")
+
+    assert isinstance(graph, entity_engine.StateGraph)
+    assert graph.summary["nodes"] >= 1
+
