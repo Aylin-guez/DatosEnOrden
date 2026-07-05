@@ -43,6 +43,7 @@ from datosenorden.web.app_services import resolve_canonical_expediente_target
 from datosenorden.web.app_services import resolve_investigation_target
 from datosenorden.web.app_services import search_workspace
 from datosenorden.web.app_services import search_entities
+from datosenorden.web.entity_engine import build_state_graph
 from datosenorden.maintenance.safe_access import _as_list
 from datosenorden.maintenance.safe_access import _as_text
 from datosenorden.maintenance.safe_access import _field as _safe_field
@@ -301,6 +302,141 @@ def _format_relationship_rows(rows: list[dict]) -> list[dict]:
             }
         )
     return formatted
+
+
+def _state_graph_display_type(value: object) -> str:
+    mapping = {
+        "Organismo": "organismo",
+        "Persona": "persona",
+        "Empresa": "empresa",
+        "Documento": "documento",
+        "Ley": "ley",
+        "Compra": "compra",
+        "Contrato": "contrato",
+        "Reunion": "reuni\u00f3n",
+        "Publicacion": "publicaci\u00f3n",
+        "Evento": "evento",
+        "Fuente": "fuente",
+        "Cargo": "cargo",
+    }
+    text = _clean(value, "entidad")
+    return mapping.get(text, text.lower())
+
+
+def _state_graph_relation_label(value: object) -> str:
+    labels = {
+        "COMPANY_APPEARS_IN_PURCHASES": "aparece en compras",
+        "PERSON_APPEARS_IN_LOBBY_MEETING": "aparece en reuni\u00f3n de lobby",
+        "SOURCE_CONTRIBUTES_TO_ENTITY": "fuente aporta evidencia",
+        "PUBLICATION_REFERENCES_ROLE": "publicaci\u00f3n menciona cargo",
+        "ROLE_BELONGS_TO_ORGANIZATION": "cargo vinculado al organismo",
+        "DOCUMENT_CITES_LAW": "documento cita ley",
+        "EVENT_BELONGS_TO_DOSSIER": "evento pertenece al expediente",
+    }
+    text = _clean(value, "relaci\u00f3n documentada")
+    return labels.get(text, _human_label(text))
+
+
+def _state_graph_evidence_text(evidence: object) -> str:
+    rows = _json_list(evidence)
+    if not rows:
+        return "Evidencia registrada por fuente o conector."
+    labels: list[str] = []
+    for row in rows[:2]:
+        label = (
+            _clean(_field(row, "title"), "")
+            or _clean(_field(row, "id"), "")
+            or _clean(_field(row, "source_record_id"), "")
+            or _clean(_field(row, "source"), "")
+        )
+        if label:
+            labels.append(label)
+    return " | ".join(labels) if labels else "Evidencia asociada disponible."
+
+
+def _format_state_graph_connection_rows(graph: object, *, limit: int = 8) -> list[dict]:
+    payload = _json_dict(graph)
+    entity_id = str(payload.get("entity_id", ""))
+    nodes = {str(_field(node, "id", "")): _json_dict(node) for node in _json_list(payload.get("nodes", []))}
+    rows: list[dict] = []
+    for edge in _json_list(payload.get("edges", [])):
+        source_id = str(_field(edge, "source", ""))
+        target_id = str(_field(edge, "target", ""))
+        source = nodes.get(source_id, {})
+        target = nodes.get(target_id, {})
+        related = target if source_id == entity_id else source if target_id == entity_id else target or source
+        related_id = str(related.get("id", ""))
+        related_label = str(related.get("label") or "Entidad conectada")
+        node_type = str(related.get("node_type") or "")
+        connector = str(_field(edge, "source_connector", "")) or "conector local"
+        confidence = float(_field(edge, "confidence", 0.0) or 0.0)
+        href = _investigation_href(related_label) if node_type not in {"Documento", "Evento", "Fuente", "Ley"} and related_label else ""
+        rows.append(
+            {
+                "title": related_label,
+                "node_type": _state_graph_display_type(node_type),
+                "relation_type": _state_graph_relation_label(_field(edge, "edge_type", "")),
+                "source_connector": connector,
+                "evidence_text": _state_graph_evidence_text(_field(edge, "evidence", [])),
+                "confidence_label": f"confianza {confidence:.0%}" if confidence else "confianza no informada",
+                "href": href,
+                "action_label": "Abrir entidad" if href else "Conexi\u00f3n observada",
+                "technical_id": related_id,
+            }
+        )
+    return rows[:limit]
+
+
+def _format_state_graph_source_rows(graph: object) -> list[dict]:
+    payload = _json_dict(graph)
+    source_counts: dict[str, int] = {}
+    for edge in _json_list(payload.get("edges", [])):
+        connector = str(_field(edge, "source_connector", "") or "").strip() or "conector local"
+        source_counts[connector] = source_counts.get(connector, 0) + 1
+    return [
+        {
+            "source": source,
+            "connections": count,
+            "summary": f"Aporta {count} conexiones documentadas al StateGraph.",
+        }
+        for source, count in sorted(source_counts.items())
+    ]
+
+
+def _format_state_graph_topic_rows(graph: object, *, limit: int = 6) -> list[dict]:
+    payload = _json_dict(graph)
+    rows = []
+    for node in _json_list(payload.get("nodes", [])):
+        node_type = _state_graph_display_type(_field(node, "node_type", ""))
+        if node_type in {"fuente", "cargo"}:
+            continue
+        rows.append(
+            {
+                "title": str(_field(node, "label", "Nodo relacionado")),
+                "node_type": node_type,
+                "sources_text": " | ".join(str(item) for item in _json_list(_field(node, "sources", []))) or "fuente local",
+                "evidence_text": _state_graph_evidence_text(_field(node, "evidence", [])),
+            }
+        )
+    return rows[:limit]
+
+
+def _state_graph_badges_for_match(row: dict) -> str:
+    datasets = " ".join(str(item) for item in _json_list(row.get("datasets", []))).lower()
+    entity_type = str(row.get("entity_type", "") or row.get("entity_type_label", "")).lower()
+    labels: list[str] = []
+    if "chilecompra" in datasets or "compra" in entity_type:
+        labels.append("compras")
+    if "lobby" in datasets or "reunion" in entity_type or "reuni\u00f3n" in entity_type:
+        labels.append("reuniones")
+    if "diario" in datasets or "publicacion" in entity_type or "publicaci\u00f3n" in entity_type:
+        labels.append("publicaciones")
+    if "document" in entity_type or "documento" in entity_type:
+        labels.append("documentos")
+    if int(row.get("relationship_count", 0) or 0) or int(row.get("evidence_count", 0) or 0):
+        labels.append("eventos")
+    unique = list(dict.fromkeys(labels))
+    return "Conexiones disponibles: " + " | ".join(unique) if unique else ""
 
 def _field(obj: object, name: str, fallback: object = None) -> object:
     return _safe_field(obj, name, fallback)
@@ -862,6 +998,9 @@ def _clear_investigation_state(self) -> None:
     self.registry_rows = []
     self.relationship_rows = []
     self.evidence_rows = []
+    self.state_graph_connection_rows = []
+    self.state_graph_source_rows = []
+    self.state_graph_summary_text = ""
     self.technical_details = []
     self.neutral_explanation = ""
     self.story_headline = ""
@@ -1268,6 +1407,9 @@ class AppState(rx.State):
     registry_rows: list[dict] = []
     relationship_rows: list[dict] = []
     evidence_rows: list[dict] = []
+    state_graph_connection_rows: list[dict] = []
+    state_graph_source_rows: list[dict] = []
+    state_graph_summary_text: str = ""
     technical_details: list[dict] = []
     neutral_explanation: str = ""
     story_headline: str = ""
@@ -1386,6 +1528,7 @@ class AppState(rx.State):
     topic_no_changes_rows: list[dict] = []
     topic_timeline_rows: list[dict] = []
     topic_evidence_rows: list[dict] = []
+    topic_state_graph_rows: list[dict] = []
     topic_reading_rows: list[dict] = []
     topic_expediente_title: str = ""
     topic_expediente_summary: str = ""
@@ -1568,6 +1711,11 @@ class AppState(rx.State):
                         if str(row.get("connector_status", ""))
                         else ""
                     ),
+                    "state_graph_contribution_label": (
+                        f"Aporta conexiones al StateGraph: {int(row.get('connector_relationships', 0) or 0)} relaciones documentadas."
+                        if int(row.get("connector_relationships", 0) or 0)
+                        else ""
+                    ),
                 }
                 for row in ecosystem.get("sources", [])
             ]
@@ -1635,6 +1783,7 @@ class AppState(rx.State):
                     "canonical_entity_name": str(row.get("canonical_entity_name", row.get("entity_name", ""))),
                     "related_label": str(row.get("related_label", "")),
                     "is_record": bool(row.get("is_record", False)),
+                    "state_graph_badges_text": _state_graph_badges_for_match(row),
                 }
                 for row in workspace.get("matches", [])
             ]
@@ -1947,6 +2096,11 @@ class AppState(rx.State):
             evidence_count=int(compact_metrics.get("evidence_count", 0) or 0),
         )
         self.topic_original_url = str(document.get("official_url", ""))
+        try:
+            topic_graph = build_state_graph(TOPIC_BUDGET_2013_TARGET).to_dict()
+        except Exception:
+            topic_graph = {}
+        self.topic_state_graph_rows = _format_state_graph_topic_rows(topic_graph)
 
     def load_reports(self) -> None:
         self.error_message = ""
@@ -2103,6 +2257,10 @@ class AppState(rx.State):
             timeline = _json_dict(get_investigation_timeline(resolved_entity_id))
             contributions = _json_dict(get_source_contributions(resolved_entity_id))
             report_path = export_investigation_report(resolved_entity_id)
+            try:
+                state_graph = build_state_graph(resolved_entity_id).to_dict()
+            except Exception:
+                state_graph = {}
         except Exception as exc:  # noqa: BLE001
             if had_valid_state:
                 self.investigation_status = INVESTIGATION_STATUS_LOADED
@@ -2149,6 +2307,14 @@ class AppState(rx.State):
             or data.get("connections", {}).get("direct_neighbors", [])
         )[:5]
         self.evidence_rows = _format_evidence_rows(data.get("evidence", []))
+        self.state_graph_connection_rows = _format_state_graph_connection_rows(state_graph)
+        self.state_graph_source_rows = _format_state_graph_source_rows(state_graph)
+        state_summary = _json_dict(state_graph.get("summary", {}))
+        self.state_graph_summary_text = (
+            f"{int(state_summary.get('nodes', 0) or 0)} nodos y {int(state_summary.get('edges', 0) or 0)} conexiones observadas desde evidencia disponible."
+            if state_summary
+            else "Conexiones observadas desde evidencia disponible."
+        )
         self.story_cards = _build_story_cards(
             transparency=self.transparencia_rows,
             lobby=self.lobby_rows,
@@ -2584,6 +2750,10 @@ def ecosystem_source_card(row: dict) -> rx.Component:
             row["connector_label"] != "",
             rx.text(row["connector_label"], class_name="source-fact"),
         ),
+        rx.cond(
+            row.get("state_graph_contribution_label", "") != "",
+            rx.text(row.get("state_graph_contribution_label", ""), class_name="source-fact evidence-trust"),
+        ),
         rx.accordion.root(
             rx.accordion.item(
                 header="Detalles técnicos de metadata",
@@ -2737,6 +2907,75 @@ def investigation_key_point_card(row: dict) -> rx.Component:
         class_name="knowledge-point",
     )
 
+
+
+def state_graph_connection_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["node_type"], class_name="badge badge-teal"),
+            rx.text(row["confidence_label"], class_name="mini-pill evidence-trust"),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["title"], class_name="context-title"),
+        rx.text(row["relation_type"], class_name="mini-pill mini-pill-purple"),
+        rx.text(f"Fuente/conector: {row['source_connector']}", class_name="source-fact"),
+        rx.text(f"Evidencia: {row['evidence_text']}", class_name="muted small"),
+        rx.cond(
+            row.get("href", "") != "",
+            rx.button(row.get("action_label", "Abrir entidad"), on_click=rx.redirect(row["href"]), class_name="button button-secondary"),
+            rx.text(row.get("action_label", "Conexi\u00f3n observada"), class_name="mini-pill"),
+        ),
+        class_name="context-item state-graph-connection-card",
+    )
+
+
+def state_graph_source_chip(row: dict) -> rx.Component:
+    return rx.text(row["summary"], class_name="comparison-chip")
+
+
+def state_graph_connections_panel() -> rx.Component:
+    return investigation_panel(
+        "Conexiones del Estado",
+        rx.text(
+            "Relaciones documentadas que el StateGraph conecta desde fuentes, evidencia y eventos disponibles.",
+            class_name="muted small",
+        ),
+        rx.text(AppState.state_graph_summary_text, class_name="source-fact"),
+        rx.cond(
+            AppState.state_graph_connection_rows,
+            rx.grid(
+                rx.foreach(AppState.state_graph_connection_rows, state_graph_connection_card),
+                columns="2",
+                spacing="2",
+                class_name="responsive-grid",
+            ),
+            rx.text("No hay conexiones observadas para este expediente.", class_name="muted small"),
+        ),
+        rx.cond(
+            AppState.state_graph_source_rows,
+            rx.hstack(
+                rx.foreach(AppState.state_graph_source_rows, state_graph_source_chip),
+                spacing="2",
+                wrap="wrap",
+            ),
+        ),
+        subtitle="Lenguaje descriptivo: aparece en, vinculado por documento/fuente y relaci\u00f3n documentada.",
+    )
+
+
+def topic_state_graph_node_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["node_type"], class_name="badge badge-teal"),
+            rx.text(row["sources_text"], class_name="mini-pill evidence-trust"),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["title"], class_name="context-title"),
+        rx.text(f"Evidencia: {row['evidence_text']}", class_name="muted small"),
+        class_name="context-item state-graph-topic-node",
+    )
 
 def citizen_summary_panel() -> rx.Component:
     return investigation_panel(
@@ -3083,6 +3322,10 @@ def workspace_match_card(row: dict) -> rx.Component:
             rx.text(row.get("related_label", ""), class_name="muted small"),
         ),
         rx.text(row["datasets_text"], class_name="muted small"),
+        rx.cond(
+            row.get("state_graph_badges_text", "") != "",
+            rx.text(row.get("state_graph_badges_text", ""), class_name="source-fact evidence-trust"),
+        ),
         rx.hstack(
             rx.text(f"Evidencia: {row['evidence_count']}", class_name="mini-pill"),
             rx.text(f"Relaciones: {row['relationship_count']}", class_name="mini-pill"),
@@ -3562,6 +3805,21 @@ def topic_system_mode() -> rx.Component:
             columns="3",
             spacing="3",
             class_name="responsive-grid live-stage-grid",
+        ),
+        rx.box(
+            rx.text("Mapa de conexiones", class_name="card-title"),
+            rx.text("Nodos principales alrededor del tema actual, conectados solo por evidencia disponible.", class_name="muted small"),
+            rx.cond(
+                AppState.topic_state_graph_rows,
+                rx.grid(
+                    rx.foreach(AppState.topic_state_graph_rows, topic_state_graph_node_card),
+                    columns="3",
+                    spacing="2",
+                    class_name="responsive-grid",
+                ),
+                rx.text("No hay conexiones visibles para este tema todav\u00eda.", class_name="muted small"),
+            ),
+            class_name="topic-reading-section topic-card-next live-connections-panel",
         ),
         rx.box(
             rx.text("Eventos del tema", class_name="card-title"),
@@ -4723,6 +4981,7 @@ def investigation_left_column() -> rx.Component:
 
 def investigation_center_column() -> rx.Component:
     return rx.vstack(
+        state_graph_connections_panel(),
         relationship_map_panel(),
         investigation_tabs_panel(),
         spacing="3",

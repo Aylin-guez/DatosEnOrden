@@ -1323,3 +1323,75 @@ def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
     assert 'Community' in studio_source
     assert 'sin influencia editorial' in project_source.lower()
 
+
+
+
+def test_state_graph_connection_rows_are_editorial_safe() -> None:
+    graph = {
+        "entity_id": "organismo:arauco",
+        "entity_label": "Servicio de Salud Arauco",
+        "nodes": [
+            {"id": "organismo:arauco", "label": "Servicio de Salud Arauco", "node_type": "Organismo", "sources": ["ChileCompra"]},
+            {"id": "empresa:demo", "label": "Proveedor Demo", "node_type": "Empresa", "sources": ["ChileCompra"]},
+        ],
+        "edges": [
+            {
+                "source": "empresa:demo",
+                "target": "organismo:arauco",
+                "edge_type": "COMPANY_APPEARS_IN_PURCHASES",
+                "source_connector": "ChileCompra",
+                "confidence": 0.82,
+                "evidence": [{"title": "Orden de compra demo"}],
+            }
+        ],
+        "summary": {"nodes": 2, "edges": 1},
+    }
+
+    rows = reflex_app._format_state_graph_connection_rows(graph)
+
+    assert rows[0]["title"] == "Proveedor Demo"
+    assert rows[0]["relation_type"] == "aparece en compras"
+    assert rows[0]["source_connector"] == "ChileCompra"
+    assert rows[0]["evidence_text"] == "Orden de compra demo"
+    assert rows[0]["confidence_label"] == "confianza 82%"
+    rendered_text = " ".join(str(value).lower() for row in rows for value in row.values())
+    assert "sospechoso" not in rendered_text
+    assert "red de corrupci" not in rendered_text
+
+
+def test_state_graph_ui_sections_are_exposed() -> None:
+    investigation_source = inspect.getsource(reflex_app.state_graph_connections_panel)
+    center_source = inspect.getsource(reflex_app.investigation_center_column)
+    system_source = inspect.getsource(reflex_app.topic_system_mode)
+    card_source = inspect.getsource(reflex_app.state_graph_connection_card)
+
+    assert "Conexiones del Estado" in investigation_source
+    assert "state_graph_connections_panel()" in center_source
+    assert "Mapa de conexiones" in system_source
+    assert "Fuente/conector" in card_source
+    assert "confidence_label" in card_source
+    assert "evidence_text" in card_source
+
+
+def test_search_results_show_state_graph_connection_availability() -> None:
+    loader_source = inspect.getsource(reflex_app.AppState.run_search.fn)
+    card_source = inspect.getsource(reflex_app.workspace_match_card)
+
+    assert "state_graph_badges_text" in loader_source
+    assert "Conexiones disponibles" in inspect.getsource(reflex_app._state_graph_badges_for_match)
+    assert "state_graph_badges_text" in card_source
+    assert reflex_app._state_graph_badges_for_match(
+        {"datasets": ["ChileCompra", "InfoLobby"], "entity_type": "Organismo", "relationship_count": 1, "evidence_count": 1}
+    ) == "Conexiones disponibles: compras | reuniones | eventos"
+
+
+def test_sources_show_state_graph_backing_and_language_is_not_accusatory() -> None:
+    loader_source = inspect.getsource(reflex_app.AppState.load_ecosystem.fn)
+    source_card = inspect.getsource(reflex_app.ecosystem_source_card)
+    full_source = inspect.getsource(reflex_app)
+
+    assert "state_graph_contribution_label" in loader_source
+    assert "Aporta conexiones al StateGraph" in loader_source
+    assert "state_graph_contribution_label" in source_card
+    assert "sospechoso" not in full_source.lower()
+    assert "red de corrupci" not in full_source.lower()
