@@ -761,3 +761,33 @@ def test_chilecompra_connector_feeds_core_surfaces(monkeypatch) -> None:
     assert any(match["source_label"] == "ChileCompra Connector" for match in search["matches"])
     assert any(topic["source"] == "ChileCompra Connector" for topic in topics)
     assert any(event["source"] == "ChileCompra Connector" for event in tracking["events"])
+
+
+def test_infolobby_connector_feeds_core_surfaces(monkeypatch) -> None:
+    _patch_session(monkeypatch)
+    monkeypatch.setattr(
+        "datosenorden.maintenance.ecosystem_registry.list_datasets",
+        lambda session: (),
+    )
+    monkeypatch.setattr(app_services, "_search_workspace", lambda query: {"matches": []})
+    monkeypatch.setattr(app_services, "_list_current_topics", lambda limit=3: [])
+
+    connector = app_services._load_connector("infolobby")
+    ecosystem = app_services.get_data_ecosystem()
+    search = app_services.search_workspace("MARLENE FLORES")
+    topics = app_services.get_current_topics(limit=4)
+    tracking = app_services.get_tracking_demo()
+    lobby = next(source for source in ecosystem["sources"] if source["slug"] == "lobby")
+
+    assert connector["id"] == "lobby"
+    assert connector["produces"]["entities"] == ["Organismo", "Persona", "Reuni\u00f3n"]
+    assert connector["produces"]["relationships"] == ["ORGANIZATION_HELD_LOBBY_MEETING", "COUNTERPARTY_PARTICIPATED_IN_LOBBY"]
+    assert connector["feeds"] == ["Buscar", "Expediente", "Pulso", "Fuentes", "Cronolog\u00eda", "Relaciones"]
+    assert lobby["connector_entities"] == 3
+    assert lobby["connector_relationships"] == 2
+    assert lobby["connector_events"] == 1
+    assert any(match["source_label"] == "InfoLobby Connector" for match in search["matches"])
+    assert any(match["entity_name"] == "MARLENE BEATRIZ FLORES PATINO" for match in search["matches"])
+    assert any(topic["source"] == "InfoLobby Connector" for topic in topics)
+    assert any(event["source"] == "InfoLobby Connector" for event in tracking["events"])
+

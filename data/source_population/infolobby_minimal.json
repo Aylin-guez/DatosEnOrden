@@ -6,7 +6,7 @@
   "official_status": "NOT_OFFICIAL_DATA",
   "population_mode": "demo_controlled_minimal",
   "status_label": "muestra local controlada",
-  "summary": "Una reuni?n de lobby local de muestra conectada a una organizaci?n ya usada en el demo.",
+  "summary": "Una reunión de lobby local de muestra conectada a una organización ya usada en el demo.",
   "records": [
     {
       "external_id": "lobby-sample-2026-servicio-salud-arauco-marlene-flores",
@@ -24,8 +24,8 @@
   "ui": {
     "pulse_event": {
       "id": "pulse-infolobby-minimal-v1",
-      "title": "InfoLobby agregado como fuente m?nima controlada",
-      "summary": "Se incorpor? una reuni?n local de muestra para probar c?mo se cruza lobby con un organismo p?blico.",
+      "title": "InfoLobby agregado como fuente mínima controlada",
+      "summary": "Se incorporó una reunión local de muestra para probar cómo se cruza lobby con un organismo público.",
       "status": "Fuente en prueba",
       "updated_at": "2026-03-15",
       "organization": "InfoLobby / muestra local",
@@ -41,7 +41,7 @@
         ],
         "evidence_count": 1,
         "relationship_count": 1,
-        "result_type": "organismo con reuni?n de lobby",
+        "result_type": "organismo con reunión de lobby",
         "action_label": "Buscar expediente",
         "action_href": "/search?q=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO"
       },
@@ -54,7 +54,7 @@
         ],
         "evidence_count": 1,
         "relationship_count": 1,
-        "result_type": "contraparte en reuni?n de lobby",
+        "result_type": "contraparte en reunión de lobby",
         "action_label": "Buscar entidad",
         "action_href": "/search?q=MARLENE+BEATRIZ+FLORES+PATINO"
       }

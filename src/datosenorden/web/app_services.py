@@ -528,7 +528,7 @@ def _load_connector(connector_id: str) -> dict[str, Any]:
 
 
 def _loaded_connectors() -> list[dict[str, Any]]:
-    return [connector for connector in (_load_connector("chilecompra"),) if connector]
+    return [connector for connector in (_load_connector("chilecompra"), _load_connector("infolobby")) if connector]
 
 
 def _apply_connectors_to_ecosystem(ecosystem: dict[str, Any]) -> dict[str, Any]:

@@ -8,7 +8,7 @@
   "source_name": "DatosEnOrden ChileCompra Demo Case",
   "classification": "LOCAL_TEST_DATA",
   "official_status": "NOT_OFFICIAL_DATA",
-  "summary": "Connector local de compras p?blicas que transforma ?rdenes de compra existentes en entidades, relaciones, evidencia y eventos.",
+  "summary": "Connector local de compras públicas que transforma órdenes de compra existentes en entidades, relaciones, evidencia y eventos.",
   "produces": {
     "entities": [
       "Organismo",
@@ -27,7 +27,7 @@
       "local_sample_payload"
     ],
     "events": [
-      "Nueva compra p?blica"
+      "Nueva compra pública"
     ]
   },
   "feeds": [
@@ -97,7 +97,7 @@
       "subject_name": "ACME TECNOLOGIAS SPA",
       "object_id": "chilecompra:purchase_order:oc-2026-0001",
       "object_name": "Compra de insumos clinicos basicos",
-      "description": "El proveedor recibe una compra p?blica."
+      "description": "El proveedor recibe una compra pública."
     },
     {
       "predicate": "ISSUES_PURCHASE_ORDER",
@@ -113,7 +113,7 @@
       "subject_name": "SERVICIOS NORTE LTDA",
       "object_id": "chilecompra:purchase_order:oc-2026-0002",
       "object_name": "Servicio de mantenimiento preventivo",
-      "description": "El proveedor recibe una compra p?blica."
+      "description": "El proveedor recibe una compra pública."
     },
     {
       "predicate": "ISSUES_PURCHASE_ORDER",
@@ -129,7 +129,7 @@
       "subject_name": "CONSULTORA PUBLICA SPA",
       "object_id": "chilecompra:purchase_order:oc-2026-0003",
       "object_name": "Asesoria de apoyo operativo",
-      "description": "El proveedor recibe una compra p?blica."
+      "description": "El proveedor recibe una compra pública."
     }
   ],
   "evidence": [
@@ -163,8 +163,8 @@
       "id": "event:chilecompra:purchase_order:oc-2026-0001",
       "date": "2026-04-05",
       "status": "published",
-      "title": "Nueva compra p?blica: Compra de insumos clinicos basicos",
-      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO registra una compra p?blica con ACME TECNOLOGIAS SPA por 18500000 CLP.",
+      "title": "Nueva compra pública: Compra de insumos clinicos basicos",
+      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO registra una compra pública con ACME TECNOLOGIAS SPA por 18500000 CLP.",
       "source": "ChileCompra Connector",
       "evidence_ids": [
         "evidence:chilecompra:purchase_order:oc-2026-0001"
@@ -174,14 +174,14 @@
         "ACME TECNOLOGIAS SPA",
         "Compra de insumos clinicos basicos"
       ],
-      "pulse_summary": "Compra p?blica local de muestra: OC-2026-0001 conecta organismo, proveedor y contrato."
+      "pulse_summary": "Compra pública local de muestra: OC-2026-0001 conecta organismo, proveedor y contrato."
     },
     {
       "id": "event:chilecompra:purchase_order:oc-2026-0002",
       "date": "2026-04-18",
       "status": "published",
-      "title": "Nueva compra p?blica: Servicio de mantenimiento preventivo",
-      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO registra una compra p?blica con SERVICIOS NORTE LTDA por 9240000 CLP.",
+      "title": "Nueva compra pública: Servicio de mantenimiento preventivo",
+      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO registra una compra pública con SERVICIOS NORTE LTDA por 9240000 CLP.",
       "source": "ChileCompra Connector",
       "evidence_ids": [
         "evidence:chilecompra:purchase_order:oc-2026-0002"
@@ -191,14 +191,14 @@
         "SERVICIOS NORTE LTDA",
         "Servicio de mantenimiento preventivo"
       ],
-      "pulse_summary": "Compra p?blica local de muestra: OC-2026-0002 conecta organismo, proveedor y contrato."
+      "pulse_summary": "Compra pública local de muestra: OC-2026-0002 conecta organismo, proveedor y contrato."
     },
     {
       "id": "event:chilecompra:purchase_order:oc-2026-0003",
       "date": "2026-05-02",
       "status": "published",
-      "title": "Nueva compra p?blica: Asesoria de apoyo operativo",
-      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO registra una compra p?blica con CONSULTORA PUBLICA SPA por 12600000 CLP.",
+      "title": "Nueva compra pública: Asesoria de apoyo operativo",
+      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO registra una compra pública con CONSULTORA PUBLICA SPA por 12600000 CLP.",
       "source": "ChileCompra Connector",
       "evidence_ids": [
         "evidence:chilecompra:purchase_order:oc-2026-0003"
@@ -208,7 +208,7 @@
         "CONSULTORA PUBLICA SPA",
         "Asesoria de apoyo operativo"
       ],
-      "pulse_summary": "Compra p?blica local de muestra: OC-2026-0003 conecta organismo, proveedor y contrato."
+      "pulse_summary": "Compra pública local de muestra: OC-2026-0003 conecta organismo, proveedor y contrato."
     }
   ],
   "audit": {

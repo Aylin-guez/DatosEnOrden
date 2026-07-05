@@ -1,0 +1,117 @@
+{
+  "id": "lobby",
+  "display_name": "InfoLobby Connector",
+  "priority": 2,
+  "status": "demo_controlled_connector",
+  "mode": "demo_controlled_from_existing_local_sample",
+  "source_dataset_name": "lobby-meeting-sample",
+  "source_name": "DatosEnOrden InfoLobby Sample",
+  "classification": "LOCAL_TEST_DATA",
+  "official_status": "NOT_OFFICIAL_DATA",
+  "summary": "Connector local de reuniones de lobby que transforma una muestra controlada en entidades, relaciones, evidencia y eventos.",
+  "produces": {
+    "entities": [
+      "Organismo",
+      "Persona",
+      "Reunión"
+    ],
+    "relationships": [
+      "ORGANIZATION_HELD_LOBBY_MEETING",
+      "COUNTERPARTY_PARTICIPATED_IN_LOBBY"
+    ],
+    "evidence": [
+      "meeting_record",
+      "source_url",
+      "local_sample_payload"
+    ],
+    "events": [
+      "Nueva reunión de lobby"
+    ]
+  },
+  "feeds": [
+    "Buscar",
+    "Expediente",
+    "Pulso",
+    "Fuentes",
+    "Cronología",
+    "Relaciones"
+  ],
+  "entities": [
+    {
+      "id": "infolobby:organization:ssaah-001",
+      "name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "entity_type": "Organismo",
+      "model_entity_type": "PUBLIC_ORGANIZATION"
+    },
+    {
+      "id": "infolobby:person:marlene-beatriz-flores-patino",
+      "name": "MARLENE BEATRIZ FLORES PATINO",
+      "entity_type": "Persona",
+      "model_entity_type": "PERSON"
+    },
+    {
+      "id": "infolobby:meeting:2026-03-15-ssaah-marlene-flores",
+      "name": "Reunión de lobby 2026-03-15: apoyo administrativo Arauco",
+      "entity_type": "Reunión",
+      "model_entity_type": "LOBBY_MEETING"
+    }
+  ],
+  "relationships": [
+    {
+      "predicate": "ORGANIZATION_HELD_LOBBY_MEETING",
+      "subject_id": "infolobby:organization:ssaah-001",
+      "subject_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+      "object_id": "infolobby:meeting:2026-03-15-ssaah-marlene-flores",
+      "object_name": "Reunión de lobby 2026-03-15: apoyo administrativo Arauco",
+      "description": "El organismo aparece asociado a una reunión de lobby en la muestra local controlada."
+    },
+    {
+      "predicate": "COUNTERPARTY_PARTICIPATED_IN_LOBBY",
+      "subject_id": "infolobby:person:marlene-beatriz-flores-patino",
+      "subject_name": "MARLENE BEATRIZ FLORES PATINO",
+      "object_id": "infolobby:meeting:2026-03-15-ssaah-marlene-flores",
+      "object_name": "Reunión de lobby 2026-03-15: apoyo administrativo Arauco",
+      "description": "La contraparte aparece como participante de una reunión de lobby de muestra."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence:infolobby:meeting:2026-03-15-ssaah-marlene-flores",
+      "source": "InfoLobby",
+      "label": "Reunión 2026-03-15",
+      "url": "local://sample/lobby-meeting/lobby-sample-2026-servicio-salud-arauco-marlene-flores",
+      "excerpt": "Presentación de servicios de apoyo administrativo para procesos locales.",
+      "record_type": "meeting_record"
+    }
+  ],
+  "events": [
+    {
+      "id": "event:infolobby:meeting:2026-03-15-ssaah-marlene-flores",
+      "date": "2026-03-15",
+      "status": "published",
+      "title": "Nueva reunión de lobby registrada",
+      "description": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO aparece en una reunión local de muestra con MARLENE BEATRIZ FLORES PATINO sobre apoyo administrativo.",
+      "source": "InfoLobby Connector",
+      "evidence_ids": [
+        "evidence:infolobby:meeting:2026-03-15-ssaah-marlene-flores"
+      ],
+      "related_entity_names": [
+        "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+        "MARLENE BEATRIZ FLORES PATINO",
+        "Reunión de lobby 2026-03-15: apoyo administrativo Arauco"
+      ],
+      "pulse_summary": "Reunión de lobby local de muestra: conecta organismo, contraparte y materia declarada sin inferir irregularidad."
+    }
+  ],
+  "audit": {
+    "scripts": [
+      "scripts/load_lobby_sample.py",
+      "scripts/lobby_summary.py",
+      "scripts/align_lobby_sample_to_existing_org.py"
+    ],
+    "tests": [
+      "tests/test_lobby_prototype.py",
+      "tests/test_lobby_scripts.py"
+    ]
+  }
+}
