@@ -1,23 +1,25 @@
 # VPS Go Live Steps
 
-Guia practica para desplegar DatosEnOrden en una VPS Ubuntu LTS con Caddy, PostgreSQL local privado y systemd.
+Guia practica para desplegar DatosEnOrden en una VPS Ubuntu 24.04 LTS con Caddy, PostgreSQL local privado y systemd.
 
 Supuestos de esta guia:
 
 - El repo se desplegara en `/opt/datosenorden`.
 - El servicio correra como usuario `datosenorden`.
-- Reflex correra con frontend en `127.0.0.1:3000`.
-- Reflex correra con backend/WebSocket en `127.0.0.1:8000`.
-- Caddy publicara el sitio y enviara `/api/*` al backend Reflex.
+- Reflex correra en modo `single-port` en `127.0.0.1:3000`.
+- API y WebSocket de Reflex viviran bajo `/api` en ese mismo puerto.
+- Caddy publicara el sitio y enviara todo el trafico al proceso Reflex local.
 - En el servidor se usan comandos `python3`, no `py -3.14`.
 
-## 1. Comprar una VPS Ubuntu LTS
+## 1. Comprar una VPS Ubuntu 24.04 LTS
 
-Elige una VPS Ubuntu 24.04 LTS o 22.04 LTS con al menos:
+Elige una VPS Ubuntu 24.04 LTS con al menos:
 
 - 2 vCPU
 - 4 GB RAM
 - 40 GB SSD
+
+No uses Ubuntu 22.04 para este pack salvo que aprovisiones Python 3.12+ manualmente antes de seguir.
 
 ## 2. Obtener la IP publica
 
@@ -112,7 +114,7 @@ Advertencias:
 
 ## 8. Crear la base de datos y el usuario PostgreSQL
 
-Instala la base y Caddy si todavia no lo hiciste:
+Instala la base, Caddy y Node si todavia no lo hiciste:
 
 ```bash
 cd /opt/datosenorden
@@ -137,6 +139,16 @@ Opcional pero recomendado para backups sin exponer password en comandos:
 sudo -u datosenorden bash -c 'printf "localhost:5432:datosenorden:datosenorden:%s\n" "CHANGE_ME" > /home/datosenorden/.pgpass && chmod 600 /home/datosenorden/.pgpass'
 ```
 
+Confirma versiones minimas del host:
+
+```bash
+python3 --version
+node --version
+npm --version
+```
+
+`python3` debe ser `>= 3.12` y `node` debe ser `>= 22.12.0`.
+
 ## 9. Crear el entorno virtual
 
 ```bash
@@ -154,34 +166,43 @@ sudo -u datosenorden /opt/datosenorden/.venv/bin/python3 -m pip install -e .
 
 Si necesitas conversion DOC a PDF en el servidor, deja `libreoffice-writer` instalado.
 
-## 11. Ejecutar checks
+## 11. Migrar y cargar la demo base
+
+En una base limpia, el deploy publico no puede saltarse migraciones ni seed inicial:
 
 ```bash
 cd /opt/datosenorden
-sudo -u datosenorden bash -lc 'source .venv/bin/activate && python3 scripts/deploy_check.py && python3 scripts/prelaunch_public_check.py && python3 scripts/run_demo_check.py && python3 scripts/content_readiness.py && python3 -m pytest -q --basetemp .pytest-tmp-go-live-pack && python3 -m reflex compile --dry --no-rich'
+sudo -u datosenorden bash -lc 'set -a && source .env && set +a && source .venv/bin/activate && python3 -m alembic upgrade head && python3 scripts/reset_and_load_mvp_demo.py'
+```
+
+## 12. Ejecutar checks
+
+```bash
+cd /opt/datosenorden
+sudo -u datosenorden bash -lc 'set -a && source .env && set +a && source .venv/bin/activate && python3 --version && node --version && npm --version && python3 scripts/deploy_check.py && python3 scripts/prelaunch_public_check.py && python3 scripts/run_demo_check.py && python3 scripts/content_readiness.py && python3 -m pytest -q --basetemp .pytest-tmp-go-live-pack && python3 -m reflex compile --dry --no-rich'
 ```
 
 Si alguno falla, no sigas al dominio publico hasta corregirlo.
 
-## 12. Probar Reflex local en el servidor
+## 13. Probar Reflex local en el servidor
 
 Primero carga el `.env` y corre Reflex manualmente:
 
 ```bash
 cd /opt/datosenorden
-sudo -u datosenorden bash -lc 'set -a && source .env && set +a && source .venv/bin/activate && reflex run --env prod --backend-host 127.0.0.1 --backend-port 8000 --frontend-port 3000'
+sudo -u datosenorden bash -lc 'set -a && source .env && set +a && source .venv/bin/activate && python3 -m reflex run --env prod --single-port --frontend-port 3000 --backend-host 127.0.0.1'
 ```
 
-En otra sesion SSH, revisa que ambos puertos respondan:
+En otra sesion SSH, revisa que el mismo proceso responda HTML y healthcheck:
 
 ```bash
 curl -I http://127.0.0.1:3000
-curl -I http://127.0.0.1:8000/api/_health
+curl -I http://127.0.0.1:3000/api/_health
 ```
 
 Cuando termines, vuelve a la primera sesion y presiona `Ctrl+C`.
 
-## 13. Instalar el service de systemd
+## 14. Instalar el service de systemd
 
 ```bash
 cd /opt/datosenorden
@@ -192,7 +213,7 @@ sudo systemctl enable --now datosenorden
 sudo systemctl status datosenorden --no-pager
 ```
 
-## 14. Configurar Caddy
+## 15. Configurar Caddy
 
 ```bash
 cd /opt/datosenorden
@@ -202,7 +223,7 @@ sudo systemctl reload caddy
 sudo systemctl status caddy --no-pager
 ```
 
-## 15. Apuntar beta.datosenorden.cl al VPS
+## 16. Apuntar beta.datosenorden.cl al VPS
 
 Crea el registro DNS beta:
 
@@ -216,7 +237,7 @@ Verifica propagacion:
 nslookup beta.datosenorden.cl 1.1.1.1
 ```
 
-## 16. Probar healthcheck
+## 17. Probar healthcheck
 
 Cuando el DNS beta resuelva al VPS:
 
@@ -235,7 +256,7 @@ Revisa manualmente tambien:
 - `https://beta.datosenorden.cl/studio`
 - `https://beta.datosenorden.cl/chronology`
 
-## 17. Apuntar datosenorden.cl cuando beta este estable
+## 18. Apuntar datosenorden.cl cuando beta este estable
 
 Actualiza `.env`:
 
@@ -270,17 +291,17 @@ cd /opt/datosenorden
 sudo -u datosenorden bash -lc 'source .venv/bin/activate && python3 scripts/healthcheck_public.py https://datosenorden.cl'
 ```
 
-## 18. Comandos para ver logs
+## 19. Comandos para ver logs
 
 ```bash
 sudo journalctl -u datosenorden -f
 sudo journalctl -u caddy -f
 sudo journalctl -u postgresql -f
 sudo systemctl status datosenorden --no-pager
-sudo ss -ltnp | grep -E ":80|:443|:3000|:8000|:5432"
+sudo ss -ltnp | grep -E ":80|:443|:3000|:5432"
 ```
 
-## 19. Comandos para rollback
+## 20. Comandos para rollback
 
 Volver al commit anterior:
 
@@ -300,7 +321,7 @@ gunzip -c /var/backups/datosenorden/postgres-datosenorden-<TIMESTAMP>.sql.gz | p
 
 Si el problema es DNS o HTTPS, deja `beta.datosenorden.cl` activo y no cambies el dominio raiz hasta estabilizar.
 
-## 20. Comandos para backup
+## 21. Comandos para backup
 
 Backup manual:
 

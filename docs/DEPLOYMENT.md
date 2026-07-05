@@ -8,7 +8,7 @@ Adecuado para MVP con trafico bajo y control de archivos, logs y proxy.
 
 Componentes:
 
-- Ubuntu LTS.
+- Ubuntu 24.04 LTS o cualquier host con Python `>=3.12`.
 - Python `>=3.12`.
 - PostgreSQL local privado o PostgreSQL gestionado.
 - Nginx o Caddy como reverse proxy.
@@ -64,6 +64,7 @@ Crear `.env` en el servidor con `DATABASE_URL`.
 ## Cargar Demo Seed
 
 ```bash
+python -m alembic upgrade head
 python scripts/reset_and_load_mvp_demo.py
 python scripts/verify_mvp_demo.py
 python scripts/demo_ready_check.py
@@ -90,13 +91,7 @@ python -m reflex compile --dry --no-rich
 Comando base:
 
 ```bash
-python -m reflex run --env prod --backend-host 0.0.0.0
-```
-
-Si el proveedor exige puerto:
-
-```bash
-python -m reflex run --env prod --backend-host 0.0.0.0 --backend-port ${PORT:-8000}
+python -m reflex run --env prod --single-port --frontend-port ${PORT:-3000} --backend-host 0.0.0.0
 ```
 
 Mantener `DATABASE_URL` configurado en el ambiente del proceso.
@@ -106,14 +101,14 @@ Mantener `DATABASE_URL` configurado en el ambiente del proceso.
 Exponer solo HTTPS publico:
 
 - `https://dominio.cl/` -> Reflex frontend.
+- `https://dominio.cl/api/*` -> mismo proceso Reflex en el puerto interno.
 - Verificar que WebSocket/backend de Reflex funcione detras del proxy.
 - Redirigir HTTP a HTTPS.
 
 Puertos habituales:
 
 - Publico: `80`, `443`.
-- Interno Reflex frontend: `3000`.
-- Interno Reflex backend: `8000`.
+- Interno Reflex single-port: `3000`.
 - PostgreSQL: privado.
 
 ## Health Check

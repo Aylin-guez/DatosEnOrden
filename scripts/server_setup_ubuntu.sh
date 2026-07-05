@@ -7,6 +7,8 @@ APP_DIR="${APP_DIR:-/opt/datosenorden}"
 LOG_DIR="${LOG_DIR:-/var/log/datosenorden}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/datosenorden}"
 INSTALL_LIBREOFFICE="${INSTALL_LIBREOFFICE:-1}"
+NODE_MAJOR="${NODE_MAJOR:-22}"
+MIN_NODE_VERSION="${MIN_NODE_VERSION:-22.12.0}"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "Run this script with sudo or as root."
@@ -20,6 +22,7 @@ apt-get install -y \
     ca-certificates \
     git \
     curl \
+    gnupg \
     ufw \
     build-essential \
     python3 \
@@ -31,8 +34,45 @@ apt-get install -y \
     postgresql-contrib \
     caddy
 
+install -d -m 0755 /etc/apt/keyrings
+if [ ! -f /etc/apt/keyrings/nodesource.gpg ]; then
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+fi
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+apt-get update
+apt-get install -y nodejs
+
 if [ "${INSTALL_LIBREOFFICE}" = "1" ]; then
     apt-get install -y libreoffice-writer
+fi
+
+if ! python3 - <<'PY'
+import sys
+
+raise SystemExit(0 if sys.version_info >= (3, 12) else 1)
+PY
+then
+    echo "Installed python3 is too old: $(python3 --version 2>/dev/null || echo unavailable)" >&2
+    echo "DatosEnOrden requires Python >= 3.12. Use Ubuntu 24.04 LTS or provision Python 3.12+ before continuing." >&2
+    exit 1
+fi
+
+if ! python3 - "${MIN_NODE_VERSION}" <<'PY'
+import re
+import subprocess
+import sys
+
+minimum = tuple(int(part) for part in sys.argv[1].split("."))
+raw = subprocess.check_output(["node", "--version"], text=True).strip()
+match = re.match(r"v?(\d+)\.(\d+)\.(\d+)", raw)
+if match is None:
+    raise SystemExit(1)
+found = tuple(int(part) for part in match.groups())
+raise SystemExit(0 if found >= minimum else 1)
+PY
+then
+    echo "Installed node version $(node --version 2>/dev/null || echo unavailable) is below required ${MIN_NODE_VERSION}." >&2
+    exit 1
 fi
 
 if ! getent group "${APP_GROUP}" >/dev/null; then
@@ -63,7 +103,8 @@ Manual follow-up still required:
 2. Copy deployment/production.env.example to ${APP_DIR}/.env and replace CHANGE_ME values.
 3. Create the PostgreSQL role/database and keep PostgreSQL private.
 4. Create ${APP_DIR}/.venv and install the Python dependencies.
-5. Install deployment/datosenorden.service and deployment/Caddyfile.
+5. Run alembic upgrade and load the demo data before first public boot.
+6. Install deployment/datosenorden.service and deployment/Caddyfile.
 
 If LibreOffice is not needed on this VPS, rerun with:
   sudo INSTALL_LIBREOFFICE=0 bash scripts/server_setup_ubuntu.sh

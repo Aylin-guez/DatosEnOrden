@@ -1,8 +1,13 @@
-# Deployment Scaffold
+# Deployment Pack
 
-This folder prepares future deployment work for DatosEnOrden.
+This folder contains the first public deployment pack for DatosEnOrden.
 
-Nothing in this folder deploys the project by itself. It is documentation and
-structure for later nginx, Docker, Cloudflare, and operational scripts.
+Use it together with `docs/VPS_GO_LIVE_STEPS.md` during the first VPS deploy.
+The current pack assumes:
+
+- Ubuntu 24.04 LTS or any host with Python `>=3.12`
+- Reflex production in single-port mode behind Caddy
+- PostgreSQL kept private on localhost or a private network
+- systemd as the process supervisor
 
 Current rule: do not expose local PostgreSQL publicly.

@@ -32,13 +32,7 @@ Comandos base:
 ```bash
 python -m pip install -e .
 python -m reflex compile --dry --no-rich
-python -m reflex run --env prod --backend-host 0.0.0.0
-```
-
-Si el proveedor asigna puerto:
-
-```bash
-python -m reflex run --env prod --backend-host 0.0.0.0 --backend-port ${PORT:-8000}
+python -m reflex run --env prod --single-port --frontend-port ${PORT:-3000} --backend-host 0.0.0.0
 ```
 
 ## Variables

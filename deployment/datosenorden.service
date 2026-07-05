@@ -11,7 +11,7 @@ WorkingDirectory=/opt/datosenorden
 EnvironmentFile=/opt/datosenorden/.env
 Environment=PATH=/opt/datosenorden/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/datosenorden/.venv/bin/reflex run --env prod --backend-host 127.0.0.1 --backend-port 8000 --frontend-port 3000
+ExecStart=/opt/datosenorden/.venv/bin/reflex run --env prod --single-port --frontend-port 3000 --backend-host 127.0.0.1
 Restart=always
 RestartSec=5
 StandardOutput=journal

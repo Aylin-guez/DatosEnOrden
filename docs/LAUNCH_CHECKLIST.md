@@ -51,7 +51,7 @@ python -m reflex run
 Ejecucion recomendada para MVP en servidor:
 
 ```bash
-python -m reflex run --env prod --backend-host 0.0.0.0
+python -m reflex run --env prod --single-port --frontend-port ${PORT:-3000} --backend-host 0.0.0.0
 ```
 
 ## Base De Datos
@@ -72,8 +72,7 @@ python scripts/demo_ready_check.py
 
 ## Puertos
 
-- Reflex frontend: `3000`.
-- Reflex backend: `8000` por defecto.
+- Reflex prod single-port: `3000` por defecto.
 - Nginx/Caddy debe exponer solo `80/443` al publico.
 - PostgreSQL debe quedar privado.
 

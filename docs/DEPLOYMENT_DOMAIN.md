@@ -17,7 +17,7 @@ Render, Fly o Railway pueden funcionar como alternativa si soportan WebSocket es
 La app publica es Reflex:
 
 ```bash
-python -m reflex run --env prod --backend-host 0.0.0.0
+python -m reflex run --env prod --single-port --frontend-port ${PORT:-3000} --backend-host 0.0.0.0
 ```
 
 Validacion de build:
@@ -87,13 +87,7 @@ python -m reflex compile --dry --no-rich
 Levantar:
 
 ```bash
-python -m reflex run --env prod --backend-host 0.0.0.0
-```
-
-Si el proveedor entrega puerto:
-
-```bash
-python -m reflex run --env prod --backend-host 0.0.0.0 --backend-port ${PORT:-8000}
+python -m reflex run --env prod --single-port --frontend-port ${PORT:-3000} --backend-host 0.0.0.0
 ```
 
 ## DNS, HTTPS y WebSocket
@@ -110,9 +104,9 @@ Proxy:
 - Redirigir HTTP a HTTPS.
 - Mantener WebSocket habilitado.
 - No exponer PostgreSQL.
-- Publicar `/` y assets estaticos generados por Reflex.
+- Publicar `/` y `/api/*` desde el mismo proceso Reflex.
 
-Con Caddy, usar `datosenorden.cl` como host y proxy hacia los puertos Reflex internos. Con Nginx, incluir headers `Upgrade` y `Connection` para WebSocket.
+Con Caddy, usar `datosenorden.cl` como host y proxy hacia el puerto unico de Reflex. Con Nginx, incluir headers `Upgrade` y `Connection` para WebSocket.
 
 ## Seguridad minima
 

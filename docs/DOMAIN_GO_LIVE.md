@@ -100,7 +100,7 @@ python -m reflex compile --dry --no-rich
 ## 8. Levantar app
 
 ```bash
-python -m reflex run --env prod --backend-host 0.0.0.0
+python -m reflex run --env prod --single-port --frontend-port ${PORT:-3000} --backend-host 0.0.0.0
 ```
 
 Para systemd, usar el mismo comando dentro del entorno virtual y reiniciar con:
