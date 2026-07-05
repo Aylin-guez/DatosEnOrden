@@ -966,11 +966,14 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert "Evidencia" in selector_source
     assert "Documento Fuente" in source_panel
     assert "Fragmento seleccionado" not in source_panel
+    text_viewer_source = inspect.getsource(reflex_app.topic_text_document_viewer)
     assert "topic-source-guidance" in source_panel
-    assert "knowledge_document_paragraphs" in source_panel
-    assert "document_paragraph" in source_panel
+    assert "topic_pdf_document_viewer" in source_panel
+    assert "topic_text_document_viewer" in source_panel
+    assert "knowledge_document_paragraphs" in text_viewer_source
+    assert "document_paragraph" in text_viewer_source
     assert "document_fragment_card" not in source_panel
-    assert "Documento original" in source_panel
+    assert "Recurso oficial" in source_panel
     assert "Vista avanzada" not in source_panel
     assert "Resumen" in reading_source
     assert "Que propone" in reading_source
@@ -1186,16 +1189,24 @@ def test_select_document_anchor_updates_reading_context() -> None:
 def test_topic_prefers_published_document_view_as_continuous_document() -> None:
     paragraphs = reflex_app._load_document_paragraphs([])
     panel_source = inspect.getsource(reflex_app.topic_source_panel)
+    text_viewer_source = inspect.getsource(reflex_app.topic_text_document_viewer)
 
     fragments, source_path, is_fallback = reflex_app._load_document_fragments_with_source([])
     assert reflex_app.PUBLISHED_DOCUMENT_VIEW_PATH.as_posix().endswith("data/official_documents/published/senado-docto-9000-mensaje_mocion/document_view.json")
+    assert reflex_app.PUBLISHED_DOCUMENT_PDF_PATH.as_posix().endswith("data/official_documents/published/senado-docto-9000-mensaje_mocion/document.pdf")
+    assert reflex_app.PUBLISHED_DOCUMENT_PDF_ASSET_PATH.as_posix().endswith("assets/official_documents/senado-docto-9000-mensaje_mocion/document.pdf")
+    assert reflex_app._document_pdf_href(reflex_app.PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, 19).endswith("document.pdf#page=19")
     assert source_path == str(reflex_app.PUBLISHED_DOCUMENT_VIEW_PATH)
     assert is_fallback is False
     assert len(fragments) > 20
     assert len(paragraphs) > 20
     assert paragraphs[0]["text"]
-    assert "knowledge_document_paragraphs" in panel_source
-    assert "document_paragraph" in panel_source
+    assert "topic_text_document_viewer" in panel_source
+    assert "topic_pdf_document_viewer" in panel_source
+    assert "knowledge_document_paragraphs" in text_viewer_source
+    assert "document_paragraph" in text_viewer_source
+    assert "Recurso oficial" in panel_source
+    assert "Abrir recurso oficial del Senado" in panel_source
     assert "document_fragment_card" not in panel_source
 
 
@@ -1248,3 +1259,64 @@ def test_ecosystem_source_card_shows_connector_label() -> None:
 
     assert "connector_label" in loader_source
     assert "connector_label" in source
+
+
+def test_topic_pdf_viewer_uses_published_pdf_and_fragment_context() -> None:
+    viewer_source = inspect.getsource(reflex_app.topic_pdf_document_viewer)
+    panel_source = inspect.getsource(reflex_app.topic_source_panel)
+    evidence_source = inspect.getsource(reflex_app.topic_evidence_card)
+
+    assert "active_fragment_id" in viewer_source
+    assert "rx.el.iframe" in viewer_source
+    assert "knowledge_document_pdf_page_href" in viewer_source
+    assert "Fragmento citado" in viewer_source
+    assert "knowledge_document_has_pdf" in panel_source
+    assert "PDF oficial publicado" in panel_source
+    assert ".topic-pdf-document-viewer" in evidence_source
+    assert ".document-paragraph-block-active" in evidence_source
+
+
+def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
+    sidebar_source = inspect.getsource(reflex_app.app_sidebar)
+    footer_source = inspect.getsource(reflex_app.app_footer)
+    home_source = inspect.getsource(reflex_app.home)
+    topic_source = inspect.getsource(reflex_app.topic)
+    support_source = inspect.getsource(reflex_app.support)
+    studio_source = inspect.getsource(reflex_app.studio)
+    project_source = inspect.getsource(reflex_app.project)
+
+    assert '@rx.page(route="/support"' in support_source
+    assert '@rx.page(route="/studio"' in studio_source
+    assert 'sidebar_nav_link("Apoyar", "/support"' not in sidebar_source
+    assert 'sidebar_nav_link("Studio", "/studio"' not in sidebar_source
+    assert 'footer_text_link("♥", "Apoyar DatosEnOrden", "/support")' in footer_source
+    assert 'footer_text_link("+", "Sugerir una fuente", SUPPORT_SOURCE_SUGGESTION_URL)' in footer_source
+    assert 'footer_text_link("i", "Sobre el proyecto", "/project")' in footer_source
+    assert 'DATOSENORDEN STUDIO' in footer_source
+    assert 'Soluciones para organizaciones.' in footer_source
+    assert 'footer_text_link("☁", "Studio", "/studio")' in footer_source
+    assert 'footer_text_link("✉", "Contacto comercial", STUDIO_CONVERSATION_URL)' in footer_source
+    assert 'support_cta_block()' not in home_source
+    assert 'support_cta_block()' in topic_source
+    assert '¿Te resultó útil esta investigación?' in inspect.getsource(reflex_app.support_cta_block)
+    assert 'Apoyar el proyecto' in inspect.getsource(reflex_app.support_cta_block)
+    assert 'Contactar por colaboración' not in support_source
+    assert 'SUPPORT_COLLABORATION_URL' not in inspect.getsource(reflex_app)
+    assert 'Las donaciones no compran influencia' in support_source
+    assert 'Evidencia primero' in support_source
+    assert 'Proyecto público' in support_source
+    assert 'Apoyar DatosEnOrden' in support_source
+    assert 'Sugerir una fuente oficial' in support_source
+    assert 'Conocer el proyecto' in support_source
+    assert 'No hay pagos reales integrados todavía' in support_source
+    assert 'DatosEnOrden Studio' in studio_source
+    assert 'explorar, relacionar y monitorear información pública' in studio_source
+    assert 'conectores privados, nube administrada e instalación privada' in studio_source
+    assert 'conectores privados' in studio_source.lower()
+    assert 'nube administrada' in studio_source.lower()
+    assert 'dashboards internos' in studio_source.lower()
+    assert 'instalación privada futura' in studio_source.lower()
+    assert 'Solicitar conversación' in studio_source
+    assert 'Escribir a correo' in studio_source
+    assert 'sin influencia editorial' in project_source.lower()
+

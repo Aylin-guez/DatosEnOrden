@@ -68,6 +68,8 @@ PAGE_REPORTS = "reports"
 PAGE_DASHBOARD = "dashboard"
 PAGE_DEMO = "demo"
 PAGE_PROJECT = "project"
+PAGE_SUPPORT = "support"
+PAGE_STUDIO = "studio"
 INVESTIGATION_STATUS_IDLE = "idle"
 INVESTIGATION_STATUS_LOADING = "loading"
 INVESTIGATION_STATUS_LOADED = "loaded"
@@ -75,6 +77,10 @@ INVESTIGATION_STATUS_ERROR = "error"
 INVESTIGATION_STATUS_EMPTY = "empty"
 DEMO_INVESTIGATION_TARGET = "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
 DEMO_INVESTIGATION_URL = f"http://localhost:3000/investigation?id={quote_plus(DEMO_INVESTIGATION_TARGET)}"
+SUPPORT_DONATION_URL = "https://datosenorden.cl/apoyar/donacion-placeholder"
+SUPPORT_SOURCE_SUGGESTION_URL = "mailto:datosenorden@gmail.com?subject=Sugerir%20fuente%20oficial"
+STUDIO_CONVERSATION_URL = "mailto:datosenorden@gmail.com?subject=DatosEnOrden%20Studio"
+STUDIO_CONTACT_EMAIL = "datosenorden@gmail.com"
 TOPIC_BUDGET_2013_TITLE = "Ley de Presupuestos del Sector Público 2013"
 TOPIC_BUDGET_2013_TARGET = "cl-congreso-boletin-8575-05"
 SOURCE_COVERAGE_TEMPLATE = [
@@ -92,6 +98,9 @@ SOURCE_COVERAGE_TEMPLATE = [
 ]
 PUBLISHED_DOCUMENT_VIEW_PATH = Path("data") / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion" / "document_view.json"
 PUBLISHED_DOCUMENT_READING_PATH = Path("data") / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion" / "reading.json"
+PUBLISHED_DOCUMENT_PDF_PATH = Path("data") / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion" / "document.pdf"
+PUBLISHED_DOCUMENT_PDF_ASSET_PATH = Path("assets") / "official_documents" / "senado-docto-9000-mensaje_mocion" / "document.pdf"
+PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF = "/official_documents/senado-docto-9000-mensaje_mocion/document.pdf"
 PROCESSING_DOCUMENT_FRAGMENTS_PATH = Path("data") / "official_documents" / "processing" / "senado-docto-9000-mensaje_mocion" / "fragments.json"
 
 INVESTIGATION_TOPICS = [
@@ -539,6 +548,11 @@ def _official_document_fragment_href(fragment_id: str, page: int = 1) -> str:
     if page:
         query_parts.append(f"page={int(page)}")
     return "/official-document" if not query_parts else "/official-document?" + "&".join(query_parts)
+
+
+def _document_pdf_href(href: str = PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, page: int = 1) -> str:
+    safe_page = max(int(page or 1), 1)
+    return f"{href}#page={safe_page}"
 
 
 def _topic_timeline_rows(rows: list[dict]) -> list[dict]:
@@ -1334,6 +1348,10 @@ class AppState(rx.State):
     knowledge_document_paragraphs: list[dict] = []
     knowledge_document_source_path: str = ""
     knowledge_document_source_is_fallback: bool = False
+    knowledge_document_has_pdf: bool = False
+    knowledge_document_pdf_path: str = ""
+    knowledge_document_pdf_href: str = ""
+    knowledge_document_pdf_page_href: str = ""
     knowledge_citations: list[dict] = []
     knowledge_connections: list[dict] = []
     knowledge_notice: str = ""
@@ -1784,6 +1802,10 @@ class AppState(rx.State):
             self.knowledge_document_paragraphs = _document_paragraphs_from_fragments(document_fragments)
             self.knowledge_document_source_path = document_source_path
             self.knowledge_document_source_is_fallback = document_source_is_fallback
+            self.knowledge_document_has_pdf = PUBLISHED_DOCUMENT_PDF_ASSET_PATH.exists()
+            self.knowledge_document_pdf_path = str(PUBLISHED_DOCUMENT_PDF_PATH) if self.knowledge_document_has_pdf else ""
+            self.knowledge_document_pdf_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, self.knowledge_selected_page) if self.knowledge_document_has_pdf else ""
+            self.knowledge_document_pdf_page_href = self.knowledge_document_pdf_href
             self.knowledge_fragment_contexts = _json_list(demo.get("fragment_contexts", []))
             selected_context = _json_dict(demo.get("selected_context", {}))
             requested_fragment_id = _router_query_value(self.router, "fragment_id")
@@ -1834,6 +1856,10 @@ class AppState(rx.State):
             self.knowledge_document_paragraphs = []
             self.knowledge_document_source_path = ""
             self.knowledge_document_source_is_fallback = False
+            self.knowledge_document_has_pdf = False
+            self.knowledge_document_pdf_path = ""
+            self.knowledge_document_pdf_href = ""
+            self.knowledge_document_pdf_page_href = ""
             self.knowledge_citations = []
             self.knowledge_connections = []
             self.knowledge_notice = ""
@@ -1996,6 +2022,7 @@ class AppState(rx.State):
         self.knowledge_selected_claims = _json_list(context.get("claims", []))
         self.knowledge_selected_evidence = _json_list(context.get("evidence", []))
         self.knowledge_selected_connections = _json_list(context.get("connections", []))
+        self.knowledge_document_pdf_page_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, self.knowledge_selected_page) if getattr(self, "knowledge_document_has_pdf", False) else ""
 
     def open_report_investigation(self):
         return rx.redirect(_investigation_href(self.citizen_report_subject or DEMO_INVESTIGATION_TARGET))
@@ -2433,31 +2460,76 @@ def _page_class(active_page: str) -> str:
         PAGE_REPORTS: "page-reports",
         PAGE_ECOSYSTEM: "page-ecosystem",
         PAGE_PROJECT: "page-project",
+        PAGE_SUPPORT: "page-project",
+        PAGE_STUDIO: "page-project",
         PAGE_SEARCH: "page-discover",
         PAGE_DEMO: "page-home",
     }.get(active_page, "page-home")
 
 
-def app_footer() -> rx.Component:
-    return rx.box(
-        rx.vstack(
-            rx.text(
-                "DatosEnOrden ayuda a convertir informacion publica y documental en evidencia navegable.",
-                class_name="footer-copy",
-            ),
-            rx.hstack(
-                rx.link("Contacto", href="mailto:datosenorden@gmail.com", class_name="footer-link"),
-                spacing="3",
-                wrap="wrap",
-                justify="center",
-            ),
-            rx.text("Contacto: datosenorden@gmail.com", class_name="footer-copy"),
-            rx.text("Un observador ciudadano de documentos y eventos oficiales.", class_name="footer-copy"),
+def footer_text_link(icon: str, label: str, href: str) -> rx.Component:
+    return rx.link(
+        rx.hstack(
+            rx.text(icon, class_name="footer-link-icon"),
+            rx.text(label, class_name="footer-link-label"),
             spacing="2",
             align="center",
         ),
+        href=href,
+        class_name="footer-link footer-column-link",
+    )
+
+
+def app_footer() -> rx.Component:
+    return rx.box(
+        rx.grid(
+            rx.box(
+                rx.text("PARA CIUDADANOS", class_name="footer-column-title"),
+                footer_text_link("♥", "Apoyar DatosEnOrden", "/support"),
+                footer_text_link("+", "Sugerir una fuente", SUPPORT_SOURCE_SUGGESTION_URL),
+                footer_text_link("i", "Sobre el proyecto", "/project"),
+                class_name="footer-column",
+            ),
+            rx.box(
+                rx.text("DATOSENORDEN STUDIO", class_name="footer-column-title"),
+                rx.text("Soluciones para organizaciones.", class_name="footer-copy footer-column-copy"),
+                footer_text_link("☁", "Studio", "/studio"),
+                footer_text_link("✉", "Contacto comercial", STUDIO_CONVERSATION_URL),
+                class_name="footer-column",
+            ),
+            columns="2",
+            spacing="4",
+            class_name="footer-grid",
+        ),
+        rx.text("Un observador ciudadano de documentos y eventos oficiales.", class_name="footer-copy footer-bottom-copy"),
         class_name="site-footer",
     )
+
+
+def support_cta_block() -> rx.Component:
+    return rx.box(
+        rx.text("¿Te resultó útil esta investigación?", class_name="card-title"),
+        rx.text(
+            "DatosEnOrden se mantiene gracias al trabajo de desarrollo y al apoyo de la comunidad.",
+            class_name="support-copy",
+        ),
+        rx.hstack(
+            rx.button("Apoyar el proyecto", on_click=rx.redirect("/support"), class_name="button button-secondary support-mini-button"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        class_name="support-inline-block",
+    )
+
+
+def support_action_card(title: str, body: str, label: str, href: str) -> rx.Component:
+    return rx.box(
+        rx.text(title, class_name="card-title"),
+        rx.text(body, class_name="muted small"),
+        rx.link(label, href=href, class_name="document-inline-link support-action-link"),
+        class_name="card support-action-card",
+    )
+
 
 def metric(label: str, value) -> rx.Component:  # noqa: ANN001
     return rx.box(
@@ -3226,6 +3298,36 @@ def document_paragraph(row: dict) -> rx.Component:
         ),
     )
 
+def topic_pdf_document_viewer(active_fragment_id: str) -> rx.Component:
+    return rx.box(
+        rx.el.iframe(
+            src=AppState.knowledge_document_pdf_page_href,
+            title="Documento oficial PDF",
+            class_name="topic-pdf-frame",
+        ),
+        rx.box(
+            rx.text("Fragmento citado", class_name="document-label"),
+            rx.text(AppState.knowledge_selected_reference_label, class_name="document-page-label"),
+            rx.text(AppState.knowledge_selected_excerpt, class_name="document-highlight"),
+            rx.text(active_fragment_id, class_name="mono id-line"),
+            class_name="topic-pdf-citation-panel",
+        ),
+        class_name="topic-pdf-document-viewer",
+    )
+
+
+def topic_text_document_viewer() -> rx.Component:
+    return rx.box(
+        rx.box(
+            rx.text("Documento oficial", class_name="document-label"),
+            rx.text(AppState.topic_official_document["title"], class_name="document-sheet-title"),
+            class_name="document-sheet-cover",
+        ),
+        rx.foreach(AppState.knowledge_document_paragraphs, document_paragraph),
+        class_name="document-page topic-document-page document-sheet",
+    )
+
+
 def topic_source_panel() -> rx.Component:
     return rx.box(
         rx.hstack(
@@ -3238,22 +3340,31 @@ def topic_source_panel() -> rx.Component:
         rx.text(AppState.topic_official_document["title"], class_name="card-title"),
         rx.text(
             rx.cond(
-                AppState.knowledge_document_source_is_fallback,
-                "Documento reconstruido desde fallback local. Fuente: " + AppState.knowledge_document_source_path,
-                "Documento original publicado. Fuente: " + AppState.knowledge_document_source_path,
+                AppState.knowledge_document_has_pdf,
+                "PDF oficial publicado. Fuente: " + AppState.knowledge_document_pdf_path,
+                rx.cond(
+                    AppState.knowledge_document_source_is_fallback,
+                    "Documento reconstruido desde fallback local. Fuente: " + AppState.knowledge_document_source_path,
+                    "Documento publicado como texto. Fuente: " + AppState.knowledge_document_source_path,
+                ),
             ),
             class_name="topic-source-guidance",
         ),
-        rx.box(
-            rx.box(
-                rx.text("Documento oficial", class_name="document-label"),
-                rx.text(AppState.topic_official_document["title"], class_name="document-sheet-title"),
-                class_name="document-sheet-cover",
-            ),
-            rx.foreach(AppState.knowledge_document_paragraphs, document_paragraph),
-            class_name="document-page topic-document-page document-sheet",
+        rx.cond(
+            AppState.knowledge_document_has_pdf,
+            topic_pdf_document_viewer(AppState.knowledge_selected_fragment_id),
+            topic_text_document_viewer(),
         ),
-        rx.link("Documento original", href=AppState.topic_original_url, class_name="document-inline-link topic-original-link"),
+        rx.box(
+            rx.text("Recurso oficial", class_name="document-label"),
+            rx.text("Archivo oficial del Senado en formato original (.doc).", class_name="source-fact"),
+            rx.link(
+                "Abrir recurso oficial del Senado",
+                href=AppState.topic_original_url,
+                class_name="document-inline-link topic-original-link",
+            ),
+            class_name="topic-official-resource",
+        ),
         class_name="topic-source-panel topic-card-document",
         id="topic-document",
     )
@@ -3267,7 +3378,7 @@ def topic_evidence_card(row: dict) -> rx.Component:
             "Ver en documento",
             on_click=[
                 AppState.select_document_anchor(row["page"], row["fragment_id"]),
-                rx.call_script("setTimeout(() => document.querySelector('.topic-source-panel .document-fragment-active')?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
+                rx.call_script("setTimeout(() => (document.querySelector('.topic-pdf-document-viewer') || document.querySelector('.topic-source-panel .document-paragraph-block-active'))?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
             ],
             class_name="button button-secondary",
         ),
@@ -3445,7 +3556,7 @@ def topic_system_mode() -> rx.Component:
             class_name="live-system-heading",
         ),
         rx.grid(
-            topic_live_stage("Estado actual", AppState.topic_status, "Situacion del tema seg?n la lectura documentada disponible."),
+            topic_live_stage("Estado actual", AppState.topic_status, "Situacion del tema según la lectura documentada disponible."),
             topic_live_stage("Eventos del tema", AppState.topic_document_count, "Documentos y eventos disponibles para sostener la cronologia."),
             topic_live_stage("Cronolog?a viva", AppState.topic_updated_at, "Ultima fecha registrada en el recorrido documental."),
             columns="3",
@@ -3462,7 +3573,7 @@ def topic_system_mode() -> rx.Component:
                     align="stretch",
                     class_name="live-timeline-strip",
                 ),
-                rx.text("No hay eventos visibles para este tema todav?a.", class_name="muted small"),
+                rx.text("No hay eventos visibles para este tema todavía.", class_name="muted small"),
             ),
             class_name="topic-reading-section topic-card-next live-timeline-panel",
         ),
@@ -3848,7 +3959,7 @@ def reference_button(row: dict) -> rx.Component:
         row["reference_label"],
         on_click=[
             AppState.select_document_anchor(row["page"], row["fragment_id"]),
-            rx.call_script("setTimeout(() => document.querySelector('.topic-source-panel .document-fragment-active')?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
+            rx.call_script("setTimeout(() => (document.querySelector('.topic-pdf-document-viewer') || document.querySelector('.topic-source-panel .document-paragraph-block-active'))?.scrollIntoView({behavior: 'smooth', block: 'center'}), 80)"),
         ],
         class_name="reference-button",
     )
@@ -5107,6 +5218,7 @@ def topic() -> rx.Component:
             class_name="document-hero topic-hero",
         ),
         topic_mode_body(),
+        support_cta_block(),
         on_mount=AppState.load_topic,
         active_page=PAGE_TOPIC,
     )
@@ -5708,9 +5820,113 @@ def project() -> rx.Component:
                 spacing="3",
                 wrap="wrap",
             ),
-            subtitle="Por ahora no se piden donaciones ni pagos.",
+            subtitle="Apoyo discreto, sin influencia editorial ni prioridad sobre la evidencia.",
         ),
         active_page=PAGE_PROJECT,
+    )
+
+
+@rx.page(route="/support", title="Apoyar DatosEnOrden")
+def support() -> rx.Component:
+    return shell(
+        rx.box(
+            rx.text("Apoyar DatosEnOrden", class_name="title"),
+            rx.text(
+                "DatosEnOrden es una plataforma pública basada en documentos oficiales. El apoyo ayuda a sostener el proyecto, pero la evidencia siempre define la lectura.",
+                class_name="subtitle",
+            ),
+            rx.hstack(
+                rx.link("Apoyar DatosEnOrden", href=SUPPORT_DONATION_URL, class_name="button primary-action"),
+                rx.link("Sugerir una fuente oficial", href=SUPPORT_SOURCE_SUGGESTION_URL, class_name="button button-secondary"),
+                rx.link("Conocer el proyecto", href="/project", class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+                class_name="hero-actions",
+            ),
+            class_name="hero support-hero",
+        ),
+        page_section(
+            "Apoyo después del valor",
+            rx.text(
+                "El sitio no pide dinero antes de entregar una lectura útil. Las donaciones son una forma de agradecer y sostener trabajo ya realizado: hosting, almacenamiento, procesamiento documental y desarrollo.",
+                class_name="story-summary",
+            ),
+            subtitle="No hay pagos reales integrados todavía; los enlaces siguen siendo placeholders configurables.",
+        ),
+        page_section(
+            "Independencia editorial",
+            rx.grid(
+                help_card("Las donaciones no compran influencia", "Un aporte no decide qué se publica, cómo se redacta ni qué conclusiones aparecen."),
+                help_card("Evidencia primero", "La evidencia verificable siempre pesa más que aportes, alianzas o sugerencias."),
+                help_card("Proyecto público", "DatosEnOrden mantiene una lectura ciudadana abierta, neutral y trazable."),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Apoyar no cambia la prioridad de fuentes ni el estándar de evidencia.",
+        ),
+        page_section(
+            "Acciones disponibles",
+            rx.grid(
+                support_action_card("Apoyar DatosEnOrden", "Aporte futuro para sostener infraestructura y desarrollo continuo.", "Apoyar DatosEnOrden", SUPPORT_DONATION_URL),
+                support_action_card("Sugerir una fuente oficial", "Proponer documentos o fuentes públicas verificables para evaluar más adelante.", "Sugerir una fuente oficial", SUPPORT_SOURCE_SUGGESTION_URL),
+                support_action_card("Conocer el proyecto", "Revisar el estado del MVP, sus límites y próximos pasos.", "Conocer el proyecto", "/project"),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Sin contacto comercial aquí; Studio cumple ese rol para organizaciones.",
+        ),
+        active_page=PAGE_SUPPORT,
+    )
+
+
+@rx.page(route="/studio", title="DatosEnOrden Studio")
+def studio() -> rx.Component:
+    return shell(
+        rx.box(
+            rx.text("DatosEnOrden Studio", class_name="title"),
+            rx.text(
+                "DatosEnOrden Studio es la plataforma para organizaciones que necesitan explorar, relacionar y monitorear información pública mediante conectores, expedientes y automatización documental.",
+                class_name="subtitle",
+            ),
+            rx.text(
+                "La base pública ya demuestra lectura documentada, expedientes y trazabilidad; conectores privados, nube administrada e instalación privada se presentan como líneas de trabajo planificadas.",
+                class_name="muted small",
+            ),
+            rx.hstack(
+                rx.link("Solicitar conversación", href=STUDIO_CONVERSATION_URL, class_name="button primary-action"),
+                rx.link("Escribir a correo", href=f"mailto:{STUDIO_CONTACT_EMAIL}", class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+                class_name="hero-actions",
+            ),
+            class_name="hero studio-hero",
+        ),
+        page_section(
+            "Qu? podría incluir",
+            rx.grid(
+                help_card("Conectores privados", "Integraciones controladas con fuentes internas o documentos propios."),
+                help_card("Nube administrada", "Operación alojada y mantenida para equipos que no quieren administrar infraestructura."),
+                help_card("Dashboards internos", "Vistas de seguimiento para procesos, fuentes, documentos y evidencia."),
+                help_card("Reportes", "Salidas revisables para equipos, dirección o ciudadanía según el caso."),
+                help_card("Soporte", "Acompañamiento técnico y editorial para operar el sistema con cuidado."),
+                help_card("Instalación privada futura", "Opción a evaluar para organizaciones con requisitos de control o privacidad."),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Capacidades en diseño; no promesas de disponibilidad inmediata.",
+        ),
+        page_section(
+            "Principios",
+            rx.text(
+                "Studio debe mantener trazabilidad, evidencia verificable y separación entre apoyo comercial y lectura pública. La versión pública de DatosEnOrden no debe ajustar conclusiones por clientes, donaciones o alianzas.",
+                class_name="story-summary",
+            ),
+            subtitle="La confianza del producto depende de separar evidencia, operación y financiamiento.",
+        ),
+        active_page=PAGE_STUDIO,
     )
 
 
@@ -6007,13 +6223,29 @@ style = {
         "width": "min(calc(100% - 48px), 1760px)",
         "max_width": "1760px",
         "margin": "28px auto 0",
-        "padding": "22px 0 0",
+        "padding": "26px 0 0",
         "border_top": "1px solid rgba(161, 161, 170, 0.18)",
+        "display": "grid",
+        "gap": "18px",
     },
-    ".footer-copy": {"font_size": "13px", "color": "#a1a1aa", "text_align": "center"},
+    ".footer-grid": {"max_width": "900px", "width": "100%", "margin": "0 auto", "align_items": "start"},
+    ".footer-column": {"display": "grid", "gap": "8px", "align_content": "start"},
+    ".footer-column-title": {"font_size": "11px", "font_weight": "850", "letter_spacing": "0.08em", "text_transform": "uppercase", "color": "#a1a1aa"},
+    ".footer-copy": {"font_size": "13px", "color": "#a1a1aa"},
+    ".footer-column-copy": {"margin_bottom": "2px"},
+    ".footer-bottom-copy": {"text_align": "center"},
     ".footer-link": {"font_size": "13px", "color": "#d4d4d8", "font_weight": "600"},
+    ".footer-column-link": {"width": "fit-content"},
+    ".footer-link-icon": {"font_size": "13px", "width": "18px", "color": "#a1a1aa"},
+    ".footer-link-label": {"font_size": "13px"},
+    ".support-inline-block": {"display": "grid", "gap": "8px", "padding": "14px", "border": "1px solid rgba(45, 212, 191, 0.16)", "border_radius": "8px", "background": "rgba(45, 212, 191, 0.06)", "max_width": "520px"},
+    ".support-copy": {"font_size": "14px", "line_height": "1.45", "color": "#d4d4d8"},
+    ".support-mini-button": {"width": "fit-content"},
+    ".support-action-card": {"display": "grid", "gap": "10px", "align_content": "start"},
+    ".support-action-link": {"width": "fit-content"},
     ".shell.theme-light .footer-copy": {"color": "#71717a"},
     ".shell.theme-light .footer-link": {"color": "#374151"},
+    ".shell.theme-light .support-copy": {"color": "#374151"},
     ".brand": {"font_size": "20px", "font_weight": "800", "letter_spacing": "0.02em", "color": "#f4f4f5"},
     ".shell.theme-light .brand": {"color": "#18181b"},
     ".nav-links": {"flex_wrap": "wrap", "gap": "22px", "justify_content": "center"},
@@ -6305,6 +6537,9 @@ style = {
     ".topic-source-excerpt": {"color": "#27272a", "font_size": "14px", "line_height": "1.55"},
     ".topic-document-page": {"gap": "12px"},
     ".topic-original-link": {"width": "fit-content"},
+    ".topic-pdf-document-viewer": {"display": "grid", "gap": "12px"},
+    ".topic-pdf-frame": {"width": "100%", "min_height": "68vh", "border": "1px solid rgba(113, 113, 122, 0.18)", "border_radius": "8px", "background": "#f8fafc"},
+    ".topic-pdf-citation-panel": {"border_left": "4px solid #0f766e", "padding": "10px 12px", "background": "rgba(13, 148, 136, 0.08)", "display": "grid", "gap": "6px"},
     ".topic-context-rail": {"position": "sticky", "top": "72px", "max_height": "86vh", "display": "grid", "gap": "7px", "align_content": "start", "padding": "8px 6px", "border_left": "1px solid rgba(161, 161, 170, 0.16)", "border_right": "1px solid rgba(161, 161, 170, 0.10)"},
     ".topic-rail-label": {"font_size": "11px", "font_weight": "850", "text_transform": "uppercase", "letter_spacing": "0.04em", "color": "#a1a1aa"},
     ".topic-rail-link": {"font_size": "12px", "line_height": "1.25", "color": "#ccfbf1", "border_radius": "6px", "padding": "5px 6px", "background": "rgba(45, 212, 191, 0.07)"},
@@ -6987,6 +7222,7 @@ style = {
         ".topic-document-first-layout": {"grid_template_columns": "1fr"},
         ".topic-context-rail": {"display": "none"},
         ".topic-source-panel": {"position": "static", "max_height": "72vh"},
+        ".footer-grid": {"grid_template_columns": "1fr"},
         ".topic-evidence-grid": {"grid_template_columns": "1fr"},
         ".reference-strip": {"grid_template_columns": "1fr"},
     },
@@ -6994,6 +7230,7 @@ style = {
 
 
 app = rx.App(style=style)
+
 
 
 
