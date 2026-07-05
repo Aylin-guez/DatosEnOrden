@@ -1,0 +1,31 @@
+# Assumes:
+# - DATOSENORDEN_PUBLIC_BASE_URL matches the hostname in use.
+# - API_URL / REFLEX_API_URL matches the same hostname.
+# - REFLEX_BACKEND_PATH=/api in /opt/datosenorden/.env.
+# - Reflex frontend listens on 127.0.0.1:3000.
+# - Reflex backend and WebSocket listen on 127.0.0.1:8000.
+# Caddy handles WebSocket upgrades automatically inside reverse_proxy.
+
+(datosenorden_common) {
+    encode gzip zstd
+
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    handle {
+        reverse_proxy 127.0.0.1:3000
+    }
+}
+
+beta.datosenorden.cl {
+    import datosenorden_common
+}
+
+datosenorden.cl {
+    import datosenorden_common
+}
+
+www.datosenorden.cl {
+    redir https://datosenorden.cl{uri}
+}

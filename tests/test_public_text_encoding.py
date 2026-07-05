@@ -11,11 +11,17 @@ PUBLIC_TEXT_FILES = (
     Path("data/connectors/infolobby_connector.json"),
     Path("data/connectors/diario_oficial_connector.json"),
     Path("data/sample/diario_oficial_sample.json"),
+    Path("assets/site.webmanifest"),
 )
 
 BROKEN_TEXT_MARKERS = (
     "\ufffd",
     "\u00c3",
+    "\u00c2",
+    "qu?",
+    "Qu?",
+    "p?gina",
+    "cronolog?a",
     "?blico",
     "p?blica",
     "reuni?n",

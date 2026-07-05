@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 import inspect
 import pickle
 from types import MappingProxyType
@@ -263,7 +264,7 @@ def test_investigation_with_url_id_prefers_loading_or_error_over_welcome() -> No
 def test_open_demo_button_uses_stable_investigation_href() -> None:
     source = inspect.getsource(reflex_app.investigation_empty_state)
 
-    assert "Abrir expediente demo" in source
+    assert "Abrir expediente de ejemplo" in source
     assert "_investigation_href(DEMO_INVESTIGATION_TARGET)" in source
     assert "run_search" not in source
 
@@ -272,7 +273,7 @@ def test_investigation_error_state_has_retry_and_demo_actions() -> None:
     source = inspect.getsource(reflex_app.investigation_error_state)
 
     assert "Reintentar" in source
-    assert "Volver al demo" in source
+    assert "Volver al recorrido" in source
     assert "AppState.load_investigation" in source
 
 
@@ -280,7 +281,7 @@ def test_loading_state_has_manual_fallback_actions() -> None:
     source = inspect.getsource(reflex_app.investigation_loading_state)
 
     assert "Reintentar" in source
-    assert "Volver al demo" in source
+    assert "Volver al recorrido" in source
     assert "AppState.load_investigation" in source
 
 
@@ -590,7 +591,7 @@ def test_backend_failure_sets_error_not_loading(monkeypatch) -> None:
 
     assert state.investigation_loading is False
     assert state.investigation_status == reflex_app.INVESTIGATION_STATUS_ERROR
-    assert "RuntimeError" in state.investigation_status_message
+    assert state.investigation_status_message == reflex_app._public_error_message("abrir el expediente")
 
 
 def test_new_state_reconstructs_from_page_raw_path(monkeypatch) -> None:
@@ -781,7 +782,7 @@ def test_tracking_route_is_registered() -> None:
     source = inspect.getsource(reflex_app.tracking)
 
     assert 'route="/tracking"' in source
-    assert "Cronologia" in source
+    assert "Cronología" in source
 
 
 def test_load_reports_populates_demo(monkeypatch) -> None:
@@ -847,12 +848,12 @@ def test_library_and_project_routes_are_registered() -> None:
     project_source = inspect.getsource(reflex_app.project)
 
     assert 'route="/library"' in library_source
-    assert "Mas lecturas" in library_source
+    assert "Más lecturas" in library_source
     assert "Preguntas importantes" in library_source
     assert 'route="/project"' in project_source
     assert "Estado del proyecto" in project_source
-    assert "Que significa MVP" in project_source
-    assert "Revisar Mas lecturas" not in project_source
+    assert "Qué significa MVP" in project_source
+    assert "Revisar Más lecturas" not in project_source
 
 
 def test_load_dashboard_populates_summary_metrics(monkeypatch) -> None:
@@ -929,7 +930,7 @@ def test_official_document_route_stays_available_but_not_primary_nav() -> None:
     assert 'sidebar_nav_link("Proyecto", "/project"' in source
 
     page_source = inspect.getsource(reflex_app.official_document)
-    assert '@rx.page(route="/official-document"' in page_source
+    assert 'route="/official-document"' in page_source
     assert "official_document_viewer" in page_source
     assert "reading_guide_panel" in page_source
     assert "document-main-column" in page_source
@@ -950,7 +951,7 @@ def test_topic_route_uses_requested_sections_and_navigation() -> None:
     assert 'rx.link("Lectura", href="/topic"' not in shell_source
     assert 'sidebar_nav_link("Lectura", "/topic"' in sidebar_source
     assert "sidebar-ready-nav" not in shell_source
-    assert '@rx.page(route="/topic"' in page_source
+    assert 'route="/topic"' in page_source
     assert "topic_mode_selector" in page_source
     assert "topic_mode_body" in page_source
     mode_source = inspect.getsource(reflex_app.topic_mode_body)
@@ -1168,7 +1169,7 @@ def test_select_document_anchor_updates_reading_context() -> None:
         ],
         knowledge_expediente_target="SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
     )
-    state._set_document_reading_context = lambda fragment_id: reflex_app.AppState._set_document_reading_context(state, fragment_id)
+    state._set_document_reading_context = lambda fragment_id, requested_page=None: reflex_app.AppState._set_document_reading_context(state, fragment_id, requested_page)
 
     reflex_app.AppState.select_document_anchor.fn(state, 19, "frag-b")
 
@@ -1293,6 +1294,118 @@ def test_topic_pdf_viewer_uses_published_pdf_and_fragment_context() -> None:
     assert ".document-paragraph-block-active" in evidence_source
 
 
+
+
+def test_pdf_highlight_target_never_invents_coordinates() -> None:
+    target = reflex_app._pdf_highlight_target("frag-7", 3, "Texto citado")
+
+    assert target == {
+        "fragment_id": "frag-7",
+        "page": 3,
+        "text_snippet": "Texto citado",
+        "coordinates": None,
+    }
+    assert reflex_app.PDFHighlightTarget("frag-7", 3, "Texto citado").coordinates is None
+
+
+def test_select_document_anchor_updates_pdf_highlight_page_and_fragment() -> None:
+    state = SimpleNamespace(
+        knowledge_selected_page=1,
+        knowledge_selected_fragment_id="frag-a",
+        knowledge_selected_reference_label="",
+        knowledge_selected_excerpt="",
+        knowledge_selected_summary=[],
+        knowledge_selected_questions=[],
+        knowledge_selected_claims=[],
+        knowledge_selected_evidence=[],
+        knowledge_selected_connections=[],
+        knowledge_fragment_contexts=[
+            {
+                "page": 22,
+                "fragment_id": "frag-b",
+                "reference_label": "Pagina 22",
+                "excerpt": "Texto que sostiene la evidencia",
+                "summary": [],
+                "questions": [],
+                "claims": [],
+                "evidence": [],
+                "connections": [],
+            }
+        ],
+        knowledge_document_has_pdf=True,
+        knowledge_document_pdf_page_href="",
+        knowledge_pdf_highlight_target={},
+        knowledge_selected_page_is_approximate=False,
+        knowledge_pdf_location_notice="",
+    )
+    state._set_document_reading_context = lambda fragment_id, requested_page=None: reflex_app.AppState._set_document_reading_context(state, fragment_id, requested_page)
+
+    reflex_app.AppState.select_document_anchor.fn(state, 22, "frag-b")
+
+    assert state.knowledge_selected_fragment_id == "frag-b"
+    assert state.knowledge_selected_page == 22
+    assert state.knowledge_document_pdf_page_href.endswith("document.pdf#page=22")
+    assert state.knowledge_pdf_highlight_target["fragment_id"] == "frag-b"
+    assert state.knowledge_pdf_highlight_target["page"] == 22
+    assert state.knowledge_pdf_highlight_target["coordinates"] is None
+    assert state.knowledge_selected_page_is_approximate is False
+
+
+def test_select_document_anchor_uses_fragment_order_when_page_is_missing() -> None:
+    state = SimpleNamespace(
+        knowledge_selected_page=1,
+        knowledge_selected_fragment_id="frag-a",
+        knowledge_selected_reference_label="",
+        knowledge_selected_excerpt="",
+        knowledge_selected_summary=[],
+        knowledge_selected_questions=[],
+        knowledge_selected_claims=[],
+        knowledge_selected_evidence=[],
+        knowledge_selected_connections=[],
+        knowledge_fragment_contexts=[
+            {"fragment_id": "frag-a", "order": 1, "excerpt": "A"},
+            {"fragment_id": "frag-b", "order": 5, "excerpt": "B"},
+        ],
+        knowledge_document_has_pdf=True,
+        knowledge_document_pdf_page_href="",
+        knowledge_pdf_highlight_target={},
+        knowledge_selected_page_is_approximate=False,
+        knowledge_pdf_location_notice="",
+    )
+    state._set_document_reading_context = lambda fragment_id, requested_page=None: reflex_app.AppState._set_document_reading_context(state, fragment_id, requested_page)
+
+    reflex_app.AppState.select_document_anchor.fn(state, 0, "frag-b")
+
+    assert state.knowledge_selected_fragment_id == "frag-b"
+    assert state.knowledge_selected_page == 5
+    assert state.knowledge_document_pdf_page_href.endswith("document.pdf#page=5")
+    assert state.knowledge_selected_page_is_approximate is True
+    assert state.knowledge_pdf_location_notice == reflex_app.PDF_LOCATION_APPROXIMATE_NOTICE
+    assert state.knowledge_pdf_highlight_target["coordinates"] is None
+
+
+def test_pdf_evidence_ui_shows_cited_fragment_and_active_evidence() -> None:
+    topic_viewer_source = inspect.getsource(reflex_app.topic_pdf_document_viewer)
+    official_viewer_source = inspect.getsource(reflex_app.official_document_pdf_viewer)
+    evidence_source = inspect.getsource(reflex_app.topic_evidence_card)
+
+    assert "Fragmento citado" in topic_viewer_source
+    assert "Fragmento citado" in official_viewer_source
+    assert "knowledge_pdf_location_notice" in topic_viewer_source
+    assert "topic-card-evidence-active" in evidence_source
+    assert "knowledge_selected_fragment_id" in evidence_source
+
+
+def test_fallback_textual_document_viewer_remains_available_without_pdf() -> None:
+    page_source = inspect.getsource(reflex_app.official_document)
+    text_viewer_source = inspect.getsource(reflex_app.official_document_viewer)
+
+    assert "knowledge_document_has_pdf" in page_source
+    assert "official_document_viewer" in page_source
+    assert "official_document_pdf_viewer" in page_source
+    assert "document_page_button" in text_viewer_source
+    assert "document-current-anchor" in text_viewer_source
+
 def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
     sidebar_source = inspect.getsource(reflex_app.app_sidebar)
     footer_source = inspect.getsource(reflex_app.app_footer)
@@ -1302,8 +1415,8 @@ def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
     studio_source = inspect.getsource(reflex_app.studio)
     project_source = inspect.getsource(reflex_app.project)
 
-    assert '@rx.page(route="/support"' in support_source
-    assert '@rx.page(route="/studio"' in studio_source
+    assert 'route="/support"' in support_source
+    assert 'route="/studio"' in studio_source
     assert 'sidebar_nav_link("Apoyar", "/support"' not in sidebar_source
     assert 'sidebar_nav_link("Studio", "/studio"' not in sidebar_source
     assert 'footer_text_link("♥", "Apoyar DatosEnOrden", "/support")' in footer_source
@@ -1327,7 +1440,7 @@ def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
     assert 'Apoyar DatosEnOrden' in support_source
     assert 'Sugerir una fuente oficial' in support_source
     assert 'Conocer el proyecto' in support_source
-    assert 'No hay pagos reales integrados todavía' in support_source
+    assert 'El apoyo se canaliza mediante enlaces externos mientras el lanzamiento público mantiene una operación simple.' in support_source
     assert 'DatosEnOrden Studio' in studio_source
     assert 'forma estructurada y verificable' in studio_source
     assert 'DatosEnOrden Studio se encuentra en desarrollo activo' in studio_source
@@ -1413,3 +1526,44 @@ def test_sources_show_state_graph_backing_and_language_is_not_accusatory() -> No
     assert "state_graph_contribution_label" in source_card
     assert "sospechoso" not in full_source.lower()
     assert "red de corrupci" not in full_source.lower()
+
+
+def test_public_app_registers_404_and_chronology_aliases() -> None:
+    module_source = Path(reflex_app.__file__).read_text(encoding="utf-8")
+    not_found_source = inspect.getsource(reflex_app.not_found)
+    chronology_source = inspect.getsource(reflex_app.chronology)
+    sources_source = inspect.getsource(reflex_app.sources)
+
+    assert 'route="404"' in module_source
+    assert 'route="/chronology"' in module_source
+    assert 'return tracking()' in chronology_source
+    assert 'return ecosystem()' in sources_source
+    assert "Esta página no sobrevivió a la burocracia" in not_found_source
+    assert 'rx.button("Pulso del Estado"' in not_found_source
+
+
+def test_public_app_configures_head_components_and_hydrate_fallback() -> None:
+    module_source = Path(reflex_app.__file__).read_text(encoding="utf-8")
+
+    assert 'head_components=_global_head_components()' in module_source
+    assert 'html_lang="es"' in module_source
+    assert 'hydrate_fallback=public_hydrate_fallback()' in module_source
+    assert 'PUBLIC_SITE_URL = os.getenv("DATOSENORDEN_PUBLIC_BASE_URL", "https://datosenorden.cl")' in module_source
+
+
+def test_ecosystem_copy_uses_fixed_public_heading() -> None:
+    source = inspect.getsource(reflex_app.ecosystem)
+
+    assert "Qué conecta cada fuente" in source
+    assert "Cómo se cruzan las fuentes" in source
+
+
+def test_pdf_viewers_show_page_navigation_and_lazy_loading() -> None:
+    topic_source = inspect.getsource(reflex_app.topic_pdf_document_viewer)
+    official_source = inspect.getsource(reflex_app.official_document_pdf_viewer)
+
+    assert 'document_page_button' in topic_source
+    assert 'document_page_button' in official_source
+    assert 'loading="lazy"' in topic_source
+    assert 'loading="lazy"' in official_source
+    assert "No hay marcadores de página visibles; usamos la referencia activa del fragmento." in topic_source

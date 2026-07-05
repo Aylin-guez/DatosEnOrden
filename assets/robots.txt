@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /.pytest-tmp/
+Disallow: /.pytest_tmp/
+Sitemap: https://datosenorden.cl/sitemap.xml

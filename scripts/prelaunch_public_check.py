@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import re
+import json
 import subprocess
 import sys
 
@@ -14,6 +16,14 @@ PUBLISHED_DOCUMENT_VIEW = PUBLISHED_DOCUMENT_DIR / "document_view.json"
 PUBLISHED_PDF = PUBLISHED_DOCUMENT_DIR / "document.pdf"
 PUBLIC_PDF_ASSET = ROOT / "assets" / "official_documents" / "senado-docto-9000-mensaje_mocion" / "document.pdf"
 FAVICON = ROOT / "assets" / "favicon.ico"
+APPLE_TOUCH_ICON = ROOT / "assets" / "apple-touch-icon.png"
+ICON_192 = ROOT / "assets" / "icon-192.png"
+ICON_512 = ROOT / "assets" / "icon-512.png"
+OG_IMAGE = ROOT / "assets" / "og-image.png"
+WEBMANIFEST = ROOT / "assets" / "site.webmanifest"
+ROBOTS = ROOT / "assets" / "robots.txt"
+SITEMAP = ROOT / "assets" / "sitemap.xml"
+RXCONFIG = ROOT / "rxconfig.py"
 REQUIRED_ENV_KEYS = (
     "DATOSENORDEN_ENV",
     "DATABASE_URL",
@@ -25,15 +35,21 @@ PUBLIC_ROUTES = (
     "/",
     "/topic",
     "/search",
+    "/discover",
     "/ecosystem",
+    "/sources",
     "/project",
     "/investigation",
+    "/official-document",
     "/reports",
     "/tracking",
+    "/chronology",
     "/support",
     "/studio",
 )
 MAX_DEMO_ASSET_BYTES = 10 * 1024 * 1024
+PUBLIC_SITE_URL = "https://datosenorden.cl"
+SITEMAP_REQUIRED_ROUTES = ("/", "/search", "/topic", "/sources", "/official-document", "/chronology", "/support", "/studio")
 
 
 @dataclass(frozen=True)
@@ -47,6 +63,10 @@ def main() -> int:
     checks = [
         _reflex_compile_check(),
         _asset_check(),
+        _manifest_check(),
+        _robots_check(),
+        _sitemap_check(),
+        _deploy_url_check(),
         _published_document_check(),
         _pdf_strategy_check(),
         _document_source_stability_check(),
@@ -74,8 +94,56 @@ def _reflex_compile_check() -> Check:
 
 
 def _asset_check() -> Check:
-    missing = [str(path.relative_to(ROOT)) for path in (FAVICON,) if not path.exists()]
-    return Check("required assets exist", not missing, "missing=" + ", ".join(missing) if missing else "favicon ok")
+    required = (FAVICON, APPLE_TOUCH_ICON, ICON_192, ICON_512, OG_IMAGE, WEBMANIFEST, ROBOTS, SITEMAP)
+    missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
+    return Check("required assets exist", not missing, "missing=" + ", ".join(missing) if missing else "favicon, icons, manifest, robots, sitemap and og image ok")
+
+
+
+def _manifest_check() -> Check:
+    if not WEBMANIFEST.exists():
+        return Check("web manifest configured", False, f"missing={WEBMANIFEST.relative_to(ROOT)}")
+    payload = json.loads(WEBMANIFEST.read_text(encoding="utf-8"))
+    icons = {item.get("src") for item in payload.get("icons", [])}
+    ok = payload.get("name") == "DatosEnOrden" and payload.get("theme_color") == "#0f766e" and {"/icon-192.png", "/icon-512.png"}.issubset(icons)
+    detail = "manifest ok" if ok else str(payload)
+    return Check("web manifest configured", ok, detail)
+
+
+def _robots_check() -> Check:
+    if not ROBOTS.exists():
+        return Check("robots.txt configured", False, f"missing={ROBOTS.relative_to(ROOT)}")
+    text = ROBOTS.read_text(encoding="utf-8")
+    ok = "User-agent: *" in text and "Allow: /" in text and f"Sitemap: {PUBLIC_SITE_URL}/sitemap.xml" in text
+    return Check("robots.txt configured", ok, "robots ok" if ok else text.strip())
+
+
+def _sitemap_check() -> Check:
+    if not SITEMAP.exists():
+        return Check("sitemap.xml configured", False, f"missing={SITEMAP.relative_to(ROOT)}")
+    text = SITEMAP.read_text(encoding="utf-8")
+    missing = [route for route in SITEMAP_REQUIRED_ROUTES if (PUBLIC_SITE_URL if route == "/" else f"{PUBLIC_SITE_URL}{route}") not in text]
+    return Check("sitemap.xml configured", not missing, "missing=" + ", ".join(missing) if missing else ", ".join(SITEMAP_REQUIRED_ROUTES))
+
+
+def _deploy_url_check() -> Check:
+    if not RXCONFIG.exists():
+        return Check("deploy url configured", False, "rxconfig.py missing")
+    text = RXCONFIG.read_text(encoding="utf-8")
+    deploy_ok = 'DATOSENORDEN_PUBLIC_BASE_URL' in text or 'deploy_url="https://datosenorden.cl"' in text or 'deploy_url=PUBLIC_BASE_URL' in text
+    api_ok = "api_url=" in text and ("API_URL" in text or "REFLEX_API_URL" in text or "http://localhost:8000" in text)
+    backend_path_ok = "backend_path=" in text and ("REFLEX_BACKEND_PATH" in text or "BACKEND_PATH" in text)
+    sitemap_ok = 'SitemapPlugin(trailing_slash="never")' in text
+    ok = deploy_ok and api_ok and backend_path_ok and sitemap_ok
+    detail = ", ".join(
+        [
+            "deploy_url ok" if deploy_ok else "deploy_url missing",
+            "api_url ok" if api_ok else "api_url missing",
+            "backend_path ok" if backend_path_ok else "backend_path missing",
+            "sitemap plugin ok" if sitemap_ok else "sitemap plugin missing",
+        ]
+    )
+    return Check("deploy url configured", ok, detail)
 
 
 def _published_document_check() -> Check:
@@ -146,7 +214,11 @@ def _public_routes_check() -> Check:
     if not REFLEX_APP.exists():
         return Check("public routes registered", False, "reflex_app/reflex_app.py missing")
     text = REFLEX_APP.read_text(encoding="utf-8")
-    missing = [route for route in PUBLIC_ROUTES if f'@rx.page(route="{route}"' not in text]
+    missing = [
+        route
+        for route in PUBLIC_ROUTES
+        if not re.search(rf'@rx\.page\(\s*route="{re.escape(route)}"', text)
+    ]
     return Check("public routes registered", not missing, "missing=" + ", ".join(missing) if missing else ", ".join(PUBLIC_ROUTES))
 
 

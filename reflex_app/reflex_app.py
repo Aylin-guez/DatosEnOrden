@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from dataclasses import fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from datetime import date, datetime
 from types import MappingProxyType
 from uuid import UUID
@@ -31,9 +31,7 @@ from datosenorden.web.app_services import get_investigation_knowledge
 from datosenorden.web.app_services import get_real_data_readiness
 from datosenorden.web.app_services import get_entity_comparison
 from datosenorden.web.app_services import get_investigation_graph
-from datosenorden.web.app_services import get_investigation_markdown
 from datosenorden.web.app_services import get_investigation_timeline
-from datosenorden.web.app_services import get_institution_profile
 from datosenorden.web.app_services import get_source_trace
 from datosenorden.web.app_services import get_source_contributions
 from datosenorden.web.app_services import get_investigation_story
@@ -42,10 +40,7 @@ from datosenorden.web.app_services import get_data_ecosystem
 from datosenorden.web.app_services import resolve_canonical_expediente_target
 from datosenorden.web.app_services import resolve_investigation_target
 from datosenorden.web.app_services import search_workspace
-from datosenorden.web.app_services import search_entities
 from datosenorden.web.entity_engine import build_state_graph
-from datosenorden.maintenance.safe_access import _as_list
-from datosenorden.maintenance.safe_access import _as_text
 from datosenorden.maintenance.safe_access import _field as _safe_field
 
 
@@ -71,16 +66,42 @@ PAGE_DEMO = "demo"
 PAGE_PROJECT = "project"
 PAGE_SUPPORT = "support"
 PAGE_STUDIO = "studio"
+PAGE_NOT_FOUND = "not_found"
 INVESTIGATION_STATUS_IDLE = "idle"
 INVESTIGATION_STATUS_LOADING = "loading"
 INVESTIGATION_STATUS_LOADED = "loaded"
 INVESTIGATION_STATUS_ERROR = "error"
 INVESTIGATION_STATUS_EMPTY = "empty"
 DEMO_INVESTIGATION_TARGET = "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
-DEMO_INVESTIGATION_URL = f"http://localhost:3000/investigation?id={quote_plus(DEMO_INVESTIGATION_TARGET)}"
+DEMO_INVESTIGATION_URL = f"{os.getenv('DATOSENORDEN_PUBLIC_BASE_URL', 'https://datosenorden.cl').rstrip('/')}/investigation?id={quote_plus(DEMO_INVESTIGATION_TARGET)}"
+PDF_LOCATION_APPROXIMATE_NOTICE = "Ubicación aproximada por fragmento; el documento original no entregó coordenadas."
+
+PUBLIC_SITE_URL = os.getenv("DATOSENORDEN_PUBLIC_BASE_URL", "https://datosenorden.cl").rstrip("/")
+PUBLIC_SITE_NAME = "DatosEnOrden"
+PUBLIC_SITE_AUTHOR = "DatosEnOrden"
+PUBLIC_THEME_COLOR = "#0f766e"
+PUBLIC_OG_IMAGE_PATH = "/og-image.png"
+PUBLIC_MANIFEST_PATH = "/site.webmanifest"
+PUBLIC_OG_IMAGE_ALT = "DatosEnOrden: documentos oficiales, evidencia y cronologías en un solo lugar."
+
+
+@dataclass(frozen=True)
+class PDFHighlightTarget:
+    fragment_id: str
+    page: int
+    text_snippet: str
+    coordinates: None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "fragment_id": self.fragment_id,
+            "page": self.page,
+            "text_snippet": self.text_snippet,
+            "coordinates": self.coordinates,
+        }
 SUPPORT_DONATION_URL = os.getenv("DATOSENORDEN_SUPPORT_URL", "https://link.mercadopago.cl/datosenorden")
-SUPPORT_SOURCE_SUGGESTION_URL = "mailto:datosenorden@gmail.com?subject=Sugerir%20fuente%20oficial"
-STUDIO_CONVERSATION_URL = "mailto:datosenorden@gmail.com?subject=DatosEnOrden%20Studio"
+SUPPORT_SOURCE_SUGGESTION_URL = "mailto:datosenorden@gmail.comásubject=Sugerir%20fuente%20oficial"
+STUDIO_CONVERSATION_URL = "mailto:datosenorden@gmail.comásubject=DatosEnOrden%20Studio"
 STUDIO_CONTACT_EMAIL = "datosenorden@gmail.com"
 TOPIC_BUDGET_2013_TITLE = "Ley de Presupuestos del Sector Público 2013"
 TOPIC_BUDGET_2013_TARGET = "cl-congreso-boletin-8575-05"
@@ -274,7 +295,7 @@ def _format_relationship_rows(rows: list[dict]) -> list[dict]:
                         f"direction={_clean(_field(technical, 'direction'))}",
                         f"neighbor_id={neighbor_id}",
                     ]),
-                    "trust_label": "Registro local de demo",
+                    "trust_label": "Registro local de muestra",
                     "target_href": _investigation_href(neighbor_id) if neighbor_id else "",
                     "action_label": "Abrir expediente" if neighbor_id else "Relacionado",
                 }
@@ -296,7 +317,7 @@ def _format_relationship_rows(rows: list[dict]) -> list[dict]:
                     f"Tipo de entidad: {_human_label(_field(neighbor, 'entity_type'))}",
                     f"Dirección: {_human_label(_field(row, 'direction'))}",
                 ]),
-                "trust_label": "Registro local de demo",
+                "trust_label": "Registro local de muestra",
                 "target_href": _investigation_href(neighbor_id) if neighbor_id else "",
                 "action_label": "Abrir expediente" if neighbor_id else "Relacionado",
             }
@@ -691,6 +712,31 @@ def _document_pdf_href(href: str = PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, page: int
     return f"{href}#page={safe_page}"
 
 
+
+def _pdf_page_value(value: object) -> int | None:
+    try:
+        page = int(value or 0)
+    except (TypeError, ValueError):
+        return None
+    return page if page > 0 else None
+
+
+def _fragment_order_page(contexts: list[dict], fragment_id: str) -> int:
+    selected = str(fragment_id or "")
+    for index, row in enumerate(_json_list(contexts), start=1):
+        if str(row.get("fragment_id", "")) == selected:
+            return max(_processed_fragment_order(row, index), 1)
+    return 1
+
+
+def _pdf_highlight_target(fragment_id: str, page: int, text_snippet: str) -> dict:
+    return PDFHighlightTarget(
+        fragment_id=str(fragment_id or ""),
+        page=max(int(page or 1), 1),
+        text_snippet=str(text_snippet or ""),
+        coordinates=None,
+    ).to_dict()
+
 def _topic_timeline_rows(rows: list[dict]) -> list[dict]:
     grouped: dict[tuple[str, str, str], dict] = {}
     for row in rows:
@@ -977,6 +1023,118 @@ def page_section(title: str, *children, subtitle: str | None = None, class_name:
     return rx.vstack(*body, spacing="3", align="stretch", class_name=section_class, id=element_id)
 
 
+def _public_url(path: str) -> str:
+    normalized = path if path.startswith("/") else f"/{path}"
+    return f"{PUBLIC_SITE_URL}{normalized}"
+
+
+PUBLIC_OG_IMAGE_URL = _public_url(PUBLIC_OG_IMAGE_PATH)
+
+
+def _page_meta(path: str, keywords: str, title: str, description: str, *, og_type: str = "website") -> list[dict | rx.Component]:
+    canonical_url = _public_url(path)
+    return [
+        {"name": "keywords", "content": keywords},
+        {"name": "author", "content": PUBLIC_SITE_AUTHOR},
+        {"name": "theme-color", "content": PUBLIC_THEME_COLOR},
+        {"property": "og:type", "content": og_type},
+        {"property": "og:site_name", "content": PUBLIC_SITE_NAME},
+        {"property": "og:locale", "content": "es_CL"},
+        {"property": "og:url", "content": canonical_url},
+        {"property": "og:title", "content": title},
+        {"property": "og:description", "content": description},
+        {"property": "og:image", "content": PUBLIC_OG_IMAGE_URL},
+        {"property": "og:image:alt", "content": PUBLIC_OG_IMAGE_ALT},
+        {"name": "twitter:card", "content": "summary_large_image"},
+        {"name": "twitter:title", "content": title},
+        {"name": "twitter:description", "content": description},
+        {"name": "twitter:image", "content": PUBLIC_OG_IMAGE_URL},
+        rx.el.link(rel="canonical", href=canonical_url),
+    ]
+
+
+def _public_error_message(action: str, *, next_step: str = "Puedes recargar, volver al inicio o seguir con una ruta estable.") -> str:
+    return f"No pudimos {action}. {next_step}"
+
+
+def loading_placeholder_card(title: str, body: str) -> rx.Component:
+    return rx.box(
+        rx.text(title, class_name="card-title"),
+        rx.box(class_name="loading-skeleton-line loading-skeleton-line-medium"),
+        rx.box(class_name="loading-skeleton-line"),
+        rx.box(class_name="loading-skeleton-line loading-skeleton-line-short"),
+        rx.text(body, class_name="muted small"),
+        class_name="card loading-skeleton-card",
+    )
+
+
+def public_hydrate_fallback() -> rx.Component:
+    return rx.box(
+        rx.box(
+            rx.hstack(
+                rx.text(PUBLIC_SITE_NAME, class_name="brand"),
+                rx.text("Cargando una lectura verificable...", class_name="muted small"),
+                justify="between",
+                align="center",
+                class_name="nav-inner",
+            ),
+            class_name="shell-header",
+        ),
+        rx.vstack(
+            rx.box(
+                rx.box(class_name="loading-skeleton-line loading-skeleton-line-short"),
+                rx.box(class_name="loading-skeleton-line loading-skeleton-line-medium"),
+                rx.box(class_name="loading-skeleton-line"),
+                class_name="hero loading-skeleton-hero",
+            ),
+            rx.grid(
+                loading_placeholder_card("Preparando documento", "Montamos la lectura principal y sus enlaces públicos."),
+                loading_placeholder_card("Sincronizando evidencia", "Organizamos fragmentos, referencias y contexto ciudadano."),
+                loading_placeholder_card("Abriendo rutas útiles", "Dejamos lista la navegación a búsqueda, fuentes e informes."),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid loading-skeleton-grid",
+            ),
+            spacing="5",
+            align="stretch",
+            class_name="page",
+        ),
+        class_name="shell theme-dark loading-shell",
+    )
+
+
+def card_grid_or_empty(rows, renderer, *, columns: str, empty_title: str, empty_body: str, action_label: str, href: str, class_name: str = "responsive-grid") -> rx.Component:  # noqa: ANN001
+    return rx.cond(
+        rows,
+        rx.grid(
+            rx.foreach(rows, renderer),
+            columns=columns,
+            spacing="3",
+            class_name=class_name,
+        ),
+        investigation_entry_card(empty_title, empty_body, action_label, href, "button button-secondary"),
+    )
+
+
+def not_found_document_illustration() -> rx.Component:
+    return rx.box(
+        rx.box(
+            rx.box(class_name="not-found-document-tab"),
+            rx.box(
+                rx.box(class_name="not-found-document-line"),
+                rx.box(class_name="not-found-document-line not-found-document-line-medium"),
+                rx.box(class_name="not-found-document-line not-found-document-line-short"),
+                class_name="not-found-document-body",
+            ),
+            class_name="not-found-document-card",
+        ),
+        rx.text("Sin evidencia", class_name="not-found-badge"),
+        class_name="not-found-illustration",
+        role="img",
+        aria_label="Ilustración de expediente sin evidencia",
+    )
+
+
 def _clear_investigation_state(self) -> None:
     self.selected_entity_id = ""
     self.selected_entity_name = ""
@@ -1164,7 +1322,7 @@ def _build_relationship_journey_rows(
 def _evidence_trust_label(source: str) -> str:
     normalized = _clean(source, "").lower()
     if "demo" in normalized or "local" in normalized:
-        return "Registro local de demo"
+        return "Registro local de muestra"
     if any(token in normalized for token in ("chilecompra", "dipres", "lobby", "contraloria", "diario", "transparencia")):
         return "Fuente publica"
     if normalized:
@@ -1197,7 +1355,7 @@ def _build_source_coverage_rows(source_rows: list[dict]) -> list[dict]:
 
 
 def _citizen_summary_text(entity_name: str, sources: int, evidence: int, relationships: int, connected: int, dataset_badges: list[str]) -> str:
-    source_text = ", ".join(dataset_badges[:6]) if dataset_badges else "fuentes locales de demostracion"
+    source_text = ", ".join(dataset_badges[:6]) if dataset_badges else "fuentes locales disponibles"
     return (
         f"Este expediente reune {sources} fuentes publicas, {evidence} evidencias, "
         f"{relationships} relaciones y {connected} entidades conectadas sobre {entity_name}. "
@@ -1507,6 +1665,9 @@ class AppState(rx.State):
     knowledge_selected_claims: list[dict] = []
     knowledge_selected_evidence: list[dict] = []
     knowledge_selected_connections: list[dict] = []
+    knowledge_pdf_highlight_target: dict = {}
+    knowledge_selected_page_is_approximate: bool = False
+    knowledge_pdf_location_notice: str = ""
     knowledge_fragment_contexts: list[dict] = []
     knowledge_fragment_count: int = 0
     knowledge_total_fragment_count: int = 0
@@ -1967,8 +2128,12 @@ class AppState(rx.State):
                     ),
                     selected_context,
                 )
-            self.knowledge_selected_page = int(selected_context.get("page", demo.get("default_page", 18)) or 18)
+            requested_page = _pdf_page_value(_router_query_value(self.router, "page"))
+            context_page = _pdf_page_value(selected_context.get("page"))
             self.knowledge_selected_fragment_id = str(selected_context.get("fragment_id", demo.get("default_fragment_id", "")))
+            self.knowledge_selected_page_is_approximate = context_page is None and requested_page is None
+            self.knowledge_selected_page = context_page or requested_page or _fragment_order_page(self.knowledge_fragment_contexts, self.knowledge_selected_fragment_id)
+            self.knowledge_pdf_location_notice = PDF_LOCATION_APPROXIMATE_NOTICE if self.knowledge_selected_page_is_approximate else ""
             self.knowledge_selected_reference_label = str(selected_context.get("reference_label", "")) or f"Pagina {self.knowledge_selected_page}"
             self.knowledge_selected_excerpt = str(selected_context.get("excerpt", ""))
             self.knowledge_selected_summary = _json_list(selected_context.get("summary", []))
@@ -1976,6 +2141,7 @@ class AppState(rx.State):
             self.knowledge_selected_claims = _json_list(selected_context.get("claims", []))
             self.knowledge_selected_evidence = _json_list(selected_context.get("evidence", []))
             self.knowledge_selected_connections = _json_list(selected_context.get("connections", []))
+            self.knowledge_pdf_highlight_target = _pdf_highlight_target(self.knowledge_selected_fragment_id, self.knowledge_selected_page, self.knowledge_selected_excerpt)
             self.knowledge_document_pdf_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, 1) if self.knowledge_document_has_pdf else ""
             self.knowledge_document_pdf_page_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, self.knowledge_selected_page) if self.knowledge_document_has_pdf else ""
             self.knowledge_connections = [
@@ -2157,20 +2323,25 @@ class AppState(rx.State):
         return rx.redirect(_investigation_href(self.knowledge_expediente_target or DEMO_INVESTIGATION_TARGET))
 
     def select_document_anchor(self, page: int, fragment_id: str) -> None:
-        self.knowledge_selected_page = int(page or 1)
+        requested_page = _pdf_page_value(page)
+        if requested_page is not None:
+            self.knowledge_selected_page = requested_page
         selected_fragment = str(fragment_id or "")
-        if not selected_fragment:
-            page_context = next((row for row in self.knowledge_fragment_contexts if int(row.get("page", 0) or 0) == self.knowledge_selected_page), {})
+        if not selected_fragment and requested_page is not None:
+            page_context = next((row for row in self.knowledge_fragment_contexts if _pdf_page_value(row.get("page")) == requested_page), {})
             selected_fragment = str(page_context.get("fragment_id", ""))
-        self._set_document_reading_context(selected_fragment)
+        self._set_document_reading_context(selected_fragment, requested_page)
 
-    def _set_document_reading_context(self, fragment_id: str) -> None:
+    def _set_document_reading_context(self, fragment_id: str, requested_page: int | None = None) -> None:
         selected = str(fragment_id or "")
         context = next((row for row in self.knowledge_fragment_contexts if str(row.get("fragment_id", "")) == selected), {})
         if not context:
             context = self.knowledge_fragment_contexts[0] if self.knowledge_fragment_contexts else {}
         self.knowledge_selected_fragment_id = str(context.get("fragment_id", selected))
-        self.knowledge_selected_page = int(context.get("page", self.knowledge_selected_page) or self.knowledge_selected_page)
+        context_page = _pdf_page_value(context.get("page"))
+        self.knowledge_selected_page_is_approximate = context_page is None and requested_page is None
+        self.knowledge_selected_page = context_page or requested_page or _fragment_order_page(self.knowledge_fragment_contexts, self.knowledge_selected_fragment_id)
+        self.knowledge_pdf_location_notice = PDF_LOCATION_APPROXIMATE_NOTICE if self.knowledge_selected_page_is_approximate else ""
         self.knowledge_selected_reference_label = str(context.get("reference_label", "")) or f"Pagina {self.knowledge_selected_page}"
         self.knowledge_selected_excerpt = str(context.get("excerpt", ""))
         self.knowledge_selected_summary = _json_list(context.get("summary", []))
@@ -2178,6 +2349,7 @@ class AppState(rx.State):
         self.knowledge_selected_claims = _json_list(context.get("claims", []))
         self.knowledge_selected_evidence = _json_list(context.get("evidence", []))
         self.knowledge_selected_connections = _json_list(context.get("connections", []))
+        self.knowledge_pdf_highlight_target = _pdf_highlight_target(self.knowledge_selected_fragment_id, self.knowledge_selected_page, self.knowledge_selected_excerpt)
         self.knowledge_document_pdf_page_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, self.knowledge_selected_page) if getattr(self, "knowledge_document_has_pdf", False) else ""
 
     def open_report_investigation(self):
@@ -2267,14 +2439,14 @@ class AppState(rx.State):
             if had_valid_state:
                 self.investigation_status = INVESTIGATION_STATUS_LOADED
                 self.requested_investigation_target = ""
-                self.investigation_status_message = f"No se pudo refrescar el expediente; se conserva la vista cargada. {type(exc).__name__}: {exc}"
+                self.investigation_status_message = "No se pudo refrescar el expediente ahora mismo; se conserva la vista ya cargada."
                 _debug_investigation("preserved previous state", received=target, reason=type(exc).__name__)
                 return
             _clear_investigation_state(self)
             self.requested_investigation_target = target
             self.last_valid_investigation_target = target
             self.investigation_status = INVESTIGATION_STATUS_ERROR
-            self.error_message = f"{type(exc).__name__}: {exc}"
+            self.error_message = _public_error_message("abrir el expediente")
             self.investigation_status_message = self.error_message
             return
         finally:
@@ -2463,7 +2635,7 @@ class AppState(rx.State):
         self.investigation_questions = [str(item) for item in _field(knowledge, "suggested_questions", [])]
         self.investigation_limitations = [str(item) for item in _field(knowledge, "limitations", [])]
         self.investigation_neutrality_notice = str(_field(knowledge, "neutrality_notice", ""))
-        self.canonical_investigation_link = f"http://localhost:3000{_investigation_href(self.entity_name or target)}"
+        self.canonical_investigation_link = f"{PUBLIC_SITE_URL}{_investigation_href(self.entity_name or target)}"
         self.last_loaded_investigation_target = self.selected_entity_id
         self.last_valid_investigation_target = target
         self.requested_investigation_target = ""
@@ -2569,6 +2741,7 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
                     value=AppState.header_search_query,
                     on_change=AppState.set_header_search_query,
                     class_name="input header-search-input",
+                    aria_label="Buscar entidad",
                 ),
                 rx.button("Ir", on_click=AppState.submit_header_search, class_name="header-search-submit"),
                 spacing="2",
@@ -2600,8 +2773,18 @@ def shell(*children: rx.Component, active_page: str, **props) -> rx.Component:
             rx.cond(
                 AppState.error_message != "",
                 rx.box(
-                    rx.text("Estado de carga", class_name="eyebrow"),
-                    rx.text(AppState.error_message, class_name="muted"),
+                    rx.text("Esta pagina necesita una segunda carga", class_name="eyebrow"),
+                    rx.text(
+                        "No pudimos actualizar por completo esta vista con los datos locales disponibles. Puedes reintentar o volver a una ruta estable.",
+                        class_name="muted",
+                    ),
+                    rx.hstack(
+                        rx.button("Volver al inicio", on_click=rx.redirect("/"), class_name="button button-secondary"),
+                        rx.button("Buscar", on_click=rx.redirect("/search"), class_name="button button-secondary"),
+                        spacing="2",
+                        wrap="wrap",
+                        class_name="shell-alert-actions",
+                    ),
                     class_name="card error shell-alert",
                 ),
             ),
@@ -2630,6 +2813,7 @@ def _page_class(active_page: str) -> str:
         PAGE_PROJECT: "page-project",
         PAGE_SUPPORT: "page-project",
         PAGE_STUDIO: "page-project",
+        PAGE_NOT_FOUND: "page-project page-not-found",
         PAGE_SEARCH: "page-discover",
         PAGE_DEMO: "page-home",
     }.get(active_page, "page-home")
@@ -2644,6 +2828,8 @@ def footer_text_link(icon: str, label: str, href: str) -> rx.Component:
             align="center",
         ),
         href=href,
+        title=label,
+        aria_label=label,
         class_name="footer-link footer-column-link",
     )
 
@@ -2853,7 +3039,7 @@ def story_card(row: dict) -> rx.Component:
         rx.hstack(
             rx.text(f"Evidencia: {row['evidence']}", class_name="mini-pill"),
             rx.text(row["relationship_type"], class_name="mini-pill mini-pill-purple"),
-            rx.text(row.get("trust_label", "Registro local de demo"), class_name="mini-pill evidence-trust"),
+            rx.text(row.get("trust_label", "Registro local de muestra"), class_name="mini-pill evidence-trust"),
             spacing="2",
             wrap="wrap",
         ),
@@ -3038,7 +3224,7 @@ def citizen_summary_panel() -> rx.Component:
         ),
         rx.hstack(
             rx.link("Exportar expediente", href=AppState.report_path, class_name="button"),
-            rx.text("Registro local de demo", class_name="mini-pill evidence-trust"),
+            rx.text("Registro local de muestra", class_name="mini-pill evidence-trust"),
             spacing="2",
             wrap="wrap",
         ),
@@ -3545,15 +3731,30 @@ def document_paragraph(row: dict) -> rx.Component:
 
 def topic_pdf_document_viewer(active_fragment_id: str) -> rx.Component:
     return rx.box(
+        rx.cond(
+            AppState.knowledge_pages,
+            rx.hstack(
+                rx.foreach(AppState.knowledge_pages, document_page_button),
+                spacing="2",
+                wrap="wrap",
+                class_name="document-page-nav",
+            ),
+            rx.text("No hay marcadores de página visibles; usamos la referencia activa del fragmento.", class_name="muted small"),
+        ),
         rx.el.iframe(
             src=AppState.knowledge_document_pdf_page_href,
             title="Documento oficial PDF",
+            loading="lazy",
             class_name="topic-pdf-frame",
         ),
         rx.box(
             rx.text("Fragmento citado", class_name="document-label"),
             rx.text(AppState.knowledge_selected_reference_label, class_name="document-page-label"),
             rx.text(AppState.knowledge_selected_excerpt, class_name="document-highlight"),
+            rx.cond(
+                AppState.knowledge_selected_page_is_approximate,
+                rx.text(AppState.knowledge_pdf_location_notice, class_name="document-location-notice"),
+            ),
             rx.text(active_fragment_id, class_name="mono id-line"),
             class_name="topic-pdf-citation-panel",
         ),
@@ -3627,7 +3828,11 @@ def topic_evidence_card(row: dict) -> rx.Component:
             ],
             class_name="button button-secondary",
         ),
-        class_name="context-item topic-card-evidence",
+        class_name=rx.cond(
+            row["fragment_id"] == AppState.knowledge_selected_fragment_id,
+            "context-item topic-card-evidence topic-card-evidence-active",
+            "context-item topic-card-evidence",
+        ),
     )
 
 def topic_change_card(row: dict) -> rx.Component:
@@ -3839,7 +4044,7 @@ def topic_system_mode() -> rx.Component:
         ),
         rx.grid(
             rx.box(
-                rx.text("Qué cambi?", class_name="card-title"),
+                rx.text("Qué cambió", class_name="card-title"),
                 rx.grid(
                     rx.foreach(AppState.topic_changes_rows, topic_change_card),
                     columns="1",
@@ -4178,7 +4383,7 @@ def tracking_item_card(row: dict) -> rx.Component:
         rx.text(row["summary"], class_name="muted small"),
         rx.hstack(
             rx.button("Abrir expediente", on_click=AppState.open_canonical_investigation(row["related_expediente_target"]), class_name="button"),
-            rx.button("Ver demo", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
+            rx.button("Ver recorrido", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
             spacing="2",
             wrap="wrap",
         ),
@@ -4272,6 +4477,7 @@ def document_page_button(row: dict) -> rx.Component:
     return rx.button(
         row["label"],
         on_click=AppState.select_document_anchor(row["page"], ""),
+        title=f"Ir a {row['label']}",
         class_name=rx.cond(
             row["page"] == AppState.knowledge_selected_page,
             "page-chip page-chip-active",
@@ -4293,14 +4499,30 @@ def official_document_pdf_viewer(page: int, fragment_id: str, highlight: str) ->
                 align="center",
                 wrap="wrap",
             ),
+            rx.cond(
+                AppState.knowledge_pages,
+                rx.hstack(
+                    rx.foreach(AppState.knowledge_pages, document_page_button),
+                    spacing="2",
+                    wrap="wrap",
+                    class_name="document-page-nav",
+                ),
+                rx.text("No hay marcadores de página visibles; usamos la referencia activa del fragmento.", class_name="muted small"),
+            ),
             rx.el.iframe(
                 src=AppState.knowledge_document_pdf_page_href,
                 title="Documento oficial PDF",
+                loading="lazy",
                 class_name="official-document-pdf-frame",
             ),
             rx.box(
+                rx.text("Fragmento citado", class_name="document-label"),
                 rx.text(f"Pagina {page}", class_name="document-page-label"),
                 rx.text(highlight, class_name="document-highlight"),
+                rx.cond(
+                    AppState.knowledge_selected_page_is_approximate,
+                    rx.text(AppState.knowledge_pdf_location_notice, class_name="document-location-notice"),
+                ),
                 rx.text(fragment_id, class_name="mono id-line"),
                 class_name="document-current-anchor",
             ),
@@ -4327,8 +4549,13 @@ def official_document_viewer(document_id: str, page: int, fragment_id: str, high
                 class_name="document-page-nav",
             ),
             rx.box(
+                rx.text("Fragmento citado", class_name="document-label"),
                 rx.text(f"Pagina {page}", class_name="document-page-label"),
                 rx.text(highlight, class_name="document-highlight"),
+                rx.cond(
+                    AppState.knowledge_selected_page_is_approximate,
+                    rx.text(AppState.knowledge_pdf_location_notice, class_name="document-location-notice"),
+                ),
                 rx.text(fragment_id, class_name="mono id-line"),
                 class_name="document-current-anchor",
             ),
@@ -4569,6 +4796,7 @@ def investigation_empty_state() -> rx.Component:
                     value=AppState.query,
                     on_change=AppState.set_query,
                     class_name="input search-input",
+                    aria_label="Buscar entidad",
                 ),
                 rx.button("Buscar", on_click=AppState.submit_main_search, class_name="button search-button"),
                 spacing="3",
@@ -4576,7 +4804,7 @@ def investigation_empty_state() -> rx.Component:
                 class_name="search-bar investigation-welcome-search",
             ),
             rx.hstack(
-                rx.button("Abrir expediente demo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button"),
+                rx.button("Abrir expediente de ejemplo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button"),
                 rx.button("Ver biblioteca", on_click=rx.redirect("/library"), class_name="button button-secondary"),
                 rx.button("Ver fuentes oficiales", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
                 spacing="3",
@@ -4599,17 +4827,29 @@ def investigation_empty_state() -> rx.Component:
 
 
 def investigation_loading_state() -> rx.Component:
-    return rx.box(
-        rx.text("Cargando expediente...", class_name="title"),
-        rx.text("Leyendo el identificador de la URL y reconstruyendo la vista desde la base local.", class_name="subtitle"),
-        rx.hstack(
-            rx.button("Reintentar", on_click=AppState.load_investigation, class_name="button button-secondary"),
-            rx.button("Volver al demo", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
-            spacing="3",
-            wrap="wrap",
-            class_name="hero-actions",
+    return rx.vstack(
+        rx.box(
+            rx.text("Cargando expediente...", class_name="title"),
+            rx.text("Estamos preparando el expediente desde la publicación local y ordenando sus rutas de verificación.", class_name="subtitle"),
+            rx.hstack(
+                rx.button("Reintentar", on_click=AppState.load_investigation, class_name="button button-secondary"),
+                rx.button("Volver al recorrido", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
+                spacing="3",
+                wrap="wrap",
+                class_name="hero-actions",
+            ),
+            class_name="hero",
         ),
-        class_name="hero",
+        rx.grid(
+            loading_placeholder_card("Reconstruyendo evidencia", "Ordenamos hechos, relaciones y referencias ya disponibles."),
+            loading_placeholder_card("Preparando documento", "Sincronizamos el PDF oficial y el contexto citado."),
+            loading_placeholder_card("Abriendo siguientes pasos", "Dejamos lista la navegación a informes, cronología y fuentes."),
+            columns="3",
+            spacing="3",
+            class_name="responsive-grid loading-skeleton-grid",
+        ),
+        spacing="4",
+        align="stretch",
     )
 
 
@@ -4620,13 +4860,13 @@ def investigation_error_state() -> rx.Component:
             rx.cond(
                 AppState.investigation_status_message != "",
                 AppState.investigation_status_message,
-                "La app no pudo cargar este expediente local. Puedes reintentar o volver al recorrido demo.",
+                "No pudimos abrir este expediente con la publicación actual. Puedes reintentar o volver al recorrido guiado.",
             ),
             class_name="subtitle",
         ),
         rx.hstack(
             rx.button("Reintentar", on_click=AppState.load_investigation, class_name="button"),
-            rx.button("Volver al demo", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
+            rx.button("Volver al recorrido", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
             spacing="3",
             wrap="wrap",
             class_name="hero-actions",
@@ -4704,10 +4944,19 @@ def narrative_item(text: str) -> rx.Component:
 def search_empty_state() -> rx.Component:
     return rx.vstack(
         page_section(
-            "Sin resultados todavia",
-            rx.text("Escribe un nombre o identificador local para buscar expedientes disponibles.", class_name="muted"),
-            rx.link("Usar entrada guiada", href="/discover", class_name="badge badge-purple"),
-            subtitle="/search es una utilidad directa. Si no sabes que buscar, empieza por Descubre.",
+            "Sin resultados por ahora",
+            rx.text("No encontramos coincidencias con ese nombre o identificador en esta base local publicada.", class_name="muted"),
+            rx.text(
+                "Puede tratarse de otra denominacion oficial, una entidad aun no publicada o una busqueda que necesita mas contexto.",
+                class_name="muted small",
+            ),
+            rx.hstack(
+                rx.link("Usar entrada guiada", href="/discover", class_name="badge badge-purple"),
+                rx.link("Explorar fuentes oficiales", href="/sources", class_name="document-inline-link"),
+                spacing="3",
+                wrap="wrap",
+            ),
+            subtitle="Prueba con una institucion, empresa, persona o documento usando su nombre oficial mas reconocible.",
         ),
         spacing="4",
         align="stretch",
@@ -5207,7 +5456,7 @@ def source_coverage_panel() -> rx.Component:
             ),
             rx.text("No hay cobertura de fuentes disponible.", class_name="muted small"),
         ),
-        subtitle="Estado de cada fuente para el demo local y que aporta al expediente.",
+        subtitle="Estado de cada fuente en la publicación actual y qué aporta al expediente.",
     )
 
 
@@ -5267,7 +5516,75 @@ def single_investigation_product_view() -> rx.Component:
     )
 
 
-@rx.page(route="/", title="DatosEnOrden - Pulso del Estado")
+@rx.page(
+    route="404",
+    title="Esta página no sobrevivió a la burocracia",
+    description="No encontramos este documento.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/404",
+        "404, expediente, documento, evidencia, datosenorden",
+        "Esta página no sobrevivió a la burocracia",
+        "No encontramos este documento.",
+    ),
+)
+def not_found() -> rx.Component:
+    return shell(
+        rx.box(
+            rx.grid(
+                rx.vstack(
+                    rx.text("Esta página no sobrevivió a la burocracia.", class_name="title"),
+                    rx.text("No encontramos este documento.", class_name="subtitle"),
+                    rx.text(
+                        "Al parecer alguien archivó la página en una carpeta imposible de encontrar.",
+                        class_name="story-summary",
+                    ),
+                    rx.hstack(
+                        rx.button("Inicio", on_click=rx.redirect("/"), class_name="button"),
+                        rx.button("Buscar", on_click=rx.redirect("/search"), class_name="button button-secondary"),
+                        rx.button("Pulso del Estado", on_click=rx.redirect("/"), class_name="button button-secondary"),
+                        spacing="3",
+                        wrap="wrap",
+                        class_name="hero-actions",
+                    ),
+                    spacing="4",
+                    align="stretch",
+                ),
+                not_found_document_illustration(),
+                columns="2",
+                spacing="4",
+                class_name="not-found-hero",
+            ),
+            class_name="hero",
+        ),
+        page_section(
+            "Sigue explorando",
+            rx.grid(
+                next_step_card("Abrir lectura principal", "Volver al documento y su explicación ciudadana.", "Ir a Lectura", "/topic"),
+                next_step_card("Buscar una entidad", "Entrar por una búsqueda guiada o directa.", "Ir a Buscar", "/search"),
+                next_step_card("Revisar fuentes", "Explorar las fuentes oficiales publicadas y su cobertura.", "Ir a Fuentes", "/sources"),
+                columns="3",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="DatosEnOrden sigue priorizando documentos, fuentes y evidencia visible.",
+        ),
+        active_page=PAGE_NOT_FOUND,
+    )
+
+
+@rx.page(
+    route="/",
+    title="DatosEnOrden - Pulso del Estado",
+    description="Pulso ciudadano de documentos, expedientes y fuentes oficiales para abrir una lectura verificable.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/",
+        "datos públicos, documentos oficiales, evidencia, expedientes, lectura ciudadana, fuentes oficiales",
+        "DatosEnOrden - Pulso del Estado",
+        "Pulso ciudadano de documentos, expedientes y fuentes oficiales para abrir una lectura verificable.",
+    ),
+)
 def home() -> rx.Component:
     return shell(
         rx.box(
@@ -5304,7 +5621,18 @@ def home() -> rx.Component:
     )
 
 
-@rx.page(route="/ecosystem", title="Fuentes oficiales - DatosEnOrden")
+@rx.page(
+    route="/ecosystem",
+    title="Fuentes oficiales - DatosEnOrden",
+    description="Mapa ciudadano de fuentes oficiales, cobertura documental y conexiones disponibles en DatosEnOrden.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/sources",
+        "fuentes oficiales, cobertura documental, datos públicos, trazabilidad, mapa de fuentes",
+        "Fuentes oficiales - DatosEnOrden",
+        "Mapa ciudadano de fuentes oficiales, cobertura documental y conexiones disponibles en DatosEnOrden.",
+    ),
+)
 def ecosystem() -> rx.Component:
     return shell(
         rx.box(
@@ -5330,35 +5658,47 @@ def ecosystem() -> rx.Component:
         page_section(
             "Fuentes actuales",
             rx.text("Fuentes activas", class_name="section-subtitle"),
-            rx.grid(
-                rx.foreach(AppState.ecosystem_active_sources, ecosystem_source_card),
+            card_grid_or_empty(
+                AppState.ecosystem_active_sources,
+                ecosystem_source_card,
                 columns="3",
-                spacing="3",
-                class_name="responsive-grid",
+                empty_title="Aún no hay fuentes activas visibles",
+                empty_body="Esta publicación todavía no expone fuentes activas en esta vista.",
+                action_label="Volver al inicio",
+                href="/",
             ),
             rx.text("Fuentes en desarrollo", class_name="section-subtitle"),
-            rx.grid(
-                rx.foreach(AppState.ecosystem_prototype_sources, ecosystem_source_card),
+            card_grid_or_empty(
+                AppState.ecosystem_prototype_sources,
+                ecosystem_source_card,
                 columns="3",
-                spacing="3",
-                class_name="responsive-grid",
+                empty_title="Sin fuentes en desarrollo para mostrar",
+                empty_body="La hoja de ruta pública todavía no expone prototipos adicionales en esta sección.",
+                action_label="Ver el proyecto",
+                href="/project",
             ),
             rx.text("Fuentes planificadas", class_name="section-subtitle"),
-            rx.grid(
-                rx.foreach(AppState.ecosystem_planned_sources, ecosystem_source_card),
+            card_grid_or_empty(
+                AppState.ecosystem_planned_sources,
+                ecosystem_source_card,
                 columns="3",
-                spacing="3",
-                class_name="responsive-grid",
+                empty_title="No hay fuentes planificadas publicadas",
+                empty_body="Cuando haya nuevas prioridades públicas aparecerán aquí con su estado y alcance.",
+                action_label="Explorar fuentes",
+                href="/sources",
             ),
             subtitle="Estado actual, en desarrollo y lo que falta por integrar.",
         ),
         page_section(
             "Qué conecta cada fuente",
-            rx.grid(
-                rx.foreach(AppState.ecosystem_concepts, ecosystem_concept_card),
+            card_grid_or_empty(
+                AppState.ecosystem_concepts,
+                ecosystem_concept_card,
                 columns="4",
-                spacing="3",
-                class_name="responsive-grid",
+                empty_title="Todavía no hay conceptos publicados",
+                empty_body="Esta superficie necesita fuentes publicadas para mostrar cruces conceptuales útiles.",
+                action_label="Revisar el proyecto",
+                href="/project",
             ),
             subtitle="Conceptos visibles en cada fuente.",
         ),
@@ -5372,41 +5712,50 @@ def ecosystem() -> rx.Component:
                 spacing="3",
                 wrap="wrap",
             ),
-            rx.grid(
-                rx.foreach(AppState.real_data_sources, real_data_source_card),
+            card_grid_or_empty(
+                AppState.real_data_sources,
+                real_data_source_card,
                 columns="2",
-                spacing="3",
-                class_name="responsive-grid",
+                empty_title="Sin estado público de fuentes reales",
+                empty_body="La cobertura pública todavía no expone fuentes reales adicionales en esta vista.",
+                action_label="Ver fuentes",
+                href="/sources",
             ),
             subtitle="Vista avanzada de cobertura: que fuentes tienen informacion disponible, parcial o pendiente.",
         ),
         page_section(
             "Cómo se cruzan las fuentes",
             rx.text("Cada concepto indica qué fuentes lo alimentan y si su cobertura es activa, parcial o futura.", class_name="muted"),
-            rx.grid(
-                rx.foreach(AppState.ecosystem_roadmap, ecosystem_roadmap_card),
+            card_grid_or_empty(
+                AppState.ecosystem_roadmap,
+                ecosystem_roadmap_card,
                 columns="3",
-                spacing="3",
-                class_name="responsive-grid",
+                empty_title="No hay cruces publicados todavía",
+                empty_body="Los cruces aparecen cuando una fuente publicada ya tiene cobertura suficiente para compararse con otra.",
+                action_label="Explorar fuentes",
+                href="/sources",
             ),
             subtitle="Lectura de cobertura y cruce entre fuentes.",
         ),
         page_section(
             "Catálogo de metadatos",
-            rx.grid(
-                rx.foreach(AppState.ecosystem_sources, ecosystem_source_card),
+            card_grid_or_empty(
+                AppState.ecosystem_sources,
+                ecosystem_source_card,
                 columns="3",
-                spacing="3",
-                class_name="responsive-grid",
+                empty_title="No hay metadatos publicados",
+                empty_body="Esta vista necesita fuentes cargadas para mostrar su detalle y trazabilidad técnica.",
+                action_label="Volver al inicio",
+                href="/",
             ),
             subtitle="Detalle completo y trazabilidad técnica bajo demanda.",
         ),
         page_section(
             "Siguientes pasos",
             rx.grid(
-                next_step_card("Descubrir una pregunta", "Si todavia no sabes que buscar, empieza por una pregunta guiada.", "Ir a Descubre", "/discover"),
-                next_step_card("Abrir expediente demo", "Ver como las fuentes se conectan en una entidad concreta.", "Abrir expediente", _investigation_href(DEMO_INVESTIGATION_TARGET)),
-                next_step_card("Leer reporte ciudadano", "Ver una lectura menos tecnica del caso demo.", "Ir a Informes", "/reports"),
+                next_step_card("Descubrir una pregunta", "Si todavía no sabes qué buscar, empieza por una pregunta guiada.", "Ir a Descubre", "/discover"),
+                next_step_card("Abrir expediente de ejemplo", "Ver cómo las fuentes se conectan en una entidad concreta.", "Abrir expediente", _investigation_href(DEMO_INVESTIGATION_TARGET)),
+                next_step_card("Leer reporte ciudadano", "Ver una lectura menos técnica del caso publicado.", "Ir a Informes", "/reports"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
@@ -5418,13 +5767,39 @@ def ecosystem() -> rx.Component:
     )
 
 
-@rx.page(route="/demo", title="Demo ciudadana - DatosEnOrden MVP")
+@rx.page(
+    route="/sources",
+    title="Fuentes oficiales - DatosEnOrden",
+    description="Mapa ciudadano de fuentes oficiales, cobertura documental y conexiones disponibles en DatosEnOrden.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/sources",
+        "fuentes oficiales, cobertura documental, datos públicos, trazabilidad, mapa de fuentes",
+        "Fuentes oficiales - DatosEnOrden",
+        "Mapa ciudadano de fuentes oficiales, cobertura documental y conexiones disponibles en DatosEnOrden.",
+    ),
+)
+def sources() -> rx.Component:
+    return ecosystem()
+
+@rx.page(
+    route="/demo",
+    title="Recorrido guiado - DatosEnOrden",
+    description="Recorrido público de ejemplo para entender cómo DatosEnOrden conecta fuentes, expedientes y evidencia.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/demo",
+        "muestra pública, evidencia, expedientes, fuentes públicas, datosenorden",
+        "Recorrido guiado - DatosEnOrden",
+        "Recorrido público de ejemplo para entender cómo DatosEnOrden conecta fuentes, expedientes y evidencia.",
+    ),
+)
 def demo() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Demo ciudadana", class_name="title"),
+            rx.text("Recorrido guiado", class_name="title"),
             rx.text(
-                "Recorrido publico con datos locales de prueba. No son datos oficiales y no implican causalidad, irregularidad ni responsabilidad.",
+                "Recorrido público con datos locales de prueba. No son datos oficiales y no implican causalidad, irregularidad ni responsabilidad.",
                 class_name="subtitle",
             ),
             rx.hstack(
@@ -5439,7 +5814,7 @@ def demo() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Checklist del demo",
+            "Checklist del recorrido",
             rx.vstack(
                 demo_check_item("Fuentes cargadas", AppState.demo_sources_ready),
                 demo_check_item("Expediente disponible", AppState.demo_investigation_ready),
@@ -5451,32 +5826,43 @@ def demo() -> rx.Component:
             subtitle="Estado calculado desde la base local al abrir esta ruta.",
         ),
         page_section(
-            "Como presentar este demo",
+            "Cómo recorrer esta publicación",
             rx.grid(
-                flow_card(1, "Ver fuentes disponibles", "Abrir Ecosistema para explicar que fuentes locales de prueba estan cargadas."),
+                flow_card(1, "Ver fuentes disponibles", "Abrir Fuentes para explicar qué datos locales de prueba están cargados."),
                 flow_card(2, "Abrir expediente de ejemplo", "Entrar al expediente canonico del Servicio de Salud Arauco Hospital de Arauco."),
                 flow_card(3, "Revisar evidencia y trazabilidad", "Mostrar resumen ciudadano, seguimiento, reportes, fuentes consultadas y detalles tecnicos colapsados."),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Ruta recomendada para una demo publica minima.",
+            subtitle="Ruta recomendada para una primera lectura pública.",
         ),
         page_section(
-            "Aclaracion",
+            "Aclaración",
             rx.text(
-                "Este recorrido muestra como se veria un expediente ciudadano al cruzar fuentes publicas. "
+                "Este recorrido muestra cómo se vería un expediente ciudadano al cruzar fuentes públicas. "
                 "Los registros son datos locales de prueba, no oficiales, y sirven para explicar el producto sin inferir irregularidades.",
                 class_name="story-summary",
             ),
-            subtitle="Mensaje recomendado antes de mostrar el expediente.",
+            subtitle="Contexto recomendado antes de mostrar el expediente.",
         ),
         on_mount=AppState.load_demo,
         active_page=PAGE_DEMO,
     )
 
 
-@rx.page(route="/discover", title="Buscar - DatosEnOrden")
+@rx.page(
+    route="/discover",
+    title="Buscar - DatosEnOrden",
+    description="Búsqueda y entrada guiada para explorar expedientes, entidades y documentos en DatosEnOrden.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/search",
+        "buscar, expedientes, entidades, documentos oficiales, entrada guiada",
+        "Buscar - DatosEnOrden",
+        "Búsqueda y entrada guiada para explorar expedientes, entidades y documentos en DatosEnOrden.",
+    ),
+)
 def discover() -> rx.Component:
     return search()
 
@@ -5485,7 +5871,18 @@ def result_card(row: dict) -> rx.Component:
     return workspace_match_card(row)
 
 
-@rx.page(route="/topic", title="Lectura Documentada - Ley de Presupuestos 2013 - DatosEnOrden")
+@rx.page(
+    route="/topic",
+    title="Lectura documentada - Ley de Presupuestos 2013 - DatosEnOrden",
+    description="Lectura documentada del documento oficial principal con evidencia visible y navegación al PDF publicado.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/topic",
+        "lectura documentada, ley de presupuestos 2013, documento oficial, evidencia, PDF",
+        "Lectura documentada - Ley de Presupuestos 2013 - DatosEnOrden",
+        "Lectura documentada del documento oficial principal con evidencia visible y navegación al PDF publicado.",
+    ),
+)
 def topic() -> rx.Component:
     return shell(
         rx.box(
@@ -5513,18 +5910,29 @@ def topic() -> rx.Component:
         active_page=PAGE_TOPIC,
     )
 
-@rx.page(route="/tracking", title="Cronologia - DatosEnOrden")
+@rx.page(
+    route="/tracking",
+    title="Cronología - DatosEnOrden",
+    description="Cronología ciudadana de documentos, hitos y evidencia para seguir una propuesta pública.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/chronology",
+        "cronología, seguimiento, documentos oficiales, hitos, evidencia pública",
+        "Cronología - DatosEnOrden",
+        "Cronología ciudadana de documentos, hitos y evidencia para seguir una propuesta pública.",
+    ),
+)
 def tracking() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Sigue la historia de una propuesta publica", class_name="title"),
+            rx.text("Sigue la historia de una propuesta pública", class_name="title"),
             rx.text(
-                "Cronologia local de documentos, propuestas, estados, evidencia, expedientes relacionados y cambios historicos.",
+                "Cronología local de documentos, propuestas, estados, evidencia, expedientes relacionados y cambios históricos.",
                 class_name="subtitle",
             ),
             rx.hstack(
                 rx.button("Abrir expediente", on_click=AppState.open_tracking_investigation, class_name="button"),
-                rx.button("Ver demo", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
+                rx.button("Ver recorrido", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -5532,10 +5940,10 @@ def tracking() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Que significa cronologia",
+            "Qué significa cronología",
             rx.grid(
-                help_card("Estado", "Indica en que punto esta una historia documental segun los datos disponibles."),
-                help_card("Evento", "Es un hito con fecha que ayuda a entender que paso antes y despues."),
+                help_card("Estado", "Indica en qué punto está una historia documental según los datos disponibles."),
+                help_card("Evento", "Es un hito con fecha que ayuda a entender qué pasó antes y después."),
                 help_card("Timeline", "Ordena eventos para leer una historia completa, no solo datos sueltos."),
                 columns="3",
                 spacing="3",
@@ -5555,14 +5963,14 @@ def tracking() -> rx.Component:
                 ),
                 rx.text("No hay seguimientos locales disponibles.", class_name="muted small"),
             ),
-            subtitle="Prototipos locales marcados como datos de prueba, sin APIs externas ni PDFs pesados.",
+            subtitle="Seguimientos locales marcados como datos de prueba, sin APIs externas ni PDFs pesados.",
         ),
         page_section(
             "Timeline de seguimiento",
             rx.text(AppState.tracking_summary, class_name="story-summary"),
             rx.hstack(
                 rx.text(AppState.tracking_current_status, class_name="badge badge-teal"),
-                rx.text("LOCAL_TEST_DATA / NOT_OFFICIAL_DATA", class_name="mini-pill evidence-trust"),
+                rx.text("Muestra local no oficial", class_name="mini-pill evidence-trust"),
                 spacing="2",
                 wrap="wrap",
             ),
@@ -5572,15 +5980,18 @@ def tracking() -> rx.Component:
                 spacing="4",
                 class_name="timeline-list",
             ),
-            subtitle="Propuesta -> documento oficial -> presupuesto -> compra publica -> proveedor -> publicacion/cargo -> control -> expediente relacionado.",
+            subtitle="Propuesta -> documento oficial -> presupuesto -> compra pública -> proveedor -> publicación/cargo -> control -> expediente relacionado.",
         ),
         page_section(
             "Documentos oficiales relacionados",
-            rx.grid(
-                rx.foreach(AppState.tracking_documents, tracking_document_card),
+            card_grid_or_empty(
+                AppState.tracking_documents,
+                tracking_document_card,
                 columns="2",
-                spacing="3",
-                class_name="responsive-grid",
+                empty_title="Todavía no hay documentos relacionados publicados",
+                empty_body="Este seguimiento aún no expone documentos oficiales adicionales en la publicación actual.",
+                action_label="Ver documento fuente",
+                href="/official-document",
             ),
             subtitle="Estrategia liviana: metadata, URL, hash opcional, resumen y fuente.",
         ),
@@ -5592,20 +6003,27 @@ def tracking() -> rx.Component:
                 rx.button("Abrir expediente", on_click=AppState.open_tracking_investigation, class_name="button"),
                 class_name="card",
             ),
-            subtitle="La cronologia no reemplaza el expediente: lo conecta con historia documental.",
+            subtitle="La cronología no reemplaza el expediente: lo conecta con historia documental.",
         ),
         page_section(
             "Evidencia y fuentes consultadas",
-            rx.grid(
-                rx.foreach(AppState.tracking_evidence, tracking_evidence_card),
+            card_grid_or_empty(
+                AppState.tracking_evidence,
+                tracking_evidence_card,
                 columns="2",
-                spacing="3",
-                class_name="responsive-grid",
+                empty_title="Sin evidencia publicada en esta cronología",
+                empty_body="Cuando el seguimiento tenga referencias visibles, aparecerán aquí con su contexto de lectura.",
+                action_label="Explorar fuentes",
+                href="/sources",
             ),
-            rx.hstack(
-                rx.foreach(AppState.tracking_related_sources, lambda item: rx.text(item, class_name="search-chip")),
-                spacing="2",
-                wrap="wrap",
+            rx.cond(
+                AppState.tracking_related_sources,
+                rx.hstack(
+                    rx.foreach(AppState.tracking_related_sources, lambda item: rx.text(item, class_name="search-chip")),
+                    spacing="2",
+                    wrap="wrap",
+                ),
+                rx.text("Todavía no hay fuentes relacionadas publicadas para este seguimiento.", class_name="muted small"),
             ),
             subtitle="Referencias locales descriptivas; no afirman causalidad, irregularidad ni responsabilidad.",
         ),
@@ -5625,7 +6043,34 @@ def tracking() -> rx.Component:
         active_page=PAGE_TRACKING,
     )
 
-@rx.page(route="/knowledge", title="Conocimiento - DatosEnOrden")
+@rx.page(
+    route="/chronology",
+    title="Cronología - DatosEnOrden",
+    description="Cronología ciudadana de documentos, hitos y evidencia para seguir una propuesta pública.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/chronology",
+        "cronología, seguimiento, documentos oficiales, hitos, evidencia pública",
+        "Cronología - DatosEnOrden",
+        "Cronología ciudadana de documentos, hitos y evidencia para seguir una propuesta pública.",
+    ),
+)
+def chronology() -> rx.Component:
+    return tracking()
+
+
+@rx.page(
+    route="/knowledge",
+    title="Conocimiento - DatosEnOrden",
+    description="Resumen estructurado de documentos oficiales con preguntas, claims y evidencia revisable.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/knowledge",
+        "conocimiento, documento oficial, preguntas ciudadanas, claims, evidencia",
+        "Conocimiento - DatosEnOrden",
+        "Resumen estructurado de documentos oficiales con preguntas, claims y evidencia revisable.",
+    ),
+)
 def knowledge() -> rx.Component:
     return shell(
         rx.box(
@@ -5662,7 +6107,7 @@ def knowledge() -> rx.Component:
             "Resumen ciudadano",
             rx.text(AppState.knowledge_summary, class_name="story-summary"),
             rx.hstack(
-                rx.text("LOCAL_TEST_DATA / NOT_OFFICIAL_DATA", class_name="mini-pill evidence-trust"),
+                rx.text("Muestra local no oficial", class_name="mini-pill evidence-trust"),
                 rx.text(AppState.knowledge_title, class_name="badge badge-teal"),
                 spacing="2",
                 wrap="wrap",
@@ -5724,7 +6169,18 @@ def knowledge() -> rx.Component:
         active_page=PAGE_KNOWLEDGE,
     )
 
-@rx.page(route="/official-document", title="Documento Fuente - DatosEnOrden")
+@rx.page(
+    route="/official-document",
+    title="Documento fuente - DatosEnOrden",
+    description="Visor del documento oficial con PDF publicado, fragmentos citados y contexto de evidencia.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/official-document",
+        "documento fuente, PDF oficial, fragmentos citados, evidencia, lectura documentada",
+        "Documento fuente - DatosEnOrden",
+        "Visor del documento oficial con PDF publicado, fragmentos citados y contexto de evidencia.",
+    ),
+)
 def official_document() -> rx.Component:
     return shell(
         rx.box(
@@ -5775,9 +6231,19 @@ def official_document() -> rx.Component:
         rx.box(
             rx.text("Evidencia dentro del documento", class_name="section-title"),
             rx.text("Cada referencia conserva pagina, fragmento y extracto verificable del documento fuente.", class_name="section-subtitle"),
-            rx.box(
-                rx.foreach(AppState.knowledge_evidence, guide_evidence),
-                class_name="reference-strip",
+            rx.cond(
+                AppState.knowledge_evidence,
+                rx.box(
+                    rx.foreach(AppState.knowledge_evidence, guide_evidence),
+                    class_name="reference-strip",
+                ),
+                investigation_entry_card(
+                    "Aún no hay referencias visibles",
+                    "Cuando la publicación tenga evidencia enlazada al documento, aparecerá aqué con su extracto verificable.",
+                    "Volver a Lectura",
+                    "/topic",
+                    "button button-secondary",
+                ),
             ),
             class_name="document-reference-section",
         ),
@@ -5785,16 +6251,27 @@ def official_document() -> rx.Component:
         active_page=PAGE_DOCUMENT,
     )
 
-@rx.page(route="/library", title="Mas lecturas - DatosEnOrden")
+@rx.page(
+    route="/library",
+    title="Más lecturas - DatosEnOrden",
+    description="Lecturas relacionadas para ampliar el contexto del documento principal y conectar con expediente, informe y cronología.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/library",
+        "más lecturas, contexto documental, expediente, cronología, informe ciudadano",
+        "Más lecturas - DatosEnOrden",
+        "Lecturas relacionadas para ampliar el contexto del documento principal y conectar con expediente, informe y cronología.",
+    ),
+)
 def library() -> rx.Component:
     return shell(
         rx.box(
-            rx.text("Mas lecturas", class_name="title"),
+            rx.text("Más lecturas", class_name="title"),
             rx.text(
                 "Documentos explicados en lenguaje ciudadano, con preguntas, puntos clave y evidencia para revisar.",
                 class_name="subtitle",
             ),
-            rx.text("MVP con documentos locales de prueba. No representa documentos oficiales reales.", class_name="badge badge-purple launch-notice"),
+            rx.text("Muestra pública con documentos locales de prueba. No representa documentos oficiales reales.", class_name="badge badge-purple launch-notice"),
             rx.hstack(
                 rx.button("Abrir expediente", on_click=AppState.open_knowledge_investigation, class_name="button"),
                 rx.button("Leer reporte", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
@@ -5806,16 +6283,16 @@ def library() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Como usar Mas lecturas",
+            "Cómo usar Más lecturas",
             rx.grid(
-                help_card("Documento", "Es la pieza de informacion que se quiere entender. En esta fase usamos documentos demo."),
+                help_card("Documento", "Es la pieza de información que se quiere entender. En esta fase usamos documentos de ejemplo."),
                 help_card("Resumen ciudadano", "Una explicacion breve para saber de que trata antes de revisar detalles."),
                 help_card("Evidencia", "La pista que permite volver a la fuente o seccion original y comprobar una afirmacion."),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Mas lecturas responde: que otros documentos ayudan a entender este tema.",
+            subtitle="Más lecturas responde: qué otros documentos ayudan a entender este tema.",
         ),
         page_section(
             "Listado",
@@ -5827,16 +6304,16 @@ def library() -> rx.Component:
                     spacing="3",
                     class_name="responsive-grid",
                 ),
-                rx.text("Todavia no hay documentos disponibles.", class_name="muted small"),
+                rx.text("Todavía no hay documentos disponibles.", class_name="muted small"),
             ),
             subtitle="Primera version visible, alimentada por Knowledge Engine.",
         ),
         page_section(
-            "Documento demo",
+            "Documento de ejemplo",
             rx.text(AppState.knowledge_title, class_name="card-title"),
             rx.text(AppState.knowledge_summary, class_name="story-summary"),
             rx.hstack(
-                rx.text("LOCAL_TEST_DATA / NOT_OFFICIAL_DATA", class_name="mini-pill evidence-trust"),
+                rx.text("Muestra local no oficial", class_name="mini-pill evidence-trust"),
                 rx.button("Abrir expediente", on_click=AppState.open_knowledge_investigation, class_name="button"),
                 rx.button("Leer reporte", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
                 rx.button("Seguir proyecto", on_click=rx.redirect("/tracking"), class_name="button button-secondary"),
@@ -5875,7 +6352,7 @@ def library() -> rx.Component:
                     spacing="3",
                     class_name="responsive-grid",
                 ),
-                rx.text("Todavia no hay anclas de evidencia disponibles.", class_name="muted small"),
+                rx.text("Todavía no hay anclas de evidencia disponibles.", class_name="muted small"),
             ),
             rx.text(AppState.knowledge_notice, class_name="muted small"),
             subtitle="Cada resumen debe poder revisarse contra una referencia original o local.",
@@ -5884,20 +6361,31 @@ def library() -> rx.Component:
             "Siguientes pasos",
             rx.grid(
                 next_step_card("Leer el reporte", "Ver la lectura completa en formato articulo.", "Ir a Informes", "/reports"),
-                next_step_card("Seguir la historia", "Revisar eventos, fechas y cambios asociados.", "Ir a Cronologia", "/tracking"),
-                next_step_card("Ver fuentes oficiales", "Entender de donde vienen los datos del demo.", "Ir a Fuentes", "/ecosystem"),
+                next_step_card("Seguir la historia", "Revisar eventos, fechas y cambios asociados.", "Ir a Cronología", "/tracking"),
+                next_step_card("Ver fuentes oficiales", "Entender de dónde vienen los datos de esta muestra.", "Ir a Fuentes", "/ecosystem"),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Mas lecturas no es un final: conecta con documento fuente, cronologia y expediente.",
+            subtitle="Más lecturas no es un final: conecta con documento fuente, cronología y expediente.",
         ),
         on_mount=AppState.load_knowledge,
         active_page=PAGE_LIBRARY,
     )
 
 
-@rx.page(route="/reports", title="Informes ciudadanos - DatosEnOrden")
+@rx.page(
+    route="/reports",
+    title="Informes ciudadanos - DatosEnOrden",
+    description="Informes ciudadanos con contexto, hitos, evidencia y rutas de verificación.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/reports",
+        "informes ciudadanos, evidencia, contexto, hitos, verificación",
+        "Informes ciudadanos - DatosEnOrden",
+        "Informes ciudadanos con contexto, hitos, evidencia y rutas de verificación.",
+    ),
+)
 def reports() -> rx.Component:
     loaded_report = rx.box(
         page_section(
@@ -5905,7 +6393,7 @@ def reports() -> rx.Component:
             rx.text(AppState.citizen_report_summary, class_name="story-summary"),
             rx.hstack(
                 rx.text(AppState.citizen_report_status, class_name="badge badge-teal"),
-                rx.text("LOCAL_TEST_DATA / NOT_OFFICIAL_DATA", class_name="mini-pill evidence-trust"),
+                rx.text("Muestra local no oficial", class_name="mini-pill evidence-trust"),
                 spacing="2",
                 wrap="wrap",
             ),
@@ -5964,20 +6452,20 @@ def reports() -> rx.Component:
             subtitle="El reporte es una puerta de entrada, no un callejon sin salida.",
         ),
         page_section(
-            "Aclaracion",
+            "Aclaración",
             rx.text(
                 "Este reporte usa datos locales de prueba, no oficiales. No afirma causalidad, irregularidad ni responsabilidad.",
                 class_name="story-summary",
             ),
             rx.link("Abrir version HTML local", href=AppState.citizen_report_path, class_name="button button-secondary"),
-            subtitle="Mensaje obligatorio para el demo publico.",
+            subtitle="Contexto obligatorio para esta publicación pública.",
         ),
         class_name="reports-loaded-content",
     )
     empty_report = page_section(
         "Sin informe seleccionado",
         rx.text(
-            "Cuando exista un informe ciudadano local disponible, aparecera aqui con resumen, fuentes y evidencia relacionada.",
+            "Cuando exista un informe ciudadano local disponible, aparecerá aqué con resumen, fuentes y evidencia relacionada.",
             class_name="story-summary",
         ),
         subtitle="Estado estable: no se muestran fuentes temporales ni contenido que desaparece al cargar.",
@@ -5987,13 +6475,13 @@ def reports() -> rx.Component:
         rx.box(
             rx.text("Informes ciudadanos", class_name="title"),
             rx.text(
-                "Informes locales de lectura publica que conectan expediente, seguimiento, fuentes y evidencia navegable.",
+                "Informes locales de lectura pública que conectan expediente, seguimiento, fuentes y evidencia navegable.",
                 class_name="subtitle",
             ),
             rx.hstack(
                 rx.button("Abrir expediente", on_click=AppState.open_report_investigation, class_name="button"),
                 rx.button("Ver seguimiento", on_click=rx.redirect("/tracking"), class_name="button button-secondary"),
-                rx.button("Ver demo", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
+                rx.button("Ver recorrido", on_click=rx.redirect("/demo"), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -6020,19 +6508,30 @@ def reports() -> rx.Component:
         active_page=PAGE_REPORTS,
     )
 
-@rx.page(route="/project", title="Estado del proyecto - DatosEnOrden")
+@rx.page(
+    route="/project",
+    title="Estado del proyecto - DatosEnOrden",
+    description="Estado público del proyecto, límites del MVP y próximos pasos de DatosEnOrden.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/project",
+        "estado del proyecto, MVP, datosenorden, roadmap, lanzamiento público",
+        "Estado del proyecto - DatosEnOrden",
+        "Estado público del proyecto, límites del MVP y próximos pasos de DatosEnOrden.",
+    ),
+)
 def project() -> rx.Component:
     return shell(
         rx.box(
             rx.text("Estado del proyecto", class_name="title"),
             rx.text(
-                "DatosEnOrden esta en fase MVP: una version publica de demostracion para probar el recorrido ciudadano completo.",
+                "DatosEnOrden está en fase MVP: una versión pública inicial para probar el recorrido ciudadano completo.",
                 class_name="subtitle",
             ),
             rx.text("MVP con datos locales de prueba. No representa datos oficiales reales.", class_name="badge badge-purple launch-notice"),
             rx.hstack(
                 rx.button("Volver al inicio", on_click=rx.redirect("/"), class_name="button"),
-                rx.button("Abrir demo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button button-secondary"),
+                rx.button("Abrir expediente de ejemplo", on_click=rx.redirect(_investigation_href(DEMO_INVESTIGATION_TARGET)), class_name="button button-secondary"),
                 spacing="3",
                 wrap="wrap",
                 class_name="hero-actions",
@@ -6040,7 +6539,7 @@ def project() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Que es DatosEnOrden",
+            "Qué es DatosEnOrden",
             rx.grid(
                 help_card("Plataforma independiente", "Ayuda a leer, conectar y seguir informacion publica con evidencia."),
                 help_card("Experiencia ciudadana", "Organiza documentos, reportes, expedientes, seguimiento y fuentes en un recorrido unico."),
@@ -6049,7 +6548,7 @@ def project() -> rx.Component:
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="La version publica muestra el potencial del producto con datos locales de prueba.",
+            subtitle="La versión pública muestra el potencial del producto con datos locales de prueba.",
         ),
         page_section(
             "Proyecto DatosEnOrden",
@@ -6069,24 +6568,24 @@ def project() -> rx.Component:
             subtitle="Presentado como capacidades de producto, no como detalle interno de implementacion.",
         ),
         page_section(
-            "Que significa MVP",
+            "Qué significa MVP",
             rx.text(
-                "MVP significa producto minimo viable: una version suficientemente completa para probar si el recorrido se entiende, si las conexiones son utiles y si la experiencia ayuda a revisar informacion con evidencia.",
+                "MVP significa producto mínimo viable: una versión suficientemente completa para probar si el recorrido se entiende, si las conexiones son útiles y si la experiencia ayuda a revisar información con evidencia.",
                 class_name="story-summary",
             ),
-            subtitle="No es la version final ni contiene todavia fuentes reales conectadas de forma continua.",
+            subtitle="No es la versión final ni contiene todavía fuentes reales conectadas de forma continua.",
         ),
         page_section(
-            "Que partes usan datos demo",
+            "Qué partes usan datos de ejemplo",
             rx.grid(
-                help_card("Expediente demo", "Usa datos locales de prueba para mostrar como se conectarian fuentes y evidencia."),
-                help_card("Lecturas relacionadas demo", "Usa documentos simulados para mostrar resumenes, preguntas y puntos clave."),
-                help_card("Informes y seguimiento", "Usan contenido local marcado como LOCAL_TEST_DATA / NOT_OFFICIAL_DATA."),
+                help_card("Expediente de ejemplo", "Usa datos locales de prueba para mostrar cómo se conectarían fuentes y evidencia."),
+                help_card("Lecturas relacionadas de ejemplo", "Usa documentos simulados para mostrar resúmenes, preguntas y puntos clave."),
+                help_card("Informes y seguimiento", "Usan contenido local marcado como Muestra local no oficial."),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="La plataforma esta preparada para fuentes reales, pero esta publicacion no debe confundirse con datos oficiales.",
+            subtitle="La plataforma está preparada para fuentes reales, pero esta publicación no debe confundirse con datos oficiales.",
         ),
         page_section(
             "Roadmap resumido",
@@ -6099,16 +6598,16 @@ def project() -> rx.Component:
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Solo producto publico; sin prometer login, pagos ni automatizaciones aun no construidas.",
+            subtitle="Solo producto público; sin prometer login, pagos ni automatizaciones aún no construidas.",
         ),
         page_section(
-            "Como apoyar reportando errores",
+            "Cómo apoyar reportando errores",
             rx.text(
                 "Si encuentras un texto confuso, una pantalla vacia, un enlace que no ayuda o una afirmacion que necesita mejor evidencia, reportalo con la ruta de la pagina y una breve descripcion.",
                 class_name="story-summary",
             ),
             rx.text(
-                "Quieres reportar un error, sugerir una fuente o conversar sobre una implementacion para tu organizacion? Escribe a datosenorden@gmail.com.",
+                "¿Quieres reportar un error, sugerir una fuente o conversar sobre una implementación para tu organización? Escribe a datosenorden@gmail.com.",
                 class_name="story-summary",
             ),
             rx.hstack(
@@ -6124,7 +6623,18 @@ def project() -> rx.Component:
     )
 
 
-@rx.page(route="/support", title="Apoyar DatosEnOrden")
+@rx.page(
+    route="/support",
+    title="Apoyar DatosEnOrden",
+    description="Cómo apoyar DatosEnOrden sin afectar la independencia editorial ni el estándar de evidencia.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/support",
+        "apoyar datosenorden, independencia editorial, evidencia, proyecto ciudadano",
+        "Apoyar DatosEnOrden",
+        "Cómo apoyar DatosEnOrden sin afectar la independencia editorial ni el estándar de evidencia.",
+    ),
+)
 def support() -> rx.Component:
     return shell(
         rx.box(
@@ -6149,7 +6659,7 @@ def support() -> rx.Component:
                 "El sitio no pide dinero antes de entregar una lectura útil. Las donaciones son una forma de agradecer y sostener trabajo ya realizado: hosting, almacenamiento, procesamiento documental y desarrollo.",
                 class_name="story-summary",
             ),
-            subtitle="No hay pagos reales integrados todavía; los enlaces siguen siendo placeholders configurables.",
+            subtitle="El apoyo se canaliza mediante enlaces externos mientras el lanzamiento público mantiene una operación simple.",
         ),
         page_section(
             "Independencia editorial",
@@ -6179,7 +6689,18 @@ def support() -> rx.Component:
     )
 
 
-@rx.page(route="/studio", title="DatosEnOrden Studio")
+@rx.page(
+    route="/studio",
+    title="DatosEnOrden Studio",
+    description="Entrada comercial para organizaciones que necesitan expedientes, fuentes y automatización documental verificable.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/studio",
+        "datosenorden studio, expedientes, fuentes oficiales, automatización documental, organizaciones",
+        "DatosEnOrden Studio",
+        "Entrada comercial para organizaciones que necesitan expedientes, fuentes y automatización documental verificable.",
+    ),
+)
 def studio() -> rx.Component:
     return shell(
         rx.box(
@@ -6267,7 +6788,18 @@ def studio() -> rx.Component:
     )
 
 
-@rx.page(route="/search", title="Buscar - DatosEnOrden")
+@rx.page(
+    route="/search",
+    title="Buscar - DatosEnOrden",
+    description="Búsqueda y entrada guiada para explorar expedientes, entidades y documentos en DatosEnOrden.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/search",
+        "buscar, expedientes, entidades, documentos oficiales, entrada guiada",
+        "Buscar - DatosEnOrden",
+        "Búsqueda y entrada guiada para explorar expedientes, entidades y documentos en DatosEnOrden.",
+    ),
+)
 def search() -> rx.Component:
     return shell(
         rx.box(
@@ -6292,6 +6824,7 @@ def search() -> rx.Component:
                 ),
                 subtitle="Selecciona un resultado para abrir el expediente.",
             ),
+            rx.cond(AppState.query != "", search_empty_state()),
         ),
         on_mount=AppState.load_discover,
         active_page=PAGE_SEARCH,
@@ -6314,7 +6847,19 @@ def section(title: str, rows, empty_text: str) -> rx.Component:  # noqa: ANN001
     )
 
 
-@rx.page(route="/investigation", title="Expediente - DatosEnOrden", on_load=AppState.load_investigation)
+@rx.page(
+    route="/investigation",
+    title="Expediente - DatosEnOrden",
+    description="Expediente ciudadano para reunir entidades, relaciones, evidencia y trazabilidad en una sola lectura.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/investigation",
+        "expediente, evidencia, relaciones, trazabilidad, lectura ciudadana",
+        "Expediente - DatosEnOrden",
+        "Expediente ciudadano para reunir entidades, relaciones, evidencia y trazabilidad en una sola lectura.",
+    ),
+    on_load=AppState.load_investigation,
+)
 def investigation() -> rx.Component:
     return shell(
         rx.cond(
@@ -6373,7 +6918,18 @@ def investigation() -> rx.Component:
     )
 
 
-@rx.page(route="/dashboard", title="Vista ciudadana - DatosEnOrden")
+@rx.page(
+    route="/dashboard",
+    title="Vista ciudadana - DatosEnOrden",
+    description="Vista ciudadana de presupuesto, compras, proveedores y reuniones para explorar datos locales de muestra.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/dashboard",
+        "vista ciudadana, presupuesto, compras públicas, proveedores, reuniones",
+        "Vista ciudadana - DatosEnOrden",
+        "Vista ciudadana de presupuesto, compras, proveedores y reuniones para explorar datos locales de muestra.",
+    ),
+)
 def dashboard() -> rx.Component:
     return shell(
         rx.box(
@@ -6651,7 +7207,19 @@ style = {
         "background": "rgba(167, 139, 250, 0.12)",
         "color": "#18181b",
     },
-    ".shell-alert": {"width": "min(calc(100% - 48px), 1760px)", "max_width": "1760px", "margin": "16px auto 0"},
+    ".shell-alert": {
+        "width": "min(calc(100% - 48px), 1760px)",
+        "max_width": "1760px",
+        "margin": "16px auto 0",
+        "display": "grid",
+        "gap": "10px",
+        "border_left": "3px solid rgba(250, 204, 21, 0.58)",
+    },
+    ".shell-alert-actions": {"gap": "10px"},
+    "a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, iframe:focus-visible": {
+        "outline": "3px solid rgba(45, 212, 191, 0.72)",
+        "outline_offset": "3px",
+    },
     ".hero": {
         "border": "1px solid rgba(161, 161, 170, 0.10)",
         "border_radius": "10px",
@@ -6759,6 +7327,7 @@ style = {
     ".topic-card-no-change": {"border_left": "3px solid rgba(250, 204, 21, 0.62)"},
     ".topic-card-next": {"border_left": "3px solid rgba(74, 222, 128, 0.62)"},
     ".topic-card-evidence": {"border_left": "3px solid rgba(251, 146, 60, 0.62)"},
+    ".topic-card-evidence-active": {"border_color": "rgba(251, 146, 60, 0.64)", "background": "rgba(251, 146, 60, 0.10)", "box_shadow": "0 0 0 3px rgba(251, 146, 60, 0.10)"},
     ".page-topic .shell-header": {"position": "sticky", "top": "0", "z_index": "20"},
     ".page-topic .nav-inner": {"padding": "8px 0", "gap": "10px"},
     ".page-topic .nav-links": {"gap": "12px", "font_size": "13px"},
@@ -7159,6 +7728,7 @@ style = {
     },
     ".document-page-label": {"font_weight": "850", "color": "#18181b"},
     ".document-highlight": {"color": "#374151", "line_height": "1.55"},
+    ".document-location-notice": {"font_size": "12px", "line_height": "1.4", "color": "#92400e", "background": "rgba(251, 191, 36, 0.16)", "border": "1px solid rgba(251, 191, 36, 0.28)", "border_radius": "6px", "padding": "7px 9px"},
     ".document-page": {"display": "grid", "gap": "18px", "scroll_behavior": "smooth"},
     ".document-fragment": {
         "border": "1px solid transparent",
@@ -7523,6 +8093,56 @@ style = {
     ".shell.theme-light .flow-accent-teal": {"color": "#0f766e"},
     ".shell.theme-light .flow-accent-purple": {"color": "#6d28d9"},
     ".shell.theme-light .flow-accent-amber": {"color": "#b45309"},
+    ".loading-shell": {"min_height": "100vh"},
+    ".loading-skeleton-hero": {"display": "grid", "gap": "14px"},
+    ".loading-skeleton-card": {"min_height": "210px", "display": "grid", "gap": "10px", "align_content": "start"},
+    ".loading-skeleton-line": {
+        "height": "12px",
+        "border_radius": "999px",
+        "background": "linear-gradient(90deg, rgba(45, 212, 191, 0.18), rgba(228, 228, 231, 0.14), rgba(45, 212, 191, 0.18))",
+        "background_size": "200% 100%",
+        "animation": "loading-pulse 1.6s ease-in-out infinite",
+    },
+    ".loading-skeleton-line-medium": {"width": "68%"},
+    ".loading-skeleton-line-short": {"width": "42%"},
+    ".not-found-hero": {
+        "grid_template_columns": "minmax(0, 1.35fr) minmax(240px, 0.7fr)",
+        "align_items": "center",
+        "width": "100%",
+    },
+    ".not-found-illustration": {"position": "relative", "display": "grid", "justify_items": "center", "padding": "12px"},
+    ".not-found-document-card": {
+        "width": "220px",
+        "min_height": "260px",
+        "border": "1px solid rgba(161, 161, 170, 0.18)",
+        "border_radius": "16px",
+        "padding": "18px",
+        "background": "linear-gradient(180deg, rgba(45, 212, 191, 0.12), rgba(24, 24, 27, 0.92))",
+        "display": "grid",
+        "gap": "12px",
+        "box_shadow": "0 18px 50px rgba(0, 0, 0, 0.22)",
+    },
+    ".shell.theme-light .not-found-document-card": {
+        "background": "linear-gradient(180deg, rgba(45, 212, 191, 0.12), #ffffff)",
+        "border_color": "rgba(113, 113, 122, 0.18)",
+    },
+    ".not-found-document-tab": {"width": "72px", "height": "10px", "border_radius": "999px", "background": "rgba(45, 212, 191, 0.52)"},
+    ".not-found-document-body": {"display": "grid", "gap": "10px"},
+    ".not-found-document-line": {"height": "12px", "border_radius": "999px", "background": "rgba(212, 212, 216, 0.24)"},
+    ".not-found-document-line-medium": {"width": "76%"},
+    ".not-found-document-line-short": {"width": "52%"},
+    ".not-found-badge": {
+        "position": "absolute",
+        "right": "18px",
+        "bottom": "18px",
+        "padding": "7px 12px",
+        "border_radius": "999px",
+        "background": "rgba(250, 204, 21, 0.16)",
+        "border": "1px solid rgba(250, 204, 21, 0.28)",
+        "color": "#fde68a",
+        "font_size": "12px",
+        "font_weight": "800",
+    },
     ".empty-entry-card": {"min_height": "220px", "display": "grid", "gap": "10px", "align_content": "start"},
     ".empty-entry-card .example-card": {"padding": "10px", "min_height": "auto"},
     ".investigation-empty-grid": {"align_items": "stretch"},
@@ -7534,6 +8154,11 @@ style = {
     },
     ".home-lower-layout .page-section": {
         "min_width": "0",
+    },
+    "@keyframes loading-pulse": {
+        "0%": {"background_position": "0% 50%", "opacity": "0.72"},
+        "50%": {"background_position": "100% 50%", "opacity": "1"},
+        "100%": {"background_position": "0% 50%", "opacity": "0.72"},
     },
     "@keyframes document-pulse": {
         "0%": {"background": "#ccfbf1"},
@@ -7555,6 +8180,7 @@ style = {
         ".home-lower-layout": {"grid_template_columns": "1fr"},
         ".official-document-layout": {"grid_template_columns": "1fr"},
         ".document-side-column": {"position": "static"},
+        ".not-found-hero": {"grid_template_columns": "1fr"},
         ".reading-context-bar": {"grid_template_columns": "1fr 1fr", "align_items": "start"},
         ".topic-document-first-layout": {"grid_template_columns": "1fr"},
         ".topic-context-rail": {"display": "none"},
@@ -7566,8 +8192,20 @@ style = {
 }
 
 
-app = rx.App(style=style)
+def _global_head_components() -> list[rx.Component]:
+    return [
+        rx.el.link(rel="icon", href="/favicon.ico"),
+        rx.el.link(rel="apple-touch-icon", href="/apple-touch-icon.png"),
+        rx.el.link(rel="manifest", href=PUBLIC_MANIFEST_PATH),
+        rx.el.meta(name="application-name", content=PUBLIC_SITE_NAME),
+        rx.el.meta(name="apple-mobile-web-app-title", content=PUBLIC_SITE_NAME),
+        rx.el.meta(name="theme-color", content=PUBLIC_THEME_COLOR),
+    ]
 
 
-
-
+app = rx.App(
+    style=style,
+    head_components=_global_head_components(),
+    html_lang="es",
+    hydrate_fallback=public_hydrate_fallback(),
+)

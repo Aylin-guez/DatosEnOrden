@@ -1,0 +1,22 @@
+[Unit]
+Description=DatosEnOrden Reflex app
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=datosenorden
+Group=datosenorden
+WorkingDirectory=/opt/datosenorden
+EnvironmentFile=/opt/datosenorden/.env
+Environment=PATH=/opt/datosenorden/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/datosenorden/.venv/bin/reflex run --env prod --backend-host 127.0.0.1 --backend-port 8000 --frontend-port 3000
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=datosenorden
+
+[Install]
+WantedBy=multi-user.target

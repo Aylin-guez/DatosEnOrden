@@ -102,7 +102,7 @@ def test_prelaunch_public_check_detects_tracked_cache(monkeypatch) -> None:
 def test_prelaunch_public_check_detects_public_routes(tmp_path: Path, monkeypatch) -> None:
     module = _load_script()
     app = tmp_path / "reflex_app.py"
-    app.write_text('\n'.join(f'@rx.page(route="{route}")' for route in module.PUBLIC_ROUTES), encoding="utf-8")
+    app.write_text('\n\n'.join(f'@rx.page(\n    route="{route}",\n    title="x",\n)' for route in module.PUBLIC_ROUTES), encoding="utf-8")
     monkeypatch.setattr(module, "REFLEX_APP", app)
 
     assert "/support" in module.PUBLIC_ROUTES
@@ -124,3 +124,74 @@ def test_prelaunch_public_check_reflex_compile_uses_dry_run(monkeypatch) -> None
 
     assert result.ok is True
     assert calls == [[sys.executable, "-m", "reflex", "compile", "--dry", "--no-rich"]]
+
+
+def test_prelaunch_public_check_validates_public_web_assets(tmp_path: Path, monkeypatch) -> None:
+    module = _load_script()
+    favicon = tmp_path / "assets" / "favicon.ico"
+    apple = tmp_path / "assets" / "apple-touch-icon.png"
+    icon_192 = tmp_path / "assets" / "icon-192.png"
+    icon_512 = tmp_path / "assets" / "icon-512.png"
+    og_image = tmp_path / "assets" / "og-image.png"
+    manifest = tmp_path / "assets" / "site.webmanifest"
+    robots = tmp_path / "assets" / "robots.txt"
+    sitemap = tmp_path / "assets" / "sitemap.xml"
+    rxconfig = tmp_path / "rxconfig.py"
+
+    for asset in (favicon, apple, icon_192, icon_512, og_image):
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        asset.write_text("ok", encoding="utf-8")
+
+    manifest.write_text(
+        """{
+  "name": "DatosEnOrden",
+  "theme_color": "#0f766e",
+  "icons": [{"src": "/icon-192.png"}, {"src": "/icon-512.png"}]
+}
+""",
+        encoding="utf-8",
+    )
+    robots.write_text(
+        """User-agent: *
+Allow: /
+Sitemap: https://datosenorden.cl/sitemap.xml
+""",
+        encoding="utf-8",
+    )
+    sitemap.write_text(
+        "<urlset><url><loc>https://datosenorden.cl</loc></url><url><loc>https://datosenorden.cl/search</loc></url><url><loc>https://datosenorden.cl/topic</loc></url><url><loc>https://datosenorden.cl/sources</loc></url><url><loc>https://datosenorden.cl/official-document</loc></url><url><loc>https://datosenorden.cl/chronology</loc></url><url><loc>https://datosenorden.cl/support</loc></url><url><loc>https://datosenorden.cl/studio</loc></url></urlset>",
+        encoding="utf-8",
+    )
+    rxconfig.write_text(
+        """import reflex as rx
+
+PUBLIC_BASE_URL = "https://datosenorden.cl"
+API_URL = "https://datosenorden.cl"
+BACKEND_PATH = "/api"
+config = rx.Config(
+    app_name="reflex_app",
+    deploy_url=PUBLIC_BASE_URL,
+    api_url=API_URL,
+    backend_path=BACKEND_PATH,
+    plugins=[rx.plugins.SitemapPlugin(trailing_slash="never")],
+)
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(module, "FAVICON", favicon)
+    monkeypatch.setattr(module, "APPLE_TOUCH_ICON", apple)
+    monkeypatch.setattr(module, "ICON_192", icon_192)
+    monkeypatch.setattr(module, "ICON_512", icon_512)
+    monkeypatch.setattr(module, "OG_IMAGE", og_image)
+    monkeypatch.setattr(module, "WEBMANIFEST", manifest)
+    monkeypatch.setattr(module, "ROBOTS", robots)
+    monkeypatch.setattr(module, "SITEMAP", sitemap)
+    monkeypatch.setattr(module, "RXCONFIG", rxconfig)
+
+    assert module._asset_check().ok is True
+    assert module._manifest_check().ok is True
+    assert module._robots_check().ok is True
+    assert module._sitemap_check().ok is True
+    assert module._deploy_url_check().ok is True
