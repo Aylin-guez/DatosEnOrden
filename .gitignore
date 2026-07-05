@@ -46,6 +46,7 @@ data/official_documents/archived/**
 !data/official_documents/published/senado-docto-9000-mensaje_mocion/
 !data/official_documents/published/senado-docto-9000-mensaje_mocion/reading.json
 !data/official_documents/published/senado-docto-9000-mensaje_mocion/document_view.json
+!data/official_documents/published/senado-docto-9000-mensaje_mocion/document.pdf
 !data/official_documents/**/README.md
 !data/official_documents/metadata.schema.json
 studio_private/
