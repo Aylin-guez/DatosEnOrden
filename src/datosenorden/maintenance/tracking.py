@@ -185,8 +185,10 @@ def build_tracking_demo() -> TrackingTimeline:
             "Transparencia Activa",
             "Lobby",
             "Registro Empresas",
-            "Sanciones y Procedimientos",
+            "SERVEL",
+            "Municipalidades",
             "Declaraciones de Intereses",
+            "Sanciones y Procedimientos",
         ),
     )
     documents = (
@@ -227,6 +229,24 @@ def build_tracking_demo() -> TrackingTimeline:
             published_at="2026-05-21",
             official_url="local://tracking/araucodemo/control-2026",
             summary="Informe de muestra para explicar revision de evidencia y trazabilidad.",
+        ),
+        OfficialDocumentRef(
+            id="doc-servel-arauco-2024",
+            title="Registro local SERVEL de autoridades y periodos",
+            source="SERVEL",
+            document_type="electoral_period",
+            published_at="2024-12-06",
+            official_url="local://tracking/araucodemo/servel-2024",
+            summary="Metadata de muestra para conectar autoridades, territorio y periodo electoral.",
+        ),
+        OfficialDocumentRef(
+            id="doc-declarations-arauco-2026",
+            title="Declaracion local de intereses y patrimonio",
+            source="Declaraciones de Intereses",
+            document_type="declaration_record",
+            published_at="2026-03-20",
+            official_url="local://tracking/araucodemo/declaraciones-2026",
+            summary="Referencia local de declaracion para explicar roles y entidades relacionadas.",
         ),
     )
     evidence = (
@@ -283,6 +303,36 @@ def build_tracking_demo() -> TrackingTimeline:
             url="local://tracking/araucodemo/transparencia-lobby",
             excerpt="Cruce descriptivo de roles y reuniones en datos locales de prueba.",
         ),
+        EvidenceAnchor(
+            id="ev-servel",
+            source="SERVEL",
+            label="Autoridades y periodos electorales de muestra",
+            url="local://tracking/araucodemo/servel-2024#period",
+            excerpt="Registro local de autoridad, territorio y periodo electoral utilizado para seguimiento.",
+            document_id="doc-servel-arauco-2024",
+        ),
+        EvidenceAnchor(
+            id="ev-declarations",
+            source="Declaraciones de Intereses",
+            label="Declaracion de intereses de muestra",
+            url="local://tracking/araucodemo/declaraciones-2026#declaration",
+            excerpt="Declaracion local usada para conectar roles, organizaciones y empresas.",
+            document_id="doc-declarations-arauco-2026",
+        ),
+        EvidenceAnchor(
+            id="ev-municipal",
+            source="Municipalidades",
+            label="Proyecto y gasto municipal de muestra",
+            url="local://tracking/araucodemo/municipalidades-2026#project",
+            excerpt="Proyecto local y gasto asociado utilizados como evidencia de continuidad territorial.",
+        ),
+        EvidenceAnchor(
+            id="ev-procedure",
+            source="Sanciones y Procedimientos",
+            label="Procedimiento y resolucion de muestra",
+            url="local://tracking/araucodemo/sanciones-2026#procedure",
+            excerpt="Procedimiento administrativo local con resolucion asociada.",
+        ),
     )
     events = (
         TrackingEvent(
@@ -337,6 +387,28 @@ def build_tracking_demo() -> TrackingTimeline:
             source="Diario Oficial / Transparencia Activa",
             evidence_ids=("ev-publicacion", "ev-transparencia-lobby"),
             document_ids=("doc-diario-arauco-2026",),
+            related_entity_names=(DEMO_ENTITY_NAME, "SOFIA RAMOS"),
+        ),
+        TrackingEvent(
+            id="evt-servel",
+            date="2024-12-06",
+            status=TrackingStatus.APPROVED,
+            title="Periodo electoral y autoridad local",
+            description="Se enlaza un registro SERVEL de muestra para conectar periodo, autoridad y territorio.",
+            source="SERVEL",
+            evidence_ids=("ev-servel",),
+            document_ids=("doc-servel-arauco-2024",),
+            related_entity_names=(DEMO_ENTITY_NAME, "SOFIA RAMOS"),
+        ),
+        TrackingEvent(
+            id="evt-declarations",
+            date="2026-03-20",
+            status=TrackingStatus.UPDATED,
+            title="Declaracion de intereses asociada",
+            description="El seguimiento conecta una declaracion local para explicar roles y vinculos visibles.",
+            source="Declaraciones de Intereses",
+            evidence_ids=("ev-declarations",),
+            document_ids=("doc-declarations-arauco-2026",),
             related_entity_names=(DEMO_ENTITY_NAME, "SOFIA RAMOS"),
         ),
         TrackingEvent(

@@ -257,6 +257,129 @@
           "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. Neutral control report for the complete demo case."
         }
       ]
+    },
+    "servel": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "records": [
+        {
+          "external_id": "servel-2024-arauco-01",
+          "authority_name": "Autoridad Electa de Muestra Uno",
+          "office_name": "Alcaldia de muestra",
+          "municipality_name": "Municipalidad de Arauco",
+          "territory_name": "Comuna de Arauco",
+          "period_name": "Periodo electoral 2024-2028",
+          "period_start": "2024-12-06",
+          "period_end": "2028-12-05",
+          "election_cycle": "2024",
+          "source_url": "local://sample/servel/arauco/01",
+          "source_dataset_name": "SERVEL authorities sample"
+        },
+        {
+          "external_id": "servel-2021-arauco-02",
+          "authority_name": "Autoridad Electa de Muestra Dos",
+          "office_name": "Concejo municipal de muestra",
+          "municipality_name": "Municipalidad de Arauco",
+          "territory_name": "Comuna de Arauco",
+          "period_name": "Periodo electoral 2021-2024",
+          "period_start": "2021-12-06",
+          "period_end": "2024-12-05",
+          "election_cycle": "2021",
+          "source_url": "local://sample/servel/arauco/02",
+          "source_dataset_name": "SERVEL authorities sample"
+        }
+      ],
+      "source_name": "DatosEnOrden SERVEL Demo Case"
+    },
+    "municipalidades": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "dataset_name": "municipalidades-project-sample",
+      "source_name": "DatosEnOrden Municipalidades Demo Case",
+      "records": [
+        {
+          "external_id": "municipalidades-2026-arauco-project-01",
+          "municipality_name": "ILUSTRE MUNICIPALIDAD DE ARAUCO",
+          "project_name": "Mejoramiento de plaza local de muestra",
+          "spending_item_name": "Compra de materiales de mantencion",
+          "period": "2026-05",
+          "period_date": "2026-05-01",
+          "amount": 1500000,
+          "currency": "CLP",
+          "source_url": "local://sample/municipalidades/municipalidades-2026-arauco-project-01",
+          "source_dataset_name": "municipalidades-project-sample",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. This is not official municipal data and does not imply irregularity."
+        }
+      ]
+    },
+    "declaraciones_intereses": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "records": [
+        {
+          "external_id": "declaraciones-intereses:sofia-ramos:2026",
+          "source_url": "local://sample/declaraciones-intereses/sofia-ramos-2026",
+          "declaration_date": "2026-03-20",
+          "declaration_period": "2026",
+          "person_name": "SOFIA RAMOS",
+          "role_name": "Directora de administracion de muestra",
+          "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "declared_companies": [
+            {
+              "company_name": "ACME TECNOLOGIAS SPA",
+              "interest_label": "Participacion declarada en sample local"
+            }
+          ],
+          "declared_organizations": [
+            {
+              "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+              "interest_label": "Cargo publico declarado en sample local"
+            }
+          ]
+        },
+        {
+          "external_id": "declaraciones-intereses:ana-perez:2026",
+          "source_url": "local://sample/declaraciones-intereses/ana-perez-2026",
+          "declaration_date": "2026-04-05",
+          "declaration_period": "2026",
+          "person_name": "ANA PEREZ",
+          "role_name": "Representante legal de muestra",
+          "organization_name": "ACME TECNOLOGIAS SPA",
+          "declared_companies": [
+            {
+              "company_name": "ACME TECNOLOGIAS SPA",
+              "interest_label": "Representacion declarada en sample local"
+            }
+          ],
+          "declared_organizations": []
+        }
+      ],
+      "source_name": "DatosEnOrden Declaraciones Intereses Demo Case"
+    },
+    "sanciones_procedimientos": {
+      "classification": "LOCAL_TEST_DATA",
+      "official_status": "NOT_OFFICIAL_DATA",
+      "dataset_name": "sanciones-procedimientos-sample",
+      "source_name": "DatosEnOrden Sanciones Procedimientos Demo Case",
+      "records": [
+        {
+          "external_id": "sanciones-proc-2026-servicio-salud-arauco-001",
+          "organization_name": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+          "company_name": "CONSULTORA PUBLICA SPA",
+          "person_name": "SOFIA RAMOS",
+          "procedure_number": "PROC-LOCAL-2026-001",
+          "procedure_title": "Procedimiento administrativo de muestra sobre entrega documental",
+          "procedure_date": "2026-05-22",
+          "procedure_status": "registrado en datos locales de prueba",
+          "resolution_number": "RES-LOCAL-2026-001",
+          "resolution_title": "Resolucion administrativa de muestra asociada al procedimiento",
+          "resolution_date": "2026-06-02",
+          "administrative_measure": "Medida administrativa de muestra sin caracter oficial",
+          "source_url": "local://sample/sanciones-procedimientos/sanciones-proc-2026-servicio-salud-arauco-001",
+          "source_dataset_name": "sanciones-procedimientos-sample",
+          "notes": "LOCAL_TEST_DATA / NOT_OFFICIAL_DATA sample only. This is not official sanctions or procedure data and does not imply wrongdoing, liability, risk, or irregularity."
+        }
+      ]
     }
   }
 }

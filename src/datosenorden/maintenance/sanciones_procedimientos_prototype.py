@@ -313,7 +313,11 @@ def _validate_sample_payload(payload: dict[str, Any]) -> None:
 
 
 def _entity_record_for_name(session: Session, entity_type: EntityType, name: str, label: str) -> EntityRecord:
-    candidates = match_entity_candidates(session, entity_type=entity_type.value, name=name, limit=1)
+    candidates = (
+        match_entity_candidates(session, entity_type=entity_type.value, name=name, limit=1)
+        if hasattr(session, "scalars")
+        else ()
+    )
     if candidates:
         candidate = candidates[0]
         entity = session.get(Entity, UUID(candidate.candidate_entity_id)) if hasattr(session, "get") else None

@@ -9,15 +9,16 @@ from sqlalchemy.orm import Session
 
 from datosenorden.core.config import PROJECT_ROOT
 from datosenorden.etl.local_seed import persist_local_traceability_seed
+from datosenorden.maintenance.complete_demo_case import persist_complete_demo_case
 from datosenorden.maintenance.cross_dataset_demo import align_lobby_sample_to_existing_org
-from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
 from datosenorden.maintenance.dipres_prototype import persist_dipres_sample
+from datosenorden.maintenance.lobby_prototype import persist_lobby_sample
+from datosenorden.maintenance.transparencia_activa_prototype import persist_transparencia_sample
+from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
 from datosenorden.maintenance.entity_explorer import EntityProfile
 from datosenorden.maintenance.entity_explorer import get_entity_profile
 from datosenorden.maintenance.entity_matching import match_entity_candidates
-from datosenorden.maintenance.lobby_prototype import persist_lobby_sample
 from datosenorden.maintenance.timeline_explorer import build_entity_timeline
-from datosenorden.maintenance.transparencia_activa_prototype import persist_transparencia_sample
 from datosenorden.models import Entity, Evidence, RelationshipPublic
 from datosenorden.maintenance.dataset_registry import list_datasets
 
@@ -78,10 +79,7 @@ class DemoStatusReport:
 
 def seed_demo_data(session: Session) -> None:
     persist_local_traceability_seed(session)
-    persist_dipres_sample(session)
-    _align_lobby_sample_if_possible(session)
-    persist_lobby_sample(session)
-    persist_transparencia_sample(session)
+    persist_complete_demo_case(session)
 
 
 def build_demo_seed_result(session: Session) -> DemoSeedResult:

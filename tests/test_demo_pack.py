@@ -79,15 +79,12 @@ def test_seed_demo_data_runs_loaders_in_safe_order_and_repeats_cleanly(monkeypat
     calls: list[str] = []
 
     monkeypatch.setattr("datosenorden.maintenance.demo_pack.persist_local_traceability_seed", lambda session: calls.append("local"))
-    monkeypatch.setattr("datosenorden.maintenance.demo_pack.persist_dipres_sample", lambda session: calls.append("dipres"))
-    monkeypatch.setattr("datosenorden.maintenance.demo_pack.align_lobby_sample_to_existing_org", lambda session: calls.append("align"))
-    monkeypatch.setattr("datosenorden.maintenance.demo_pack.persist_lobby_sample", lambda session: calls.append("lobby"))
-    monkeypatch.setattr("datosenorden.maintenance.demo_pack.persist_transparencia_sample", lambda session: calls.append("transparencia"))
+    monkeypatch.setattr("datosenorden.maintenance.demo_pack.persist_complete_demo_case", lambda session: calls.append("complete_demo_case"))
 
     seed_demo_data(object())
     seed_demo_data(object())
 
-    assert calls == ["local", "dipres", "align", "lobby", "transparencia", "local", "dipres", "align", "lobby", "transparencia"]
+    assert calls == ["local", "complete_demo_case", "local", "complete_demo_case"]
 
 
 def test_build_demo_status_ready_state_has_no_repairs(monkeypatch) -> None:

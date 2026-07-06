@@ -14,10 +14,14 @@ from datosenorden.etl.chilecompra.mappers import ChileCompraGraphMapper
 from datosenorden.etl.chilecompra.normalizers import ChileCompraNormalizer
 from datosenorden.etl.loaders.graph_loader import GraphLoader
 from datosenorden.maintenance.contraloria_prototype import build_contraloria_sample_batch
+from datosenorden.maintenance.declaraciones_intereses_prototype import build_declaraciones_intereses_sample_batch
 from datosenorden.maintenance.diario_oficial_prototype import build_diario_oficial_sample_batch
 from datosenorden.maintenance.dipres_prototype import build_dipres_sample_batch
 from datosenorden.maintenance.lobby_prototype import build_lobby_sample_batch
+from datosenorden.maintenance.municipalidades_prototype import build_municipalidades_sample_batch
 from datosenorden.maintenance.registro_empresas_prototype import build_registro_empresas_sample_batch
+from datosenorden.maintenance.sanciones_procedimientos_prototype import build_sanciones_procedimientos_sample_batch
+from datosenorden.maintenance.servel_prototype import build_servel_sample_batch
 from datosenorden.maintenance.transparencia_activa_prototype import build_transparencia_sample_batch
 
 
@@ -31,6 +35,10 @@ COMPLETE_DEMO_CASE_SECTION_ORDER = (
     "diario_oficial",
     "transparencia",
     "lobby",
+    "servel",
+    "municipalidades",
+    "declaraciones_intereses",
+    "sanciones_procedimientos",
     "contraloria",
 )
 
@@ -179,6 +187,38 @@ def build_complete_demo_case_summary(payload: dict[str, Any]) -> CompleteDemoCas
                 relationships_created += 2
                 timeline_dates.extend(_date_values(record.get("report_date"), record.get("observation_date")))
                 continue
+            if section_name == "servel":
+                evidence_count += 4
+                relationships_created += 4
+                if str(record.get("authority_name", "")).strip():
+                    connected_people.add(str(record.get("authority_name", "")).strip())
+                timeline_dates.extend(_date_values(record.get("period_start"), record.get("period_end")))
+                continue
+            if section_name == "municipalidades":
+                evidence_count += 2
+                relationships_created += 2
+                timeline_dates.extend(_date_values(record.get("period_date"), record.get("period")))
+                continue
+            if section_name == "declaraciones_intereses":
+                evidence_count += 3
+                relationships_created += 3 + len(record.get("declared_companies", [])) + len(record.get("declared_organizations", []))
+                if str(record.get("person_name", "")).strip():
+                    connected_people.add(str(record.get("person_name", "")).strip())
+                for company in record.get("declared_companies", []):
+                    company_name = str(company.get("company_name", "")).strip()
+                    if company_name:
+                        connected_suppliers.add(company_name)
+                timeline_dates.extend(_date_values(record.get("declaration_date")))
+                continue
+            if section_name == "sanciones_procedimientos":
+                evidence_count += 2
+                relationships_created += 4
+                if str(record.get("company_name", "")).strip():
+                    connected_suppliers.add(str(record.get("company_name", "")).strip())
+                if str(record.get("person_name", "")).strip():
+                    connected_people.add(str(record.get("person_name", "")).strip())
+                timeline_dates.extend(_date_values(record.get("procedure_date"), record.get("resolution_date")))
+                continue
 
     created_entities = tuple(
         sorted(label for label, sections in entity_occurrences.items() if len(sections) == 1)
@@ -239,6 +279,10 @@ def build_complete_demo_case_batches(session, payload: dict[str, Any]) -> tuple[
     batches.append(("diario_oficial", build_diario_oficial_sample_batch(session, datasets["diario_oficial"])))
     batches.append(("transparencia", build_transparencia_sample_batch(session, datasets["transparencia"])))
     batches.append(("lobby", build_lobby_sample_batch(session, datasets["lobby"])))
+    batches.append(("servel", build_servel_sample_batch(session, datasets["servel"])))
+    batches.append(("municipalidades", build_municipalidades_sample_batch(session, datasets["municipalidades"])))
+    batches.append(("declaraciones_intereses", build_declaraciones_intereses_sample_batch(session, datasets["declaraciones_intereses"])))
+    batches.append(("sanciones_procedimientos", build_sanciones_procedimientos_sample_batch(session, datasets["sanciones_procedimientos"])))
     batches.append(("contraloria", build_contraloria_sample_batch(session, datasets["contraloria"])))
     return tuple(batches)
 
@@ -339,6 +383,48 @@ def _register_main_entity(occurrences: dict[str, set[str]], main_entity: str, se
         return
     if section_name == "registro_empresas":
         return
+    if section_name == "servel":
+        authority_name = str(record.get("authority_name", "")).strip()
+        municipality_name = str(record.get("municipality_name", "")).strip()
+        territory_name = str(record.get("territory_name", "")).strip()
+        for label in (authority_name, municipality_name, territory_name):
+            if label:
+                _register_entity(occurrences, label, section_name)
+        return
+    if section_name == "municipalidades":
+        municipality_name = str(record.get("municipality_name", "")).strip()
+        project_name = str(record.get("project_name", "")).strip()
+        spending_item_name = str(record.get("spending_item_name", "")).strip()
+        for label in (municipality_name, project_name, spending_item_name):
+            if label:
+                _register_entity(occurrences, label, section_name)
+        return
+    if section_name == "declaraciones_intereses":
+        person_name = str(record.get("person_name", "")).strip()
+        role_name = str(record.get("role_name", "")).strip()
+        organization_name = str(record.get("organization_name", "")).strip()
+        for label in (person_name, role_name, organization_name):
+            if label:
+                _register_entity(occurrences, label, section_name)
+        for company in record.get("declared_companies", []):
+            company_name = str(company.get("company_name", "")).strip()
+            if company_name:
+                _register_entity(occurrences, company_name, section_name)
+        for organization in record.get("declared_organizations", []):
+            organization_name = str(organization.get("organization_name", "")).strip()
+            if organization_name:
+                _register_entity(occurrences, organization_name, section_name)
+        return
+    if section_name == "sanciones_procedimientos":
+        organization_name = str(record.get("organization_name", "")).strip()
+        company_name = str(record.get("company_name", "")).strip()
+        person_name = str(record.get("person_name", "")).strip()
+        procedure_label = str(record.get("procedure_number") or record.get("procedure_title") or record.get("external_id")).strip()
+        resolution_label = str(record.get("resolution_number") or record.get("resolution_title") or record.get("external_id")).strip()
+        for label in (organization_name, company_name, person_name, procedure_label, resolution_label):
+            if label:
+                _register_entity(occurrences, label, section_name)
+        return
     _register_entity(occurrences, main_entity, section_name)
 
 
@@ -366,6 +452,10 @@ def _dataset_label(section_name: str) -> str:
         "diario_oficial": "Diario Oficial",
         "transparencia": "Transparencia Activa",
         "lobby": "Lobby",
+        "servel": "SERVEL",
+        "municipalidades": "Municipalidades",
+        "declaraciones_intereses": "Declaraciones de intereses",
+        "sanciones_procedimientos": "Sanciones y procedimientos",
         "contraloria": "Contraloria",
     }
     return labels.get(section_name, section_name)

@@ -1436,23 +1436,20 @@ def test_support_and_studio_routes_are_secondary_public_surfaces() -> None:
     assert 'os.getenv("DATOSENORDEN_SUPPORT_URL", "https://link.mercadopago.cl/datosenorden")' in inspect.getsource(reflex_app)
     assert 'Las donaciones no compran influencia' in support_source
     assert 'Evidencia primero' in support_source
-    assert 'Proyecto público' in support_source
+    assert 'Apoyo' in support_source
     assert 'Apoyar DatosEnOrden' in support_source
-    assert 'Sugerir una fuente oficial' in support_source
-    assert 'Conocer el proyecto' in support_source
+    assert 'Sugerir una fuente' in support_source
+    assert 'Abrir enlace de apoyo' in support_source
     assert 'El apoyo se canaliza mediante enlaces externos mientras el lanzamiento público mantiene una operación simple.' in support_source
     assert 'DatosEnOrden Studio' in studio_source
-    assert 'forma estructurada y verificable' in studio_source
+    assert 'lectura trazable' in studio_source
     assert 'DatosEnOrden Studio se encuentra en desarrollo activo' in studio_source
     assert 'fuentes oficiales' in studio_source
-    assert 'Enterprise' in studio_source
     assert 'Solicitar una' in studio_source
-    assert 'relaciones documentales' in studio_source
-    assert 'Cloud' in studio_source
+    assert 'Trazabilidad' in studio_source
     assert 'Municipalidades' in studio_source
     assert 'Enviar correo' in studio_source
-    assert 'Community' in studio_source
-    assert 'sin influencia editorial' in project_source.lower()
+    assert 'sin vender humo' in project_source.lower()
 
 
 

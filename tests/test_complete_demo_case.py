@@ -11,6 +11,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import demo_case_summary
 import load_complete_demo_case
 
+EXPECTED_DATASET_KEYS = {
+    "dipres",
+    "registro_empresas",
+    "chilecompra",
+    "diario_oficial",
+    "transparencia",
+    "lobby",
+    "servel",
+    "municipalidades",
+    "declaraciones_intereses",
+    "sanciones_procedimientos",
+    "contraloria",
+}
+
+EXPECTED_DATASET_LABELS = (
+    "DIPRES",
+    "Registro Empresas",
+    "ChileCompra",
+    "Diario Oficial",
+    "Transparencia Activa",
+    "Lobby",
+    "SERVEL",
+    "Municipalidades",
+    "Declaraciones de intereses",
+    "Sanciones y procedimientos",
+    "Contraloria",
+)
+
 
 def _payload() -> dict:
     return complete_demo_case.load_complete_demo_case_payload()
@@ -22,15 +50,7 @@ def test_complete_demo_case_payload_is_coherent() -> None:
     assert payload["classification"] == "LOCAL_TEST_DATA"
     assert payload["official_status"] == "NOT_OFFICIAL_DATA"
     assert payload["main_entity"]["name"] == "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
-    assert set(payload["datasets"]) == {
-        "dipres",
-        "registro_empresas",
-        "chilecompra",
-        "diario_oficial",
-        "transparencia",
-        "lobby",
-        "contraloria",
-    }
+    assert set(payload["datasets"]) == EXPECTED_DATASET_KEYS
 
     buyer_names = {
         record["Comprador"]["NombreOrganismo"]
@@ -50,21 +70,16 @@ def test_complete_demo_case_payload_is_coherent() -> None:
     assert payload["datasets"]["diario_oficial"]["records"][0]["person_name"] == "SOFIA RAMOS"
     assert payload["datasets"]["transparencia"]["records"][0]["person_name"] == "SOFIA RAMOS"
     assert payload["datasets"]["lobby"]["records"][0]["counterparty_name"] == "SOFIA RAMOS"
+    assert payload["datasets"]["servel"]["classification"] == "LOCAL_TEST_DATA"
+    assert payload["datasets"]["declaraciones_intereses"]["records"][0]["person_name"] == "SOFIA RAMOS"
+    assert payload["datasets"]["sanciones_procedimientos"]["official_status"] == "NOT_OFFICIAL_DATA"
 
 
 def test_complete_demo_case_summary_tracks_reuse_and_timeline() -> None:
     summary = complete_demo_case.build_complete_demo_case_summary(_payload())
 
     assert summary.main_entity == "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
-    assert summary.datasets == (
-        "DIPRES",
-        "Registro Empresas",
-        "ChileCompra",
-        "Diario Oficial",
-        "Transparencia Activa",
-        "Lobby",
-        "Contraloria",
-    )
+    assert summary.datasets == EXPECTED_DATASET_LABELS
     assert "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO" in summary.reused_entities
     assert "ACME TECNOLOGIAS SPA" in summary.reused_entities
     assert "SOFIA RAMOS" in summary.reused_entities
@@ -104,6 +119,10 @@ def test_persist_complete_demo_case_loads_sections_in_dependency_order(monkeypat
     monkeypatch.setattr(complete_demo_case, "build_diario_oficial_sample_batch", lambda session, section: (_ := calls.append("diario_oficial")) or _batch("diario_oficial", claims=4, evidence=4, relationships=4))
     monkeypatch.setattr(complete_demo_case, "build_transparencia_sample_batch", lambda session, section: (_ := calls.append("transparencia")) or _batch("transparencia", claims=3, evidence=3, relationships=3))
     monkeypatch.setattr(complete_demo_case, "build_lobby_sample_batch", lambda session, section: (_ := calls.append("lobby")) or _batch("lobby", claims=3, evidence=3, relationships=2))
+    monkeypatch.setattr(complete_demo_case, "build_servel_sample_batch", lambda session, section: (_ := calls.append("servel")) or _batch("servel", entities=4, claims=4, evidence=4, relationships=4))
+    monkeypatch.setattr(complete_demo_case, "build_municipalidades_sample_batch", lambda session, section: (_ := calls.append("municipalidades")) or _batch("municipalidades", entities=3, claims=2, evidence=2, relationships=2))
+    monkeypatch.setattr(complete_demo_case, "build_declaraciones_intereses_sample_batch", lambda session, section: (_ := calls.append("declaraciones_intereses")) or _batch("declaraciones_intereses", entities=5, claims=5, evidence=3, relationships=5))
+    monkeypatch.setattr(complete_demo_case, "build_sanciones_procedimientos_sample_batch", lambda session, section: (_ := calls.append("sanciones_procedimientos")) or _batch("sanciones_procedimientos", entities=5, claims=4, evidence=2, relationships=4))
     monkeypatch.setattr(complete_demo_case, "build_contraloria_sample_batch", lambda session, section: (_ := calls.append("contraloria")) or _batch("contraloria", claims=2, evidence=2, relationships=2))
 
     loaded_batches: list[str] = []
@@ -127,15 +146,19 @@ def test_persist_complete_demo_case_loads_sections_in_dependency_order(monkeypat
         "diario_oficial",
         "transparencia",
         "lobby",
+        "servel",
+        "municipalidades",
+        "declaraciones_intereses",
+        "sanciones_procedimientos",
         "contraloria",
     ]
     assert loaded_batches == calls
     assert result.summary.main_entity == "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO"
-    assert result.source_records == 7
-    assert result.claims == 20
-    assert result.evidence == 20
-    assert result.entities == 7
-    assert result.relationships == 18
+    assert result.source_records == 11
+    assert result.claims == 35
+    assert result.evidence == 31
+    assert result.entities == 24
+    assert result.relationships == 33
 
 
 def test_demo_case_summary_script_prints_summary(monkeypatch, capsys) -> None:

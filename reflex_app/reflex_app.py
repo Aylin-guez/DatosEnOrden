@@ -116,7 +116,7 @@ SOURCE_COVERAGE_TEMPLATE = [
     {"source": "Declaraciones de Intereses", "status": "prototipo con datos", "contribution": "Declaraciones, intereses declarados y posibles entidades mencionadas."},
     {"source": "SERVEL", "status": "prototipo con datos", "contribution": "Autoridades electas y periodos electorales de muestra."},
     {"source": "Municipalidades", "status": "prototipo con datos", "contribution": "Contexto municipal y proyectos locales de muestra."},
-    {"source": "Sanciones y Procedimientos", "status": "prototipo sin datos", "contribution": "Procedimientos y resoluciones administrativas de prueba cuando exista carga local."},
+    {"source": "Sanciones y Procedimientos", "status": "prototipo con datos", "contribution": "Procedimientos y resoluciones administrativas de prueba con trazabilidad local."},
 ]
 PUBLISHED_DOCUMENT_VIEW_PATH = Path("data") / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion" / "document_view.json"
 PUBLISHED_DOCUMENT_READING_PATH = Path("data") / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion" / "reading.json"
@@ -1015,7 +1015,23 @@ def _safe_public_values(obj: object) -> list[object]:
 
 
 def page_section(title: str, *children, subtitle: str | None = None, class_name: str = "", element_id: str = "") -> rx.Component:
-    body = [rx.text(title, class_name="section-title")]
+    title_key = title.lower() if isinstance(title, str) else ""
+    section_icon = "?"
+    if "buscar" in title_key:
+        section_icon = "?"
+    elif "fuente" in title_key:
+        section_icon = "?"
+    elif "cronolog" in title_key or "seguimiento" in title_key:
+        section_icon = "?"
+    elif "document" in title_key or "lectura" in title_key:
+        section_icon = "?"
+    elif "proyecto" in title_key:
+        section_icon = "?"
+    elif "studio" in title_key:
+        section_icon = "?"
+    elif "informe" in title_key:
+        section_icon = "?"
+    body = [rx.hstack(rx.text(section_icon, class_name="section-icon"), rx.text(title, class_name="section-title"), spacing="2", align="center")]
     if subtitle is not None:
         body.append(rx.text(subtitle, class_name="section-subtitle"))
     body.extend(children)
@@ -1676,6 +1692,13 @@ class AppState(rx.State):
     knowledge_reference_count: int = 0
     knowledge_coverage_text: str = ""
     knowledge_reference_text: str = ""
+    knowledge_share_path: str = ""
+    knowledge_share_url: str = ""
+    knowledge_share_title: str = ""
+    knowledge_share_x_url: str = ""
+    knowledge_share_whatsapp_url: str = ""
+    knowledge_share_linkedin_url: str = ""
+    knowledge_share_copy_script: str = ""
     knowledge_error: str = ""
     topic_title: str = TOPIC_BUDGET_2013_TITLE
     topic_status: str = ""
@@ -2159,6 +2182,8 @@ class AppState(rx.State):
             self.knowledge_reference_count = metrics.get("references", 0)
             self.knowledge_coverage_text = str(coverage.get("label", "")) or f"Fragmentos utilizados: {self.knowledge_fragment_count} de {self.knowledge_total_fragment_count}"
             self.knowledge_reference_text = str(coverage.get("references_label", "")) or f"Referencias: {self.knowledge_reference_count}"
+            if hasattr(self, "_set_document_share_links"):
+                self._set_document_share_links()
         except Exception as exc:  # noqa: BLE001
             self.knowledge_documents = []
             self.knowledge_document = {}
@@ -2198,6 +2223,13 @@ class AppState(rx.State):
             self.knowledge_reference_count = 0
             self.knowledge_coverage_text = ""
             self.knowledge_reference_text = ""
+            self.knowledge_share_path = ""
+            self.knowledge_share_url = ""
+            self.knowledge_share_title = ""
+            self.knowledge_share_x_url = ""
+            self.knowledge_share_whatsapp_url = ""
+            self.knowledge_share_linkedin_url = ""
+            self.knowledge_share_copy_script = ""
             self.knowledge_error = f"{type(exc).__name__}: {exc}"
             self.error_message = self.knowledge_error
 
@@ -2351,6 +2383,20 @@ class AppState(rx.State):
         self.knowledge_selected_connections = _json_list(context.get("connections", []))
         self.knowledge_pdf_highlight_target = _pdf_highlight_target(self.knowledge_selected_fragment_id, self.knowledge_selected_page, self.knowledge_selected_excerpt)
         self.knowledge_document_pdf_page_href = _document_pdf_href(PUBLISHED_DOCUMENT_PDF_PUBLIC_HREF, self.knowledge_selected_page) if getattr(self, "knowledge_document_has_pdf", False) else ""
+        if hasattr(self, "_set_document_share_links"):
+            self._set_document_share_links()
+
+    def _set_document_share_links(self) -> None:
+        share_path = _official_document_fragment_href(self.knowledge_selected_fragment_id, self.knowledge_selected_page)
+        self.knowledge_share_path = share_path
+        self.knowledge_share_url = _public_url(share_path)
+        self.knowledge_share_title = f"{self.knowledge_selected_reference_label} - DatosEnOrden"
+        encoded_url = quote_plus(self.knowledge_share_url)
+        encoded_title = quote_plus(self.knowledge_share_title)
+        self.knowledge_share_x_url = f"https://twitter.com/intent/tweet?url={encoded_url}&text={encoded_title}"
+        self.knowledge_share_whatsapp_url = f"https://wa.me/?text={quote_plus(self.knowledge_share_title + ' ' + self.knowledge_share_url)}"
+        self.knowledge_share_linkedin_url = f"https://www.linkedin.com/sharing/share-offsite/?url={encoded_url}"
+        self.knowledge_share_copy_script = f"navigator.clipboard.writeText({json.dumps(self.knowledge_share_url)})"
 
     def open_report_investigation(self):
         return rx.redirect(_investigation_href(self.citizen_report_subject or DEMO_INVESTIGATION_TARGET))
@@ -2656,9 +2702,30 @@ def _sidebar_nav_class(active: bool) -> str:
     return "sidebar-nav-link sidebar-nav-link-active" if active else "sidebar-nav-link"
 
 
+def _nav_icon_for_label(label: str) -> str:
+    normalized = label.lower()
+    if normalized.startswith("pulso"):
+        return "?"
+    if normalized.startswith("lectura"):
+        return "?"
+    if normalized.startswith("buscar"):
+        return "?"
+    if normalized.startswith("fuentes"):
+        return "?"
+    if normalized.startswith("proyecto"):
+        return "?"
+    if normalized.startswith("expediente"):
+        return "?"
+    if normalized.startswith("informes"):
+        return "?"
+    if normalized.startswith("cronologia"):
+        return "?"
+    return label[:1].upper() or "?"
+
+
 def sidebar_nav_link(label: str, href: str, active: bool) -> rx.Component:
     return rx.link(
-        rx.text(label[:1], class_name="sidebar-initial"),
+        rx.text(_nav_icon_for_label(label), class_name="sidebar-initial"),
         rx.text(label, class_name="sidebar-label"),
         href=href,
         class_name=_sidebar_nav_class(active),
@@ -2839,23 +2906,27 @@ def app_footer() -> rx.Component:
         rx.grid(
             rx.box(
                 rx.text("PARA CIUDADANOS", class_name="footer-column-title"),
+                rx.text("Explorar, leer y verificar información pública sin perder el contexto documental.", class_name="footer-copy footer-column-copy"),
                 footer_text_link("♥", "Apoyar DatosEnOrden", "/support"),
+                footer_text_link("⌕", "Buscar en el sitio", "/search"),
                 footer_text_link("+", "Sugerir una fuente", SUPPORT_SOURCE_SUGGESTION_URL),
                 footer_text_link("i", "Sobre el proyecto", "/project"),
                 class_name="footer-column",
             ),
             rx.box(
                 rx.text("DATOSENORDEN STUDIO", class_name="footer-column-title"),
+                rx.text("DATOSENORDEN STUDIO", class_name="footer-column-title"),
                 rx.text("Puerta para organizaciones que necesitan expedientes, conectores y evidencia verificable.", class_name="footer-copy footer-column-copy"),
-                footer_text_link("☁", "Studio", "/studio"),
                 footer_text_link("✉", "Contacto comercial", STUDIO_CONVERSATION_URL),
-                class_name="footer-column",
+                footer_text_link("☁", "Studio", "/studio"),
+                footer_text_link("▣", "Ver lectura", "/topic"),
+                footer_text_link("↳", "Seguir cronología", "/tracking"),
             ),
             columns="2",
             spacing="4",
             class_name="footer-grid",
         ),
-        rx.text("Un observador ciudadano de documentos y eventos oficiales.", class_name="footer-copy footer-bottom-copy"),
+        rx.text("DatosEnOrden trabaja con datos locales de prueba y evidencia trazable, nunca con humo ni conclusiones automáticas.", class_name="footer-copy footer-bottom-copy"),
         class_name="site-footer",
     )
 
@@ -2864,11 +2935,16 @@ def support_cta_block() -> rx.Component:
     return rx.box(
         rx.text("¿Te resultó útil esta investigación?", class_name="card-title"),
         rx.text(
-            "DatosEnOrden se mantiene gracias al trabajo de desarrollo y al apoyo de la comunidad.",
+            "DatosEnOrden se sostiene con trabajo de producto, infraestructura y apoyo de la comunidad, sin vender conclusiones.",
             class_name="support-copy",
         ),
         rx.hstack(
             rx.button("Apoyar el proyecto", on_click=rx.redirect("/support"), class_name="button button-secondary support-mini-button"),
+            rx.cond(
+                AppState.knowledge_share_url != "",
+                rx.link("Compartir lectura", href=AppState.knowledge_share_url, class_name="document-inline-link"),
+                rx.text("Abre Lectura para compartir", class_name="mini-pill"),
+            ),
             spacing="2",
             wrap="wrap",
         ),
@@ -3380,6 +3456,7 @@ def comparison_panel() -> rx.Component:
 def source_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
+            rx.text("?", class_name="source-card-icon"),
             rx.text(row["dataset"], class_name="badge"),
             rx.text(row["status"], class_name="mini-pill"),
             justify="between",
@@ -3495,6 +3572,7 @@ def timeline_year_card(row: dict) -> rx.Component:
 def workspace_match_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
+            rx.text("?", class_name="source-card-icon"),
             rx.text(row.get("entity_type_label", _human_label(row.get("entity_type", ""))), class_name=_entity_badge_class(str(row.get("entity_type", "")))),
             rx.text(row["source_hint"], class_name="muted small"),
             justify="between",
@@ -3601,6 +3679,7 @@ def current_topic_card(row: dict) -> rx.Component:
 def home_pulse_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
+            rx.text("?", class_name="source-card-icon"),
             rx.text(row["status"], class_name="badge badge-teal"),
             rx.text(row["updated_at"], class_name="mini-pill mini-pill-purple"),
             spacing="2",
@@ -3608,7 +3687,7 @@ def home_pulse_card(row: dict) -> rx.Component:
         ),
         rx.text(row["title"], class_name="card-title"),
         rx.box(
-            rx.text("Que cambio", class_name="pulse-field-label"),
+            rx.text("Qué cambió", class_name="pulse-field-label"),
             rx.text(row["summary"], class_name="muted small"),
             class_name="pulse-field",
         ),
@@ -3698,16 +3777,27 @@ def topic_fragment_nav_item(row: dict) -> rx.Component:
         rx.vstack(
             rx.hstack(
                 rx.text(row["label"], class_name="context-title"),
-                rx.text("Pagina ", row["page"], class_name="mini-pill"),
+                rx.text(f"Página {row['page']}", class_name="mini-pill"),
                 spacing="2",
                 wrap="wrap",
             ),
+            rx.text(str(row.get("source", "Documento oficial")), class_name="source-fact"),
             rx.text(row["excerpt"], class_name="muted small"),
+            rx.hstack(
+                rx.text(str(row.get("type", "fragmento")), class_name="mini-pill mini-pill-purple"),
+                rx.text(str(row.get("reference_label", "")), class_name="mini-pill evidence-trust"),
+                spacing="2",
+                wrap="wrap",
+            ),
             spacing="1",
             align="stretch",
         ),
         on_click=AppState.select_document_anchor(row["page"], row["fragment_id"]),
-        class_name="topic-fragment-nav-item",
+        class_name=rx.cond(
+            row["fragment_id"] == AppState.knowledge_selected_fragment_id,
+            "topic-fragment-nav-item topic-fragment-nav-item-active",
+            "topic-fragment-nav-item",
+        ),
     )
 
 
@@ -3731,15 +3821,31 @@ def document_paragraph(row: dict) -> rx.Component:
 
 def topic_pdf_document_viewer(active_fragment_id: str) -> rx.Component:
     return rx.box(
+        rx.hstack(
+            rx.text("Documento oficial PDF", class_name="document-label"),
+            rx.link("Abrir PDF", href=AppState.knowledge_document_pdf_page_href, class_name="document-inline-link"),
+            justify="between",
+            align="center",
+            wrap="wrap",
+        ),
         rx.cond(
-            AppState.knowledge_pages,
-            rx.hstack(
-                rx.foreach(AppState.knowledge_pages, document_page_button),
+            AppState.knowledge_fragment_contexts,
+            rx.grid(
+                rx.foreach(AppState.knowledge_fragment_contexts, topic_fragment_nav_item),
+                columns="1",
                 spacing="2",
-                wrap="wrap",
-                class_name="document-page-nav",
+                class_name="fragment-nav-grid",
             ),
-            rx.text("No hay marcadores de página visibles; usamos la referencia activa del fragmento.", class_name="muted small"),
+            rx.cond(
+                AppState.knowledge_pages,
+                rx.hstack(
+                    rx.foreach(AppState.knowledge_pages, document_page_button),
+                    spacing="2",
+                    wrap="wrap",
+                    class_name="document-page-nav",
+                ),
+                rx.text("No hay marcadores de página visibles; usamos la referencia activa del fragmento.", class_name="muted small"),
+            ),
         ),
         rx.el.iframe(
             src=AppState.knowledge_document_pdf_page_href,
@@ -3756,6 +3862,7 @@ def topic_pdf_document_viewer(active_fragment_id: str) -> rx.Component:
                 rx.text(AppState.knowledge_pdf_location_notice, class_name="document-location-notice"),
             ),
             rx.text(active_fragment_id, class_name="mono id-line"),
+            reading_share_actions(),
             class_name="topic-pdf-citation-panel",
         ),
         class_name="topic-pdf-document-viewer",
@@ -4394,6 +4501,7 @@ def tracking_item_card(row: dict) -> rx.Component:
 def tracking_event_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
+            rx.text("?", class_name="source-card-icon"),
             rx.text(row["date"], class_name="badge badge-teal"),
             rx.text(row["status"], class_name="mini-pill mini-pill-purple"),
             justify="between",
@@ -4453,6 +4561,19 @@ def reading_context_bar() -> rx.Component:
     )
 
 
+def reading_share_actions() -> rx.Component:
+    return rx.hstack(
+        rx.text("Compartir lectura", class_name="document-label"),
+        rx.link("X", href=AppState.knowledge_share_x_url, class_name="badge badge-purple share-pill"),
+        rx.link("WhatsApp", href=AppState.knowledge_share_whatsapp_url, class_name="badge badge-teal share-pill"),
+        rx.link("LinkedIn", href=AppState.knowledge_share_linkedin_url, class_name="badge badge-blue share-pill"),
+        rx.button("Copiar enlace", on_click=rx.call_script(AppState.knowledge_share_copy_script), class_name="button button-secondary"),
+        spacing="2",
+        wrap="wrap",
+        class_name="reading-share-actions",
+    )
+
+
 def document_fragment_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
@@ -4500,14 +4621,23 @@ def official_document_pdf_viewer(page: int, fragment_id: str, highlight: str) ->
                 wrap="wrap",
             ),
             rx.cond(
-                AppState.knowledge_pages,
-                rx.hstack(
-                    rx.foreach(AppState.knowledge_pages, document_page_button),
+                AppState.knowledge_fragment_contexts,
+                rx.grid(
+                    rx.foreach(AppState.knowledge_fragment_contexts, topic_fragment_nav_item),
+                    columns="1",
                     spacing="2",
-                    wrap="wrap",
-                    class_name="document-page-nav",
+                    class_name="fragment-nav-grid",
                 ),
-                rx.text("No hay marcadores de página visibles; usamos la referencia activa del fragmento.", class_name="muted small"),
+                rx.cond(
+                    AppState.knowledge_pages,
+                    rx.hstack(
+                        rx.foreach(AppState.knowledge_pages, document_page_button),
+                        spacing="2",
+                        wrap="wrap",
+                        class_name="document-page-nav",
+                    ),
+                    rx.text("No hay marcadores de página visibles; usamos la referencia activa del fragmento.", class_name="muted small"),
+                ),
             ),
             rx.el.iframe(
                 src=AppState.knowledge_document_pdf_page_href,
@@ -4517,19 +4647,21 @@ def official_document_pdf_viewer(page: int, fragment_id: str, highlight: str) ->
             ),
             rx.box(
                 rx.text("Fragmento citado", class_name="document-label"),
-                rx.text(f"Pagina {page}", class_name="document-page-label"),
+                rx.text(f"Página {page}", class_name="document-page-label"),
                 rx.text(highlight, class_name="document-highlight"),
                 rx.cond(
                     AppState.knowledge_selected_page_is_approximate,
                     rx.text(AppState.knowledge_pdf_location_notice, class_name="document-location-notice"),
                 ),
                 rx.text(fragment_id, class_name="mono id-line"),
+                reading_share_actions(),
                 class_name="document-current-anchor",
             ),
             class_name="document-paper official-document-pdf-paper",
         ),
         class_name="official-document-viewer official-document-pdf-viewer",
     )
+
 
 def official_document_viewer(document_id: str, page: int, fragment_id: str, highlight: str) -> rx.Component:
     return rx.box(
@@ -4542,21 +4674,31 @@ def official_document_viewer(document_id: str, page: int, fragment_id: str, high
                 align="center",
                 wrap="wrap",
             ),
-            rx.hstack(
-                rx.foreach(AppState.knowledge_pages, document_page_button),
-                spacing="2",
-                wrap="wrap",
-                class_name="document-page-nav",
+            rx.cond(
+                AppState.knowledge_fragment_contexts,
+                rx.grid(
+                    rx.foreach(AppState.knowledge_fragment_contexts, topic_fragment_nav_item),
+                    columns="1",
+                    spacing="2",
+                    class_name="fragment-nav-grid",
+                ),
+                rx.hstack(
+                    rx.foreach(AppState.knowledge_pages, document_page_button),
+                    spacing="2",
+                    wrap="wrap",
+                    class_name="document-page-nav",
+                ),
             ),
             rx.box(
                 rx.text("Fragmento citado", class_name="document-label"),
-                rx.text(f"Pagina {page}", class_name="document-page-label"),
+                rx.text(f"Página {page}", class_name="document-page-label"),
                 rx.text(highlight, class_name="document-highlight"),
                 rx.cond(
                     AppState.knowledge_selected_page_is_approximate,
                     rx.text(AppState.knowledge_pdf_location_notice, class_name="document-location-notice"),
                 ),
                 rx.text(fragment_id, class_name="mono id-line"),
+                reading_share_actions(),
                 class_name="document-current-anchor",
             ),
             rx.box(
@@ -4953,6 +5095,7 @@ def search_empty_state() -> rx.Component:
             rx.hstack(
                 rx.link("Usar entrada guiada", href="/discover", class_name="badge badge-purple"),
                 rx.link("Explorar fuentes oficiales", href="/sources", class_name="document-inline-link"),
+                rx.link("Ir a Pulso", href="/", class_name="document-inline-link"),
                 spacing="3",
                 wrap="wrap",
             ),
@@ -6511,13 +6654,13 @@ def reports() -> rx.Component:
 @rx.page(
     route="/project",
     title="Estado del proyecto - DatosEnOrden",
-    description="Estado público del proyecto, límites del MVP y próximos pasos de DatosEnOrden.",
+    description="Estado público del proyecto DatosEnOrden, su propósito, alcance y límites.",
     image=PUBLIC_OG_IMAGE_URL,
     meta=_page_meta(
         "/project",
-        "estado del proyecto, MVP, datosenorden, roadmap, lanzamiento público",
+        "DatosEnOrden, proyecto, evidencia verificable, lectura pública, MVP",
         "Estado del proyecto - DatosEnOrden",
-        "Estado público del proyecto, límites del MVP y próximos pasos de DatosEnOrden.",
+        "Por qué existe DatosEnOrden, cómo funciona y qué significa un MVP con evidencia verificable.",
     ),
 )
 def project() -> rx.Component:
@@ -6525,7 +6668,7 @@ def project() -> rx.Component:
         rx.box(
             rx.text("Estado del proyecto", class_name="title"),
             rx.text(
-                "DatosEnOrden está en fase MVP: una versión pública inicial para probar el recorrido ciudadano completo.",
+                "DatosEnOrden existe para que la información pública se pueda leer como una historia verificable, no como un listado suelto de registros.",
                 class_name="subtitle",
             ),
             rx.text("MVP con datos locales de prueba. No representa datos oficiales reales.", class_name="badge badge-purple launch-notice"),
@@ -6541,153 +6684,88 @@ def project() -> rx.Component:
         page_section(
             "Qué es DatosEnOrden",
             rx.grid(
-                help_card("Plataforma independiente", "Ayuda a leer, conectar y seguir informacion publica con evidencia."),
-                help_card("Experiencia ciudadana", "Organiza documentos, reportes, expedientes, seguimiento y fuentes en un recorrido unico."),
-                help_card("Motores reutilizables", "La tecnologia interna esta pensada para adaptarse a distintos dominios en el tiempo."),
+                help_card("Leer evidencia", "Tomar documentos, relaciones y cronologías y convertirlos en una lectura pública útil."),
+                help_card("Conectar fuentes", "Cruzar compras, presupuesto, lobby, publicaciones, empresas y control en un mismo recorrido."),
+                help_card("Mantener trazabilidad", "Cada afirmación visible debe poder volver a una referencia o fragmento concreto."),
                 columns="3",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="La versión pública muestra el potencial del producto con datos locales de prueba.",
+            subtitle="La versión pública muestra el producto sin esconder sus límites ni prometer automatizaciones inexistentes.",
         ),
         page_section(
-            "Proyecto DatosEnOrden",
+            "Por qué existe",
             rx.text(
-                "DatosEnOrden ciudadano es la primera aplicacion publica del ecosistema. Proyecto DatosEnOrden prepara soluciones para organizaciones que necesitan ordenar, conectar y seguir su propia informacion documental sin perder evidencia.",
+                "El problema no es la falta de datos, sino que los datos suelen venir dispersos, con lenguaje técnico y sin una ruta clara para verificarlos.",
                 class_name="story-summary",
             ),
+            rx.text(
+                "DatosEnOrden junta fuentes, evidencia y contexto para que una persona pueda entender qué pasó, dónde verlo y qué parte del texto lo sostiene.",
+                class_name="story-summary",
+            ),
+            subtitle="El foco no es deslumbrar con volumen; es reducir fricción de lectura y hacer visible la procedencia.",
+        ),
+        page_section(
+            "Cómo funciona",
             rx.grid(
-                help_card("Cronologia / TraceFlow", "Capacidad para seguir estados, hitos, responsables, documentos y cambios en el tiempo."),
-                help_card("Knowledge Engine", "Capacidad para transformar documentos y registros en resumenes, preguntas, claims y evidencia revisable."),
-                help_card("Informes y documentacion", "Capacidad para convertir conocimiento estructurado en reportes, publicaciones y materiales para distintas audiencias."),
-                help_card("Platform Core configurable", "Capacidad para adaptar vocabulario, workflows, templates y audiencias sin hardcodear el negocio."),
+                flow_card(1, "Fuentes", "Cada registro nace desde un origen identificable y marcado como local de prueba cuando corresponde."),
+                flow_card(2, "Evidencia", "Fragmentos, documentos y anclas permiten volver a la parte exacta del contenido."),
+                flow_card(3, "Relaciones", "EntityEngine, RelationshipGraph y StateGraph ordenan los cruces sin inventar conclusiones."),
+                flow_card(4, "Lectura", "La interfaz traduce la trazabilidad técnica a una experiencia pública clara."),
                 columns="4",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Presentado como capacidades de producto, no como detalle interno de implementacion.",
+            subtitle="La arquitectura existente se reutiliza; el valor está en la lectura y en la trazabilidad, no en cambiarla.",
         ),
         page_section(
             "Qué significa MVP",
-            rx.text(
-                "MVP significa producto mínimo viable: una versión suficientemente completa para probar si el recorrido se entiende, si las conexiones son útiles y si la experiencia ayuda a revisar información con evidencia.",
-                class_name="story-summary",
-            ),
-            subtitle="No es la versión final ni contiene todavía fuentes reales conectadas de forma continua.",
-        ),
-        page_section(
-            "Qué partes usan datos de ejemplo",
             rx.grid(
-                help_card("Expediente de ejemplo", "Usa datos locales de prueba para mostrar cómo se conectarían fuentes y evidencia."),
-                help_card("Lecturas relacionadas de ejemplo", "Usa documentos simulados para mostrar resúmenes, preguntas y puntos clave."),
-                help_card("Informes y seguimiento", "Usan contenido local marcado como Muestra local no oficial."),
-                columns="3",
+                help_card("Más cobertura", "Seguir completando fuentes y aumentando la conectividad útil de los demos."),
+                help_card("Mejor lectura", "Pulir búsquedas, documento, cronología y vistas de producto con menos fricción."),
+                help_card("Publicación segura", "Mantener despliegue, backups y monitoreo simples para el primer lanzamiento público."),
+                help_card("Studio", "Mostrar el uso para organizaciones sin vender humo ni prometer magia."),
+                columns="2",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="La plataforma está preparada para fuentes reales, pero esta publicación no debe confundirse con datos oficiales.",
+            subtitle="El proyecto avanza por iteraciones pequeñas y visibles, con evidencia verificable antes que marketing.",
         ),
         page_section(
-            "Roadmap resumido",
+            "Cómo ayudar",
             rx.grid(
-                flow_card(1, "Primeras fuentes reales", "Integrar fuentes verificadas y mantener avisos claros de cobertura."),
-                flow_card(2, "Dominio y despliegue", "Publicar con SSL, monitoreo y backups."),
-                flow_card(3, "Feedback ciudadano", "Recoger problemas de lectura, navegacion y confianza."),
-                flow_card(4, "Newsletter y redes", "Compartir reportes y documentos explicados con tono neutral."),
-                columns="4",
+                help_card("Menos fricción", "Equipos no técnicos pueden revisar, compartir y seguir un caso sin fricción innecesaria."),
+                help_card("Universidades", "Explorar investigación, convenios, fuentes públicas y evidencia institucional."),
+                help_card("ONG", "Monitorear temas públicos con trazabilidad y lenguaje ciudadano."),
+                help_card("Organismos públicos", "Centralizar evidencia pública y seguimiento documental."),
+                columns="2",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Solo producto público; sin prometer login, pagos ni automatizaciones aún no construidas.",
+            subtitle="Pensado para quien necesita una lectura de trabajo, no una demo técnica.",
         ),
         page_section(
-            "Cómo apoyar reportando errores",
+            "Límite actual",
             rx.text(
-                "Si encuentras un texto confuso, una pantalla vacia, un enlace que no ayuda o una afirmacion que necesita mejor evidencia, reportalo con la ruta de la pagina y una breve descripcion.",
+                "No hay afirmaciones automáticas, ni inferencias encubiertas, ni fuentes inventadas. Hay lectura verificable con demo local.",
                 class_name="story-summary",
             ),
             rx.text(
-                "¿Quieres reportar un error, sugerir una fuente o conversar sobre una implementación para tu organización? Escribe a datosenorden@gmail.com.",
+                "DatosEnOrden Studio se encuentra en desarrollo activo. Algunas capacidades ya forman parte de la plataforma pública y otras se incorporarán progresivamente.",
                 class_name="story-summary",
             ),
-            rx.hstack(
-                rx.button("Explorar Buscar", on_click=rx.redirect("/search"), class_name="button"),
-                rx.button("Leer Informes", on_click=rx.redirect("/reports"), class_name="button button-secondary"),
-                rx.button("Explorar Fuentes", on_click=rx.redirect("/ecosystem"), class_name="button button-secondary"),
-                spacing="3",
-                wrap="wrap",
+            subtitle="Eso es suficiente para un primer lanzamiento público y deja claro dónde termina la demo.",
+        ),
+        page_section(
+            "Cómo seguir",
+            rx.text(
+                "Si encuentras una mejora obvia, reporta la ruta y el texto exacto: eso ayuda más que ideas vagas.",
+                class_name="story-summary",
             ),
-            subtitle="Apoyo discreto, sin influencia editorial ni prioridad sobre la evidencia.",
+            subtitle="La iteración siguiente debe mejorar la lectura sin cambiar la arquitectura base.",
         ),
         active_page=PAGE_PROJECT,
     )
-
-
-@rx.page(
-    route="/support",
-    title="Apoyar DatosEnOrden",
-    description="Cómo apoyar DatosEnOrden sin afectar la independencia editorial ni el estándar de evidencia.",
-    image=PUBLIC_OG_IMAGE_URL,
-    meta=_page_meta(
-        "/support",
-        "apoyar datosenorden, independencia editorial, evidencia, proyecto ciudadano",
-        "Apoyar DatosEnOrden",
-        "Cómo apoyar DatosEnOrden sin afectar la independencia editorial ni el estándar de evidencia.",
-    ),
-)
-def support() -> rx.Component:
-    return shell(
-        rx.box(
-            rx.text("Apoyar DatosEnOrden", class_name="title"),
-            rx.text(
-                "DatosEnOrden es una plataforma pública basada en documentos oficiales. El apoyo ayuda a sostener el proyecto, pero la evidencia siempre define la lectura.",
-                class_name="subtitle",
-            ),
-            rx.hstack(
-                rx.link("Apoyar DatosEnOrden", href=SUPPORT_DONATION_URL, class_name="button primary-action"),
-                rx.link("Sugerir una fuente oficial", href=SUPPORT_SOURCE_SUGGESTION_URL, class_name="button button-secondary"),
-                rx.link("Conocer el proyecto", href="/project", class_name="button button-secondary"),
-                spacing="3",
-                wrap="wrap",
-                class_name="hero-actions",
-            ),
-            class_name="hero support-hero",
-        ),
-        page_section(
-            "Apoyo después del valor",
-            rx.text(
-                "El sitio no pide dinero antes de entregar una lectura útil. Las donaciones son una forma de agradecer y sostener trabajo ya realizado: hosting, almacenamiento, procesamiento documental y desarrollo.",
-                class_name="story-summary",
-            ),
-            subtitle="El apoyo se canaliza mediante enlaces externos mientras el lanzamiento público mantiene una operación simple.",
-        ),
-        page_section(
-            "Independencia editorial",
-            rx.grid(
-                help_card("Las donaciones no compran influencia", "Un aporte no decide qué se publica, cómo se redacta ni qué conclusiones aparecen."),
-                help_card("Evidencia primero", "La evidencia verificable siempre pesa más que aportes, alianzas o sugerencias."),
-                help_card("Proyecto público", "DatosEnOrden mantiene una lectura ciudadana abierta, neutral y trazable."),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Apoyar no cambia la prioridad de fuentes ni el estándar de evidencia.",
-        ),
-        page_section(
-            "Acciones disponibles",
-            rx.grid(
-                support_action_card("Apoyar DatosEnOrden", "Aporte futuro para sostener infraestructura y desarrollo continuo.", "Apoyar DatosEnOrden", SUPPORT_DONATION_URL),
-                support_action_card("Sugerir una fuente oficial", "Proponer documentos o fuentes públicas verificables para evaluar más adelante.", "Sugerir una fuente oficial", SUPPORT_SOURCE_SUGGESTION_URL),
-                support_action_card("Conocer el proyecto", "Revisar el estado del MVP, sus límites y próximos pasos.", "Conocer el proyecto", "/project"),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Sin contacto comercial aquí; Studio cumple ese rol para organizaciones.",
-        ),
-        active_page=PAGE_SUPPORT,
-    )
-
 
 @rx.page(
     route="/studio",
@@ -6706,11 +6784,11 @@ def studio() -> rx.Component:
         rx.box(
             rx.text("DatosEnOrden Studio", class_name="title"),
             rx.text(
-                "La plataforma para organizaciones que necesitan trabajar con información pública de forma estructurada y verificable.",
+                "La plataforma para municipalidades, universidades y equipos que necesitan ordenar información pública con evidencia y contexto.",
                 class_name="subtitle",
             ),
             rx.text(
-                "Permite explorar, relacionar y comprender información pública mediante conectores, expedientes y automatización documental.",
+                "Explora conectores, expedientes, cronologías y documentos para trabajar con una lectura trazable, no con hojas sueltas.",
                 class_name="muted small",
             ),
             rx.hstack(
@@ -6723,32 +6801,17 @@ def studio() -> rx.Component:
             class_name="hero studio-hero",
         ),
         page_section(
-            "Qué puede hacer",
+            "Qué obtiene una organización",
             rx.grid(
-                help_card("Conectar múltiples fuentes oficiales", "Unificar conectores públicos y privados bajo una lectura trazable."),
-                help_card("Construir expedientes navegables", "Reunir entidades, fuentes, evidencia, relaciones y cronología."),
-                help_card("Relacionar documentos", "Vincular documentos, publicaciones y eventos con entidades concretas."),
-                help_card("Generar cronologías", "Ordenar cambios y eventos en el tiempo desde registros verificables."),
-                help_card("Buscar entidades", "Encontrar organismos, personas, empresas, compras y documentos."),
-                help_card("Seguir cambios", "Preparar seguimiento documental sin publicar conclusiones automáticas."),
-                help_card("Centralizar evidencia", "Mantener enlaces, fragmentos y fuentes visibles para revisión."),
-                columns="3",
+                help_card("Visibilidad", "Una ruta única para leer compras, presupuestos, publicaciones y evidencia relacionada."),
+                help_card("Contexto", "Las piezas dejan de vivir en pantallas separadas y pasan a un expediente entendible."),
+                help_card("Trazabilidad", "Cada lectura puede volver a su documento o fragmento de origen."),
+                help_card("Menos fricción", "Equipos no técnicos pueden revisar, compartir y seguir un caso sin fricción innecesaria."),
+                columns="2",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Capacidades basadas en la plataforma pública actual y en líneas de trabajo planificadas.",
-        ),
-        page_section(
-            "Modelos futuros",
-            rx.grid(
-                help_card("Community", "Uso abierto y documentación para comunidades que trabajan con información pública."),
-                help_card("Cloud", "Operación administrada para equipos que necesitan conectores y expedientes sin mantener infraestructura."),
-                help_card("Enterprise", "Instalaciones privadas futuras, soporte y conectores específicos cuando el caso lo justifique."),
-                columns="3",
-                spacing="3",
-                class_name="responsive-grid",
-            ),
-            subtitle="Sin precios publicados todavía; estos modelos describen dirección de producto, no disponibilidad inmediata.",
+            subtitle="Pensado para quien necesita una lectura de trabajo, no una demo técnica.",
         ),
         page_section(
             "Casos de uso",
@@ -6759,32 +6822,71 @@ def studio() -> rx.Component:
                 help_card("Empresas", "Comprender proveedores, licitaciones, publicaciones y contexto regulatorio."),
                 help_card("Consultoras", "Preparar expedientes verificables para análisis y reportes."),
                 help_card("Organismos públicos", "Centralizar evidencia pública y seguimiento documental."),
-                help_card("Fiscalías", "Explorar relaciones documentales y cronologías sin inferencias automáticas."),
-                columns="3",
+                columns="2",
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="Casos orientativos para conversaciones iniciales; cada implementación debe revisarse con evidencia y límites claros.",
+            subtitle="Casos orientativos para conversaciones iniciales; cada implementación se revisa con evidencia y límites claros.",
         ),
         page_section(
-            "Estado del proyecto",
+            "Flujo",
+            rx.grid(
+                flow_card(1, "Entrar", "La organización llega por un caso, una fuente o un documento ya conocido."),
+                flow_card(2, "Relacionar", "La plataforma conecta entidades, eventos, evidencia y cronología."),
+                flow_card(3, "Revisar", "Se abren fragmentos y documentos para validar el texto original."),
+                flow_card(4, "Compartir", "La lectura se puede mover internamente sin perder el enlace estable."),
+                columns="4",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+            subtitle="Un flujo simple reduce el costo de adopción y hace más fácil explicar valor interno.",
+        ),
+        page_section(
+            "Estado actual",
             rx.text(
-                "DatosEnOrden Studio se encuentra en desarrollo activo. Algunas capacidades ya forman parte de la plataforma pública y otras serán incorporadas progresivamente.",
+                "DatosEnOrden Studio se encuentra en desarrollo activo. Algunas capacidades ya forman parte de la plataforma pública y otras se incorporarán progresivamente.",
                 class_name="story-summary",
             ),
-            subtitle="No se prometen funciones inexistentes: el producto avanza desde conectores, expedientes y automatización documental verificable.",
-        ),
-        page_section(
-            "Conversar sobre Studio",
-            rx.hstack(
-                rx.link("Solicitar una conversación", href=STUDIO_CONVERSATION_URL, class_name="button primary-action"),
-                rx.link("Enviar correo", href=f"mailto:{STUDIO_CONTACT_EMAIL}", class_name="button button-secondary"),
-                spacing="3",
-                wrap="wrap",
-            ),
-            subtitle="Para organizaciones que necesitan una puerta de entrada al ecosistema DatosEnOrden.",
+            subtitle="La versión pública muestra el producto sin esconder límites ni prometer automatizaciones inexistentes.",
         ),
         active_page=PAGE_STUDIO,
+    )
+
+@rx.page(
+    route="/support",
+    title="Apoyar DatosEnOrden",
+    description="Página pública de apoyo y colaboración para el lanzamiento de DatosEnOrden.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/support",
+        "apoyar datosenorden, colaboración, lanzamiento público, feedback",
+        "Apoyar DatosEnOrden",
+        "Página pública de apoyo y colaboración para el lanzamiento de DatosEnOrden.",
+    ),
+)
+def support() -> rx.Component:
+    return shell(
+        rx.box(
+            rx.text("Apoyar DatosEnOrden", class_name="title"),
+            rx.text(
+                "El apoyo se canaliza mediante enlaces externos mientras el lanzamiento público mantiene una operación simple.",
+                class_name="subtitle",
+            ),
+            rx.text(
+                "Las donaciones no compran influencia ni alteran la prioridad de fuentes; solo ayudan a sostener infraestructura y trabajo continuo.",
+                class_name="muted small",
+            ),
+            rx.text("Evidencia primero.", class_name="muted small"),
+            support_cta_block(),
+            rx.grid(
+                support_action_card("Apoyo", "La plataforma sigue abierta a feedback, correcciones y colaboración puntual.", "Abrir enlace de apoyo", SUPPORT_DONATION_URL),
+                support_action_card("Sugerir fuente", "Si falta una fuente pública, deja el enlace y el motivo para revisarlo.", "Sugerir una fuente", SUPPORT_SOURCE_SUGGESTION_URL),
+                columns="2",
+                spacing="3",
+                class_name="responsive-grid",
+            ),
+        ),
+        active_page=PAGE_SUPPORT,
     )
 
 
@@ -8190,6 +8292,29 @@ style = {
         ".reference-strip": {"grid_template_columns": "1fr"},
     },
 }
+
+style.update({
+    ".section-icon": {"font_size": "18px", "color": "#34d399", "font_weight": "900"},
+    ".source-card-icon": {"font_size": "18px", "color": "#60a5fa", "font_weight": "900"},
+    ".reading-share-actions": {"margin_top": "10px"},
+    ".share-pill": {"text_decoration": "none", "font_weight": "850"},
+    ".fragment-nav-grid": {"grid_template_columns": "1fr", "gap": "10px"},
+    ".topic-fragment-nav-item": {"border": "1px solid rgba(148, 163, 184, 0.16)", "background": "rgba(15, 23, 42, 0.55)", "text_align": "left", "padding": "12px 14px", "border_radius": "16px", "transition": "transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease"},
+    ".topic-fragment-nav-item-active": {"border_color": "rgba(52, 211, 153, 0.5)", "background": "rgba(20, 83, 45, 0.26)", "box_shadow": "0 12px 32px rgba(15, 23, 42, 0.35)"},
+    ".reading-share-actions .button": {"min_height": "36px"},
+    ".site-footer": {"border_top": "1px solid rgba(148, 163, 184, 0.14)", "background": "linear-gradient(180deg, rgba(15, 15, 18, 0.92), rgba(8, 8, 11, 0.98))"},
+    ".footer-column": {"display": "grid", "gap": "10px"},
+    ".footer-copy": {"max_width": "56ch"},
+    ".footer-column-copy": {"margin_bottom": "2px"},
+    ".document-paper": {"gap": "12px"},
+    ".document-current-anchor": {"display": "grid", "gap": "8px"},
+    ".topic-pdf-citation-panel": {"display": "grid", "gap": "8px"},
+    ".document-inline-link": {"text_decoration": "none"},
+    ".badge-blue": {"background": "rgba(59, 130, 246, 0.12)", "color": "#bfdbfe"},
+    ".badge-green": {"background": "rgba(34, 197, 94, 0.12)", "color": "#bbf7d0"},
+    ".badge-red": {"background": "rgba(239, 68, 68, 0.12)", "color": "#fecaca"},
+    ".badge-purple": {"background": "rgba(168, 85, 247, 0.12)", "color": "#e9d5ff"},
+})
 
 
 def _global_head_components() -> list[rx.Component]:
