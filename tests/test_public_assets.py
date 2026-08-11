@@ -23,7 +23,7 @@ def test_manifest_and_sitemap_use_public_domain() -> None:
     robots = Path("assets/robots.txt").read_text(encoding="utf-8")
 
     assert "DatosEnOrden" in manifest
-    assert "cronologías" in manifest
+    assert "Informacion publica conectada" in manifest or "Informacion" in manifest
     assert "https://datosenorden.cl/sitemap.xml" in robots
     for route in [
         "https://datosenorden.cl",

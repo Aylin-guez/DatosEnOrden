@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 PUBLIC_TEXT_FILES = (
-    Path("reflex_app/reflex_app.py"),
+    *sorted(Path("reflex_app").rglob("*.py")),
     Path("src/datosenorden/web/app_services.py"),
+    Path("src/datosenorden/maintenance/human_readable.py"),
     Path("src/datosenorden/maintenance/source_plugins.py"),
     Path("data/source_population/infolobby_minimal.json"),
     Path("data/connectors/chilecompra_connector.json"),
@@ -29,6 +30,9 @@ BROKEN_TEXT_MARKERS = (
     "c?mo",
     "bolet?n",
     "a?n",
+    "sesi?n",
+    "informaci?n",
+    "investigaci?n",
 )
 
 
@@ -53,3 +57,10 @@ def test_public_connector_text_keeps_spanish_accents() -> None:
     source_population = Path("data/source_population/infolobby_minimal.json").read_text(encoding="utf-8")
     assert "organismo p\u00fablico" in source_population
     assert "fuente m\u00ednima" in source_population
+
+
+def test_servel_report_explanations_keep_safe_spanish_text() -> None:
+    source = Path("src/datosenorden/maintenance/human_readable.py").read_text(encoding="utf-8")
+
+    assert "¿Qué significa esto?" in source
+    assert "conexión entre entidades guardadas" in source

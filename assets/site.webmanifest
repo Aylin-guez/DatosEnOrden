@@ -1,11 +1,11 @@
 {
-  "name": "DatosEnOrden",
-  "short_name": "DatosEnOrden",
+  "name": "DatosEnOrden Ciudadano",
+  "short_name": "DEO Ciudadano",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f4f7fb",
   "theme_color": "#0f766e",
-  "description": "Lectura ciudadana de documentos oficiales, evidencia y cronologías.",
+  "description": "Informacion publica conectada, verificable y comprensible.",
   "icons": [
     {
       "src": "/icon-192.png",

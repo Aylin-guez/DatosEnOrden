@@ -102,11 +102,18 @@ def test_prelaunch_public_check_detects_tracked_cache(monkeypatch) -> None:
 def test_prelaunch_public_check_detects_public_routes(tmp_path: Path, monkeypatch) -> None:
     module = _load_script()
     app = tmp_path / "reflex_app.py"
-    app.write_text('\n\n'.join(f'@rx.page(\n    route="{route}",\n    title="x",\n)' for route in module.PUBLIC_ROUTES), encoding="utf-8")
+    app.write_text("from reflex_app.app.bootstrap import create_app\n", encoding="utf-8")
     monkeypatch.setattr(module, "REFLEX_APP", app)
+    payload = __import__("json").dumps(list(module.PUBLIC_ROUTES))
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout=payload + "\n", stderr=""),
+    )
 
     assert "/support" in module.PUBLIC_ROUTES
     assert "/studio" in module.PUBLIC_ROUTES
+    assert "/laboratory/expedient" in module.PUBLIC_ROUTES
     assert module._public_routes_check().ok is True
 
 
@@ -144,7 +151,7 @@ def test_prelaunch_public_check_validates_public_web_assets(tmp_path: Path, monk
 
     manifest.write_text(
         """{
-  "name": "DatosEnOrden",
+  "name": "DatosEnOrden Ciudadano",
   "theme_color": "#0f766e",
   "icons": [{"src": "/icon-192.png"}, {"src": "/icon-512.png"}]
 }
@@ -159,7 +166,7 @@ Sitemap: https://datosenorden.cl/sitemap.xml
         encoding="utf-8",
     )
     sitemap.write_text(
-        "<urlset><url><loc>https://datosenorden.cl</loc></url><url><loc>https://datosenorden.cl/search</loc></url><url><loc>https://datosenorden.cl/topic</loc></url><url><loc>https://datosenorden.cl/sources</loc></url><url><loc>https://datosenorden.cl/official-document</loc></url><url><loc>https://datosenorden.cl/chronology</loc></url><url><loc>https://datosenorden.cl/support</loc></url><url><loc>https://datosenorden.cl/studio</loc></url></urlset>",
+        "<urlset><url><loc>https://datosenorden.cl</loc></url><url><loc>https://datosenorden.cl/search</loc></url><url><loc>https://datosenorden.cl/sources</loc></url><url><loc>https://datosenorden.cl/official-document</loc></url><url><loc>https://datosenorden.cl/laboratory</loc></url><url><loc>https://datosenorden.cl/project</loc></url></urlset>",
         encoding="utf-8",
     )
     rxconfig.write_text(

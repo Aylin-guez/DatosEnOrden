@@ -1,2 +1,15 @@
 <?xml version='1.0' encoding='utf-8'?>
-<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://datosenorden.cl</loc><changefreq>weekly</changefreq><priority>1.0</priority></url><url><loc>https://datosenorden.cl/search</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/topic</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/sources</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/official-document</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/chronology</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/reports</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/investigation</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/project</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/support</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/studio</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/demo</loc><changefreq>weekly</changefreq><priority>0.8</priority></url><url><loc>https://datosenorden.cl/library</loc><changefreq>weekly</changefreq><priority>0.8</priority></url></urlset>
+<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://datosenorden.cl</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://datosenorden.cl/search</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://datosenorden.cl/sources</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://datosenorden.cl/laboratory</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://datosenorden.cl/official-document</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://datosenorden.cl/investigation</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://datosenorden.cl/topic</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://datosenorden.cl/chronology</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://datosenorden.cl/reports</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://datosenorden.cl/project</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://datosenorden.cl/support</loc><changefreq>weekly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://datosenorden.cl/studio</loc><changefreq>weekly</changefreq><priority>0.4</priority></url>
+</urlset>

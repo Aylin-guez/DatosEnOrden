@@ -21,7 +21,8 @@ def test_deploy_check_documents_required_env_in_example(tmp_path: Path, monkeypa
         "DATABASE_URL=postgresql://example\n"
         "DATOSENORDEN_ENV=production\n"
         "DATOSENORDEN_PUBLIC_BASE_URL=https://datosenorden.cl\n"
-        "DATOSENORDEN_SUPPORT_URL=https://link.mercadopago.cl/datosenorden\n",
+        "DATOSENORDEN_SUPPORT_URL=https://link.mercadopago.cl/datosenorden\n"
+        "API_URL=https://datosenorden.cl\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(module, "ROOT", tmp_path)
@@ -114,23 +115,15 @@ def test_deploy_check_requires_public_launch_assets(tmp_path: Path, monkeypatch)
 
 def test_deploy_check_recognizes_multiline_public_routes(tmp_path: Path, monkeypatch) -> None:
     module = _load_script()
-    app = tmp_path / "reflex_app" / "reflex_app.py"
-    app.parent.mkdir(parents=True)
-    app.write_text(
-        "\n\n".join(
-            f"""@rx.page(
-    route=\"{route}\",
-    title=\"x\",
-)
-def page_{index}():
-    return None"""
-            for index, route in enumerate(module.PUBLIC_ROUTES, start=1)
-        ),
-        encoding="utf-8",
-    )
     monkeypatch.setattr(module, "ROOT", tmp_path)
+    payload = __import__("json").dumps(list(module.PUBLIC_ROUTES))
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout=payload + "\n", stderr=""),
+    )
 
     result = module._route_check()
 
     assert result.ok is True
-    assert "/chronology" in result.detail
+    assert "/laboratory/expedient" in result.detail
