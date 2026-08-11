@@ -22,6 +22,12 @@ DEPLOYMENT_FILES = (
     ROOT / "scripts" / "server_setup_ubuntu.sh",
     ROOT / "scripts" / "healthcheck_public.py",
     ROOT / "scripts" / "backup_postgres.sh",
+    ROOT / "scripts" / "host_preflight_ubuntu.sh",
+    ROOT / "scripts" / "configure_ufw.sh",
+    ROOT / "scripts" / "configure_postgres_beta.sh",
+    ROOT / "scripts" / "deploy_release_ubuntu.sh",
+    ROOT / "scripts" / "rollback_release_ubuntu.sh",
+    ROOT / "scripts" / "post_deploy_smoke.sh",
     ROOT / "docs" / "VPS_GO_LIVE_STEPS.md",
 )
 PUBLIC_ROUTES = (

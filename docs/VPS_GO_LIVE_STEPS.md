@@ -1,349 +1,96 @@
-# VPS Go Live Steps
+# VPS Go-Live Steps
 
-Guia practica para desplegar DatosEnOrden en una VPS Ubuntu 24.04 LTS con Caddy, PostgreSQL local privado y systemd.
+This runbook deploys an immutable public release to Ubuntu 24.04 LTS. It does
+not deploy from a mutable clone, and it does not contain credentials.
 
-Supuestos de esta guia:
+## Preconditions
 
-- El repo se desplegara en `/opt/datosenorden`.
-- El servicio correra como usuario `datosenorden`.
-- Reflex correra en modo `single-port` en `127.0.0.1:3000`.
-- API y WebSocket de Reflex viviran bajo `/api` en ese mismo puerto.
-- Caddy publicara el sitio y enviara todo el trafico al proceso Reflex local.
-- En el servidor se usan comandos `python3`, no `py -3.14`.
+- The target is a verified Ubuntu 24.04 VPS with at least 3 vCPU, about 8 GB
+  RAM, and 75 GB NVMe storage.
+- SSH key access and the host fingerprint are verified out of band.
+- The release artifact, its SHA-256, and its 40-hex release ID are known.
+- A root-owned `/etc/datosenorden/beta.env` exists with mode `0640` and group
+  `datosenorden`. Its public URLs are `https://beta.datosenorden.cl`; DNS is
+  still a separate gate.
 
-## 1. Comprar una VPS Ubuntu 24.04 LTS
+## Provisioning sequence
 
-Elige una VPS Ubuntu 24.04 LTS con al menos:
+1. **GATE**: upload the certified artifact through an authenticated channel and
+   verify it before executing anything from it:
 
-- 2 vCPU
-- 4 GB RAM
-- 40 GB SSD
+   ```bash
+   echo '<ARTIFACT_SHA256>  /secure-upload/datosenorden.tar' | sha256sum -c -
+   ```
 
-No uses Ubuntu 22.04 para este pack salvo que aprovisiones Python 3.12+ manualmente antes de seguir.
+2. **GATE**: run the read-only preflight from the verified artifact. Stop on
+   `FAIL`:
 
-## 2. Obtener la IP publica
+   ```bash
+   tar -xOf /secure-upload/datosenorden.tar scripts/host_preflight_ubuntu.sh | sudo bash
+   ```
 
-Guarda la IP publica que te entregue el proveedor. La vas a usar en DNS y SSH.
+3. **AUTOMATED**: bootstrap packages, the service user, and filesystem layout
+   from the same verified artifact:
 
-Ejemplo:
+   ```bash
+   tar -xOf /secure-upload/datosenorden.tar scripts/server_setup_ubuntu.sh | \
+     sudo env INSTALL_LIBREOFFICE=0 bash
+   ```
 
-```text
-203.0.113.10
-```
+   Do not clone, pull, or retain a mutable Git worktree on the host.
 
-## 3. Entrar por SSH desde Windows PowerShell
+4. **MANUAL/GATE**: from a verified SSH session run the firewall script from
+   the verified artifact with `--confirmed-ssh`. Provider firewall:
+   allow administrative SSH, TCP 80, TCP 443; deny public TCP 3000 and 5432.
+5. **MANUAL/GATE**: create a mode-0600 password file outside the release, then
+   execute `configure_postgres_beta.sh` from the verified artifact with the
+   password-file path. PostgreSQL must remain loopback-only.
+6. **AUTOMATED**: prepare the immutable release from the same artifact:
 
-En Windows PowerShell:
+   ```bash
+   tar -xOf /secure-upload/datosenorden.tar scripts/deploy_release_ubuntu.sh | sudo bash -s -- \
+     --artifact /secure-upload/datosenorden.tar \
+     --sha256 <ARTIFACT_SHA256> \
+     --release-id <RELEASE_ID>
+   ```
 
-```powershell
-ssh root@203.0.113.10
-```
+   The command prepares but does not activate a release. It fails closed on a
+   checksum, archive, dependency, or Reflex build failure.
+7. **GATE**: extract only `deployment/datosenorden.service` and
+   `deployment/Caddyfile` from the verified artifact into their system
+   locations, then validate them.
+   Validate with `systemd-analyze verify /etc/systemd/system/datosenorden.service`
+   and `caddy validate --config /etc/caddy/Caddyfile` before enabling services.
+8. **AUTOMATED**: repeat the deployment command with `--activate`, then run
+   `sudo systemctl daemon-reload && sudo systemctl enable --now datosenorden`.
+9. **GATE**: execute `post_deploy_smoke.sh` from the verified artifact against
+   `<RELEASE_ID>`.
+   It verifies the service, loopback app/database, current symlink, and that
+   ports 3000 and 5432 are not public bindings.
+10. **STOP**: do not create the DNS record, enable HSTS, or cut over production
+   in this runbook. DNS/TLS and browser/WebSocket QA are separate stages.
 
-Si tu proveedor usa usuario inicial `ubuntu`, usa:
+## Rollback and backups
 
-```powershell
-ssh ubuntu@203.0.113.10
-```
-
-## 4. Actualizar el servidor
-
-Una vez dentro de la VPS:
-
-```bash
-sudo apt update
-sudo apt upgrade -y
-sudo reboot
-```
-
-Vuelve a entrar por SSH despues del reinicio.
-
-## 5. Crear el usuario del sistema
-
-Si todavia no existe el usuario de la app:
-
-```bash
-sudo useradd --system --create-home --shell /bin/bash datosenorden
-```
-
-Confirma:
-
-```bash
-id datosenorden
-```
-
-## 6. Clonar el repo
-
-Instala Git si hace falta y clona el repo en la carpeta final:
-
-```bash
-sudo mkdir -p /opt/datosenorden
-sudo chown -R datosenorden:datosenorden /opt/datosenorden
-sudo -u datosenorden git clone <REPO_URL> /opt/datosenorden
-cd /opt/datosenorden
-```
-
-Si el repo ya existe:
+Application rollback never changes database state:
 
 ```bash
-cd /opt/datosenorden
-sudo -u datosenorden git pull --ff-only
+sudo bash scripts/rollback_release_ubuntu.sh <PREVIOUS_RELEASE_ID>
 ```
 
-## 7. Copiar el .env productivo
-
-Usa el template nuevo:
+Create a beta logical backup with restrictive permissions and a checksum:
 
 ```bash
-cd /opt/datosenorden
-sudo -u datosenorden cp deployment/production.env.example .env
-sudo -u datosenorden nano .env
+sudo -u datosenorden env PGHOST=127.0.0.1 PGPORT=5432 \
+  PGUSER=datosenorden_beta PGDATABASE=datosenorden_beta \
+  bash /opt/datosenorden/current/scripts/backup_postgres.sh
 ```
 
-Cambia como minimo:
+Restore testing must use a new database first. Never restore over beta or
+production as part of an application rollback.
 
-- `DATOSENORDEN_PUBLIC_BASE_URL=https://beta.datosenorden.cl` para la etapa beta
-- `API_URL=https://beta.datosenorden.cl`
-- `REFLEX_API_URL=https://beta.datosenorden.cl`
-- ambos `CHANGE_ME` de PostgreSQL
+## DNS handoff after technical smoke
 
-Advertencias:
-
-- Nunca commitear `.env`.
-- PostgreSQL debe quedar privado en `localhost`.
-- Cuando pases de beta a produccion, cambia `beta.datosenorden.cl` por `datosenorden.cl` y reinicia el servicio.
-
-## 8. Crear la base de datos y el usuario PostgreSQL
-
-Instala la base, Caddy y Node si todavia no lo hiciste:
-
-```bash
-cd /opt/datosenorden
-sudo bash scripts/server_setup_ubuntu.sh
-```
-
-Crea o actualiza el rol de PostgreSQL:
-
-```bash
-sudo -u postgres psql -d postgres -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'datosenorden') THEN CREATE ROLE datosenorden LOGIN PASSWORD 'CHANGE_ME'; ELSE ALTER ROLE datosenorden WITH LOGIN PASSWORD 'CHANGE_ME'; END IF; END \$\$;"
-```
-
-Crea la base si no existe:
-
-```bash
-sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='datosenorden'" | grep -q 1 || sudo -u postgres createdb -O datosenorden datosenorden
-```
-
-Opcional pero recomendado para backups sin exponer password en comandos:
-
-```bash
-sudo -u datosenorden bash -c 'printf "localhost:5432:datosenorden:datosenorden:%s\n" "CHANGE_ME" > /home/datosenorden/.pgpass && chmod 600 /home/datosenorden/.pgpass'
-```
-
-Confirma versiones minimas del host:
-
-```bash
-python3 --version
-node --version
-npm --version
-```
-
-`python3` debe ser `>= 3.12` y `node` debe ser `>= 22.12.0`.
-
-## 9. Crear el entorno virtual
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden python3 -m venv .venv
-sudo -u datosenorden /opt/datosenorden/.venv/bin/python3 -m pip install --upgrade pip
-```
-
-## 10. Instalar dependencias
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden /opt/datosenorden/.venv/bin/python3 -m pip install -e .
-```
-
-Si necesitas conversion DOC a PDF en el servidor, deja `libreoffice-writer` instalado.
-
-## 11. Migrar y cargar la demo base
-
-En una base limpia, el deploy publico no puede saltarse migraciones ni seed inicial:
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden bash -lc 'set -a && source .env && set +a && source .venv/bin/activate && python3 -m alembic upgrade head && python3 scripts/reset_and_load_mvp_demo.py'
-```
-
-## 12. Ejecutar checks
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden bash -lc 'set -a && source .env && set +a && source .venv/bin/activate && python3 --version && node --version && npm --version && python3 scripts/deploy_check.py && python3 scripts/prelaunch_public_check.py && python3 scripts/run_demo_check.py && python3 scripts/content_readiness.py && python3 -m pytest -q --basetemp .pytest-tmp-go-live-pack && python3 -m reflex compile --dry --no-rich'
-```
-
-Si alguno falla, no sigas al dominio publico hasta corregirlo.
-
-## 13. Probar Reflex local en el servidor
-
-Primero carga el `.env` y corre Reflex manualmente:
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden bash -lc 'set -a && source .env && set +a && source .venv/bin/activate && python3 -m reflex run --env prod --single-port --frontend-port 3000 --backend-host 127.0.0.1'
-```
-
-En otra sesion SSH, revisa que el mismo proceso responda HTML y healthcheck:
-
-```bash
-curl -I http://127.0.0.1:3000
-curl -I http://127.0.0.1:3000/api/_health
-```
-
-Cuando termines, vuelve a la primera sesion y presiona `Ctrl+C`.
-
-## 14. Instalar el service de systemd
-
-```bash
-cd /opt/datosenorden
-sudo cp deployment/datosenorden.service /etc/systemd/system/datosenorden.service
-sudo chown -R datosenorden:datosenorden /opt/datosenorden
-sudo systemctl daemon-reload
-sudo systemctl enable --now datosenorden
-sudo systemctl status datosenorden --no-pager
-```
-
-## 15. Configurar Caddy
-
-```bash
-cd /opt/datosenorden
-sudo cp deployment/Caddyfile /etc/caddy/Caddyfile
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
-sudo systemctl status caddy --no-pager
-```
-
-## 16. Apuntar beta.datosenorden.cl al VPS
-
-Crea el registro DNS beta:
-
-```text
-A    beta.datosenorden.cl    203.0.113.10
-```
-
-Verifica propagacion:
-
-```powershell
-nslookup beta.datosenorden.cl 1.1.1.1
-```
-
-## 17. Probar healthcheck
-
-Cuando el DNS beta resuelva al VPS:
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden bash -lc 'source .venv/bin/activate && python3 scripts/healthcheck_public.py https://beta.datosenorden.cl'
-```
-
-Revisa manualmente tambien:
-
-- `https://beta.datosenorden.cl/`
-- `https://beta.datosenorden.cl/topic`
-- `https://beta.datosenorden.cl/search`
-- `https://beta.datosenorden.cl/sources`
-- `https://beta.datosenorden.cl/support`
-- `https://beta.datosenorden.cl/studio`
-- `https://beta.datosenorden.cl/chronology`
-
-## 18. Apuntar datosenorden.cl cuando beta este estable
-
-Actualiza `.env`:
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden nano .env
-```
-
-Cambia:
-
-- `DATOSENORDEN_PUBLIC_BASE_URL=https://datosenorden.cl`
-- `API_URL=https://datosenorden.cl`
-- `REFLEX_API_URL=https://datosenorden.cl`
-
-Reinicia:
-
-```bash
-sudo systemctl restart datosenorden
-```
-
-Configura DNS final:
-
-```text
-A      datosenorden.cl      203.0.113.10
-CNAME  www                  datosenorden.cl
-```
-
-Vuelve a correr:
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden bash -lc 'source .venv/bin/activate && python3 scripts/healthcheck_public.py https://datosenorden.cl'
-```
-
-## 19. Comandos para ver logs
-
-```bash
-sudo journalctl -u datosenorden -f
-sudo journalctl -u caddy -f
-sudo journalctl -u postgresql -f
-sudo systemctl status datosenorden --no-pager
-sudo ss -ltnp | grep -E ":80|:443|:3000|:5432"
-```
-
-## 20. Comandos para rollback
-
-Volver al commit anterior:
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden git log --oneline -n 5
-sudo -u datosenorden git checkout <PREVIOUS_COMMIT>
-sudo -u datosenorden /opt/datosenorden/.venv/bin/python3 -m pip install -e .
-sudo systemctl restart datosenorden
-```
-
-Restaurar una copia de PostgreSQL:
-
-```bash
-gunzip -c /var/backups/datosenorden/postgres-datosenorden-<TIMESTAMP>.sql.gz | psql -h localhost -U datosenorden -d datosenorden
-```
-
-Si el problema es DNS o HTTPS, deja `beta.datosenorden.cl` activo y no cambies el dominio raiz hasta estabilizar.
-
-## 21. Comandos para backup
-
-Backup manual:
-
-```bash
-cd /opt/datosenorden
-sudo -u datosenorden env PGHOST=localhost PGPORT=5432 PGUSER=datosenorden PGDATABASE=datosenorden /opt/datosenorden/scripts/backup_postgres.sh
-```
-
-Ver backups:
-
-```bash
-sudo ls -lh /var/backups/datosenorden
-```
-
-Cron diario simple a las 03:15:
-
-```bash
-sudo crontab -e
-```
-
-Agregar:
-
-```cron
-15 3 * * * sudo -u datosenorden env PGHOST=localhost PGPORT=5432 PGUSER=datosenorden PGDATABASE=datosenorden /opt/datosenorden/scripts/backup_postgres.sh >> /var/log/datosenorden/backup.log 2>&1
-```
+Only after the technical staging gate: `A beta.datosenorden.cl -> TARGET_IPV4`.
+Keep AAAA deferred until IPv6 is tested. Then verify DNS, HTTPS certificate,
+headers, WebSocket, and public health checks before any apex-domain change.

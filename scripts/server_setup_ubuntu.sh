@@ -4,9 +4,8 @@ set -euo pipefail
 APP_USER="${APP_USER:-datosenorden}"
 APP_GROUP="${APP_GROUP:-${APP_USER}}"
 APP_DIR="${APP_DIR:-/opt/datosenorden}"
-LOG_DIR="${LOG_DIR:-/var/log/datosenorden}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/datosenorden}"
-INSTALL_LIBREOFFICE="${INSTALL_LIBREOFFICE:-1}"
+INSTALL_LIBREOFFICE="${INSTALL_LIBREOFFICE:-0}"
 NODE_MAJOR="${NODE_MAJOR:-22}"
 MIN_NODE_VERSION="${MIN_NODE_VERSION:-22.12.0}"
 
@@ -20,7 +19,6 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y \
     ca-certificates \
-    git \
     curl \
     gnupg \
     ufw \
@@ -83,28 +81,24 @@ if ! id -u "${APP_USER}" >/dev/null 2>&1; then
     useradd --system --create-home --gid "${APP_GROUP}" --shell /bin/bash "${APP_USER}"
 fi
 
-install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 0755 "${APP_DIR}"
-install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 0755 "${LOG_DIR}"
-install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 0755 "${BACKUP_DIR}"
+install -d -o root -g root -m 0755 "${APP_DIR}"
+install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 0755 "${APP_DIR}/releases"
+install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 0755 "${APP_DIR}/shared"
+install -d -o root -g "${APP_GROUP}" -m 0750 /etc/datosenorden
+install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 0700 "${BACKUP_DIR}"
 
 systemctl enable --now postgresql
-systemctl enable --now caddy
-
-ufw allow OpenSSH
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw --force enable
 
 cat <<EOF
 Ubuntu base setup finished.
 
 Manual follow-up still required:
-1. Clone the repository into ${APP_DIR}.
-2. Copy deployment/production.env.example to ${APP_DIR}/.env and replace CHANGE_ME values.
-3. Create the PostgreSQL role/database and keep PostgreSQL private.
-4. Create ${APP_DIR}/.venv and install the Python dependencies.
-5. Run alembic upgrade and load the demo data before first public boot.
-6. Install deployment/datosenorden.service and deployment/Caddyfile.
+1. Run the verified release artifact deployment; do not clone or pull a mutable worktree.
+2. Create /etc/datosenorden/beta.env with restricted permissions and replace placeholders.
+3. Create the PostgreSQL beta role/database and keep PostgreSQL private.
+4. Run scripts/configure_ufw.sh only from a confirmed SSH session.
+5. Install deployment/datosenorden.service and deployment/Caddyfile after local checks pass.
+6. Enable Caddy only after its configuration has passed caddy validate.
 
 If LibreOffice is not needed on this VPS, rerun with:
   sudo INSTALL_LIBREOFFICE=0 bash scripts/server_setup_ubuntu.sh

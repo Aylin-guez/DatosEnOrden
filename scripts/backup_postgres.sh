@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/datosenorden}"
 KEEP_BACKUPS="${KEEP_BACKUPS:-7}"
@@ -13,7 +14,7 @@ if ! command -v pg_dump >/dev/null 2>&1; then
     exit 1
 fi
 
-mkdir -p "${BACKUP_DIR}"
+install -d -m 0700 "${BACKUP_DIR}"
 
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 ARCHIVE_PATH="${BACKUP_DIR}/postgres-${PGDATABASE}-${TIMESTAMP}.sql.gz"
@@ -29,6 +30,9 @@ pg_dump \
     --no-owner \
     --no-privileges \
     | gzip -9 > "${ARCHIVE_PATH}"
+
+gzip -t "${ARCHIVE_PATH}"
+sha256sum "${ARCHIVE_PATH}" > "${ARCHIVE_PATH}.sha256"
 
 mapfile -t BACKUP_FILES < <(find "${BACKUP_DIR}" -maxdepth 1 -type f -name "postgres-${PGDATABASE}-*.sql.gz" | sort)
 
