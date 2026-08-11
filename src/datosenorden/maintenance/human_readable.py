@@ -457,10 +457,10 @@ def render_dataset_explanation_text(explanation: DatasetExplanation) -> str:  # 
         f"* {explanation.suppliers} territorios",
         f"* {explanation.periods} periodos electorales",
         "",
-        "Â¿QuÃ© significa esto?",
+        "¿Qué significa esto?",
         f"{human_label('source_record')}: registro original cargado en PostgreSQL.",
         f"{human_label('claim')}: dato derivado desde una fuente.",
-        f"{human_label('relationship_public')}: conexiÃ³n entre entidades guardadas.",
+        f"{human_label('relationship_public')}: conexión entre entidades guardadas.",
         f"{human_label('entity')}: autoridad, cargo, territorio o periodo electoral.",
     ]
     return "\n".join(lines)
@@ -472,7 +472,7 @@ def render_dataset_explanation_html(explanation: DatasetExplanation) -> str:  # 
 
     return (
         '<section class="wide explain">'
-        "<h2>Â¿QuÃ© significa esto?</h2>"
+        "<h2>¿Qué significa esto?</h2>"
         f"<p>{escape(explanation.summary)}</p>"
         "<p>Este conjunto de datos incluye:</p>"
         "<ul>"
@@ -509,10 +509,10 @@ def render_dataset_explanation_text(explanation: DatasetExplanation) -> str:  # 
         f"* {explanation.suppliers} territorios",
         f"* {explanation.periods} periodos electorales",
         "",
-        "Que significa esto?",
+        "¿Qué significa esto?",
         f"{human_label('source_record')}: registro original cargado en PostgreSQL.",
         f"{human_label('claim')}: dato derivado desde una fuente.",
-        f"{human_label('relationship_public')}: conexion entre entidades guardadas.",
+        f"{human_label('relationship_public')}: conexión entre entidades guardadas.",
         f"{human_label('entity')}: autoridad, cargo, territorio o periodo electoral.",
     ]
     return "\n".join(lines)
@@ -524,7 +524,7 @@ def render_dataset_explanation_html(explanation: DatasetExplanation) -> str:  # 
 
     return (
         '<section class="wide explain">'
-        "<h2>Que significa esto?</h2>"
+        "<h2>¿Qué significa esto?</h2>"
         f"<p>{escape(explanation.summary)}</p>"
         "<p>Este conjunto de datos incluye:</p>"
         "<ul>"
