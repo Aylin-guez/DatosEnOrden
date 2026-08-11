@@ -86,12 +86,6 @@ git commit -m "..."
 git push
 ```
 
-## Backup
-
-```powershell
-powershell -ExecutionPolicy Bypass -File I:\DatosEnOrden\scripts\backup_after_push.ps1
-```
-
 ## Recovery / Safety
 
 ```powershell

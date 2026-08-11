@@ -11,3 +11,5 @@ The current pack assumes:
 - systemd as the process supervisor
 
 Current rule: do not expose local PostgreSQL publicly.
+
+`../docker-compose.yml` is a local development database convenience only and is not an authorized production deployment path.

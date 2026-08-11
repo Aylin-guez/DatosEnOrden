@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import re
+import json
 import os
 import subprocess
 import sys
@@ -13,6 +13,7 @@ REQUIRED_ENV = (
     "DATOSENORDEN_ENV",
     "DATOSENORDEN_PUBLIC_BASE_URL",
     "DATOSENORDEN_SUPPORT_URL",
+    "API_URL",
 )
 DEPLOYMENT_FILES = (
     ROOT / "deployment" / "production.env.example",
@@ -24,8 +25,12 @@ DEPLOYMENT_FILES = (
     ROOT / "docs" / "VPS_GO_LIVE_STEPS.md",
 )
 PUBLIC_ROUTES = (
+    "404",
     "/",
     "/topic",
+    "/knowledge",
+    "/library",
+    "/demo",
     "/search",
     "/discover",
     "/ecosystem",
@@ -38,6 +43,9 @@ PUBLIC_ROUTES = (
     "/chronology",
     "/support",
     "/studio",
+    "/dashboard",
+    "/laboratory",
+    "/laboratory/expedient",
 )
 PUBLISHED_DIR = ROOT / "data" / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion"
 ASSET_PDF = ROOT / "assets" / "official_documents" / "senado-docto-9000-mensaje_mocion" / "document.pdf"
@@ -108,14 +116,33 @@ def _document_check() -> Check:
 
 
 def _route_check() -> Check:
-    app_path = ROOT / "reflex_app" / "reflex_app.py"
-    text = app_path.read_text(encoding="utf-8")
-    missing = [
-        route
-        for route in PUBLIC_ROUTES
-        if not re.search(rf'@rx\.page\(\s*route="{re.escape(route)}"', text)
-    ]
-    return Check("public routes registered", not missing, "missing=" + ", ".join(missing) if missing else ", ".join(PUBLIC_ROUTES))
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-B",
+            "-c",
+            (
+                "import json; import reflex_app.reflex_app; "
+                "from reflex.page import DECORATED_PAGES; "
+                "print(json.dumps([kwargs['route'] for _, kwargs in DECORATED_PAGES['reflex_app']]))"
+            ),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or f"exit={result.returncode}").strip().splitlines()[-1]
+        return Check("public routes registered", False, detail)
+    routes = set(json.loads(result.stdout.strip().splitlines()[-1]))
+    missing = [route for route in PUBLIC_ROUTES if route not in routes]
+    unexpected_count = len(routes) != len(PUBLIC_ROUTES)
+    if missing or unexpected_count:
+        detail = "missing=" + ", ".join(missing) if missing else f"registered={len(routes)} expected={len(PUBLIC_ROUTES)}"
+        return Check("public routes registered", False, detail)
+    return Check("public routes registered", True, ", ".join(PUBLIC_ROUTES))
 
 
 def _prelaunch_check() -> Check:

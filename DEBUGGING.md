@@ -263,9 +263,3 @@ To stage only final MVP files:
 ```powershell
 git add PROJECT_STATUS.md NEXT_STEPS.md DEBUGGING.md COMMANDS.md reflex_app/reflex_app.py src/datosenorden/web/app_services.py src/datosenorden/maintenance/safe_access.py src/datosenorden/maintenance/investigation_story.py src/datosenorden/maintenance/source_trace.py src/datosenorden/maintenance/source_contributions.py src/datosenorden/maintenance/institution_profile.py src/datosenorden/maintenance/investigation_export.py src/datosenorden/maintenance/investigation_report.py src/datosenorden/maintenance/investigation_graph.py scripts/verify_mvp_demo.py scripts/reset_and_load_mvp_demo.py tests/test_investigation_resolution.py tests/test_mvp_demo_scripts.py
 ```
-
-## Backup Command
-
-```powershell
-powershell -ExecutionPolicy Bypass -File I:\DatosEnOrden\scripts\backup_after_push.ps1
-```

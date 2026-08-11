@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import re
 import json
 import subprocess
 import sys
@@ -11,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 REFLEX_APP = ROOT / "reflex_app" / "reflex_app.py"
 ENV_EXAMPLE = ROOT / ".env.example"
 PUBLISHED_DOCUMENT_DIR = ROOT / "data" / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion"
+SECURITY_HEADERS = ROOT / "deployment" / "Caddyfile"
+COMPOSE = ROOT / "docker-compose.yml"
 PUBLISHED_READING = PUBLISHED_DOCUMENT_DIR / "reading.json"
 PUBLISHED_DOCUMENT_VIEW = PUBLISHED_DOCUMENT_DIR / "document_view.json"
 PUBLISHED_PDF = PUBLISHED_DOCUMENT_DIR / "document.pdf"
@@ -32,8 +33,12 @@ REQUIRED_ENV_KEYS = (
     "DATOSENORDEN_SUPPORT_URL",
 )
 PUBLIC_ROUTES = (
+    "404",
     "/",
     "/topic",
+    "/knowledge",
+    "/library",
+    "/demo",
     "/search",
     "/discover",
     "/ecosystem",
@@ -46,10 +51,13 @@ PUBLIC_ROUTES = (
     "/chronology",
     "/support",
     "/studio",
+    "/dashboard",
+    "/laboratory",
+    "/laboratory/expedient",
 )
 MAX_DEMO_ASSET_BYTES = 10 * 1024 * 1024
 PUBLIC_SITE_URL = "https://datosenorden.cl"
-SITEMAP_REQUIRED_ROUTES = ("/", "/search", "/topic", "/sources", "/official-document", "/chronology", "/support", "/studio")
+SITEMAP_REQUIRED_ROUTES = ("/", "/search", "/sources", "/official-document", "/laboratory", "/project")
 
 
 @dataclass(frozen=True)
@@ -71,6 +79,8 @@ def main() -> int:
         _pdf_strategy_check(),
         _document_source_stability_check(),
         _env_example_check(),
+        _security_headers_check(),
+        _compose_check(),
         _tracked_cache_check(),
         _large_asset_check(),
         _public_routes_check(),
@@ -105,7 +115,7 @@ def _manifest_check() -> Check:
         return Check("web manifest configured", False, f"missing={WEBMANIFEST.relative_to(ROOT)}")
     payload = json.loads(WEBMANIFEST.read_text(encoding="utf-8"))
     icons = {item.get("src") for item in payload.get("icons", [])}
-    ok = payload.get("name") == "DatosEnOrden" and payload.get("theme_color") == "#0f766e" and {"/icon-192.png", "/icon-512.png"}.issubset(icons)
+    ok = payload.get("name") == "DatosEnOrden Ciudadano" and payload.get("theme_color") == "#0f766e" and {"/icon-192.png", "/icon-512.png"}.issubset(icons)
     detail = "manifest ok" if ok else str(payload)
     return Check("web manifest configured", ok, detail)
 
@@ -158,7 +168,14 @@ def _pdf_strategy_check() -> Check:
     if not PUBLISHED_PDF.exists():
         return Check("official PDF strategy", True, "document.pdf not present; /topic falls back to document_view.json")
     ok = PUBLIC_PDF_ASSET.exists()
-    detail = "public asset copy ok" if ok else f"missing public asset copy: {PUBLIC_PDF_ASSET.relative_to(ROOT)}"
+    if ok:
+        detail = "public asset copy ok"
+    else:
+        try:
+            asset_path = PUBLIC_PDF_ASSET.relative_to(ROOT)
+        except ValueError:
+            asset_path = PUBLIC_PDF_ASSET
+        detail = f"missing public asset copy: {asset_path}"
     return Check("official PDF strategy", ok, detail)
 
 
@@ -187,6 +204,19 @@ def _env_example_check() -> Check:
     )
 
 
+def _security_headers_check() -> Check:
+    text = SECURITY_HEADERS.read_text(encoding="utf-8") if SECURITY_HEADERS.exists() else ""
+    required = ("Content-Security-Policy", "X-Content-Type-Options", "Referrer-Policy", "Permissions-Policy", "frame-ancestors")
+    missing = [name for name in required if name not in text]
+    return Check("security headers configured", not missing, "missing=" + ", ".join(missing) if missing else "CSP and browser protections configured")
+
+
+def _compose_check() -> Check:
+    text = COMPOSE.read_text(encoding="utf-8") if COMPOSE.exists() else ""
+    safe = "POSTGRES_PASSWORD: ${POSTGRES_PASSWORD" in text and "127.0.0.1:5432:5432" in text and "not an authorized production" in text
+    return Check("compose is local-only and credential-safe", safe, "local-only compose configured" if safe else "compose exposes a fixed credential or public database port")
+
+
 def _tracked_cache_check() -> Check:
     tracked = _git_lines("ls-files")
     blocked = [
@@ -213,13 +243,33 @@ def _large_asset_check() -> Check:
 def _public_routes_check() -> Check:
     if not REFLEX_APP.exists():
         return Check("public routes registered", False, "reflex_app/reflex_app.py missing")
-    text = REFLEX_APP.read_text(encoding="utf-8")
-    missing = [
-        route
-        for route in PUBLIC_ROUTES
-        if not re.search(rf'@rx\.page\(\s*route="{re.escape(route)}"', text)
-    ]
-    return Check("public routes registered", not missing, "missing=" + ", ".join(missing) if missing else ", ".join(PUBLIC_ROUTES))
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-B",
+            "-c",
+            (
+                "import json; import reflex_app.reflex_app; "
+                "from reflex.page import DECORATED_PAGES; "
+                "print(json.dumps([kwargs['route'] for _, kwargs in DECORATED_PAGES['reflex_app']]))"
+            ),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or f"exit={result.returncode}").strip().splitlines()[-1]
+        return Check("public routes registered", False, detail)
+    routes = set(json.loads(result.stdout.strip().splitlines()[-1]))
+    missing = [route for route in PUBLIC_ROUTES if route not in routes]
+    unexpected_count = len(routes) != len(PUBLIC_ROUTES)
+    if missing or unexpected_count:
+        detail = "missing=" + ", ".join(missing) if missing else f"registered={len(routes)} expected={len(PUBLIC_ROUTES)}"
+        return Check("public routes registered", False, detail)
+    return Check("public routes registered", True, ", ".join(PUBLIC_ROUTES))
 
 
 def _git_lines(*args: str) -> list[str]:

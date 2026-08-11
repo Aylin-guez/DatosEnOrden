@@ -104,9 +104,18 @@ def _official_documents_structure_check() -> tuple[str, bool, str]:
     return ("official documents structure exists", not missing, "ok" if not missing else " | ".join(missing))
 
 def _real_imports_not_tracked_check() -> tuple[str, bool, str]:
+    repository_root = ROOT.resolve()
     result = subprocess.run(
-        ["git", "ls-files", "data/real_imports"],
-        cwd=ROOT,
+        [
+            "git",
+            "-c",
+            f"safe.directory={repository_root.as_posix()}",
+            "-C",
+            str(repository_root),
+            "ls-files",
+            "data/real_imports",
+        ],
+        cwd=repository_root,
         check=False,
         capture_output=True,
         text=True,
