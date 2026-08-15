@@ -12,9 +12,12 @@ workstation drive assumption.
   UFW; only SSH, HTTP, and HTTPS are allowed.
 - `configure_postgres_beta.sh`: reads a mode-0600 local password file and
   deletes it after creating the beta role/database.
-- `deploy_release_ubuntu.sh`: validates SHA-256, rejects an existing release,
-  prepares a venv, performs `pip check` and Reflex dry compile, then activates
-  only when explicitly asked.
+- `deploy_release_ubuntu.sh --prepare`: validates SHA-256, rejects an existing
+  release, prepares its venv, performs `pip check` and Reflex dry compile, then
+  writes the readiness marker and removes runtime-user write permissions.
+- `activate_release_ubuntu.sh`: accepts only a complete prepared release,
+  atomically changes `current`, restarts and smokes the service, and restores
+  the old `current` on failure without touching database state.
 - `post_deploy_smoke.sh`: validates systemd, loopback, private ports, symlink,
   available memory, and disk.
 

@@ -54,40 +54,97 @@ not deploy from a mutable clone, and it does not contain credentials.
 4. **MANUAL/GATE**: from a verified SSH session run the firewall script from
    the verified artifact with `--confirmed-ssh`. Provider firewall:
    allow administrative SSH, TCP 80, TCP 443; deny public TCP 3000 and 5432.
-5. **MANUAL/GATE**: create a mode-0600 password file outside the release, then
-   execute `configure_postgres_beta.sh` from the verified artifact with the
-   password-file path. PostgreSQL must remain loopback-only.
-6. **AUTOMATED**: prepare the immutable release from the same artifact:
+5. **AUTOMATED**: prepare the immutable release exactly once from the same
+   artifact. Preparation neither reads the production environment nor changes
+   `current`, systemd, or the database:
 
    ```bash
    tar -xOf /secure-upload/datosenorden.tar scripts/deploy_release_ubuntu.sh | sudo bash -s -- \
+     --prepare \
      --artifact /secure-upload/datosenorden.tar \
      --sha256 <ARTIFACT_SHA256> \
      --release-id <RELEASE_ID>
    ```
 
-   The command prepares but does not activate a release. It fails closed on a
-   checksum, archive, dependency, or Reflex build failure.
-7. **GATE**: extract only `deployment/datosenorden.service` and
+   It verifies the archive, extracts into a previously absent release
+   directory, creates the venv, installs dependencies, performs `pip check`
+   and Reflex dry compile, then writes `.deo-release-ready`. Only after all
+   checks pass does it remove runtime-user/group write permissions. A second
+   prepare for the same release is intentionally rejected.
+6. **MANUAL/GATE**: create a mode-0600 password file outside the release, then
+   execute `configure_postgres_beta.sh` from the verified artifact with the
+   password-file path. PostgreSQL must remain loopback-only. Create the
+   root-owned external `/etc/datosenorden/beta.env` only after the role and
+   database exist; never write it inside the release.
+7. **GATE**: use the prepared release tooling, with the external environment,
+   to migrate from the certified Alembic revision and import the independently
+   verified production data package. Reimport the same package and require
+   zero inserts/count drift. `current` must still be absent on a first deploy
+   or unchanged on an update, and the application service must remain stopped:
+
+   ```bash
+   release=/opt/datosenorden/releases/<RELEASE_ID>
+   sudo -u datosenorden bash -c 'set -a; . "$1"; set +a; cd "$2"; exec .venv/bin/python -m alembic upgrade head' \
+     -- /etc/datosenorden/beta.env "$release"
+   sudo -u datosenorden bash -c 'env_file="$1"; release="$2"; shift 2; set -a; . "$env_file"; set +a; cd "$release"; exec .venv/bin/python scripts/import_production_data.py "$@"' \
+     -- /etc/datosenorden/beta.env "$release" \
+     --package /secure-upload/<DATA_PACKAGE>.zip \
+     --sha256 <DATA_PACKAGE_SHA256> \
+     --expected-database datosenorden_beta \
+     --target-environment production \
+     --code-release <RELEASE_ID> \
+     --confirm-production <PACKAGE_ID>
+   ```
+
+8. **GATE**: execute the prepared release's prelaunch/deploy checks against the
+   migrated database. This is the pre-activation application smoke; it must not
+   expose traffic or change `current`.
+9. **GATE**: extract only `deployment/datosenorden.service` and
    `deployment/Caddyfile` from the verified artifact into their system
    locations, then validate them.
    Validate with `systemd-analyze verify /etc/systemd/system/datosenorden.service`
-   and `caddy validate --config /etc/caddy/Caddyfile` before enabling services.
-8. **AUTOMATED**: repeat the deployment command with `--activate`, then run
-   `sudo systemctl daemon-reload && sudo systemctl enable --now datosenorden`.
-9. **GATE**: execute `post_deploy_smoke.sh` from the verified artifact against
-   `<RELEASE_ID>`.
-   It verifies the service, loopback app/database, current symlink, and that
-   ports 3000 and 5432 are not public bindings.
-10. **STOP**: do not create the DNS record, enable HSTS, or cut over production
+   and `caddy validate --config /etc/caddy/Caddyfile`. Enable the application
+   unit without starting it: `sudo systemctl enable datosenorden`. Make Caddy
+   ready according to its separately validated foundation before activation.
+10. **AUTOMATED**: activate the already prepared release; never invoke prepare
+    again for the same release:
+
+    ```bash
+    tar -xOf /secure-upload/datosenorden.tar scripts/activate_release_ubuntu.sh | sudo bash -s -- \
+      --release-id <RELEASE_ID> \
+      --confirm-ready <RELEASE_ID>
+    ```
+
+    The repeated release ID is an explicit operator assertion that environment,
+    migration, data import and pre-activation checks passed. Activation also
+    verifies the readiness marker, venv, smoke script, installed systemd unit,
+    external environment and immutable permissions. It atomically switches `current`,
+    restarts systemd and runs post-deploy smoke without pip, build, Alembic or
+    data import. First activation leaves `previous` absent. On an update,
+    successful activation sets `previous` to the old `current`.
+11. **FAILURE CONTRACT**: if restart or post-activation smoke fails, activation
+    stops the failed service and restores the old `current`. It then attempts
+    to restart the old release; if that is unhealthy the service stays stopped.
+    On a failed first activation, `current` is removed and `previous` remains
+    absent. Database state is never rolled back by application activation.
+12. **STOP**: do not create the DNS record, enable HSTS, or cut over production
    in this runbook. DNS/TLS and browser/WebSocket QA are separate stages.
+
+## Subsequent code/data release sequence
+
+For release `R2` while `current` is `R1`: take the required database backup,
+stop the application on the minimum-capacity profile, prepare `R2` exactly
+once, run compatible migrations/data import and pre-activation checks from
+`R2`, then invoke `activate_release_ubuntu.sh --release-id R2 --confirm-ready R2`. Success yields
+`current -> R2` and `previous -> R1`. Repeating activation for an already
+healthy current release is a smoke-only no-op; it never rebuilds.
 
 ## Rollback and backups
 
 Application rollback never changes database state:
 
 ```bash
-sudo bash scripts/rollback_release_ubuntu.sh <PREVIOUS_RELEASE_ID>
+sudo bash /opt/datosenorden/current/scripts/rollback_release_ubuntu.sh <PREVIOUS_RELEASE_ID>
 ```
 
 Create a beta logical backup with restrictive permissions and a checksum:

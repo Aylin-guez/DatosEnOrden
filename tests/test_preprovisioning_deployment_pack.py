@@ -10,17 +10,26 @@ def _text(relative_path: str) -> str:
 
 def test_preprovisioning_scripts_use_immutable_release_contracts() -> None:
     deploy = _text("scripts/deploy_release_ubuntu.sh")
+    activate = _text("scripts/activate_release_ubuntu.sh")
     rollback = _text("scripts/rollback_release_ubuntu.sh")
     assert "--sha256" in deploy
     assert "ARTIFACT_INTEGRITY_FAILURE" in deploy
     assert "git pull" not in deploy
     assert "git clone" not in deploy
     assert "pip install -e" not in deploy
-    assert "mv -Tf" in deploy
     assert "Unable to inspect artifact archive" in deploy
     assert "Archive contains unsafe paths" in deploy
+    assert "--prepare" in deploy
+    assert "--activate" not in deploy
+    assert ".deo-release-ready" in deploy
+    assert "pip install" not in activate
+    assert "mv -Tf" in activate
+    assert "restore_old_current" in activate
+    assert "post_deploy_smoke.sh" in activate
+    assert "alembic" not in activate
+    assert "import_production_data" not in activate
     assert "Database state was not changed" in rollback
-    assert "systemctl is-active --quiet datosenorden" in rollback
+    assert "activate_release_ubuntu.sh" in rollback
 
 
 def test_production_reflex_runtime_is_exact_and_uses_current_single_port_contract() -> None:
@@ -58,6 +67,7 @@ def test_preprovisioning_scripts_are_portable_and_do_not_reference_private_repos
         "scripts/configure_ufw.sh",
         "scripts/configure_postgres_beta.sh",
         "scripts/deploy_release_ubuntu.sh",
+        "scripts/activate_release_ubuntu.sh",
         "scripts/rollback_release_ubuntu.sh",
         "scripts/post_deploy_smoke.sh",
         "scripts/server_setup_ubuntu.sh",
