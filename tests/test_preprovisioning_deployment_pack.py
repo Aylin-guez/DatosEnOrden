@@ -23,6 +23,14 @@ def test_preprovisioning_scripts_use_immutable_release_contracts() -> None:
     assert "systemctl is-active --quiet datosenorden" in rollback
 
 
+def test_production_reflex_runtime_is_exact_and_uses_current_single_port_contract() -> None:
+    project = _text("pyproject.toml")
+    service = _text("deployment/datosenorden.service")
+    assert '"reflex==0.9.8"' in project
+    assert "reflex run --env prod --frontend-port 3000" in service
+    assert "--single-port" not in service
+
+
 def test_preprovisioning_pack_keeps_services_and_database_private() -> None:
     service = _text("deployment/datosenorden.service")
     postgres = _text("scripts/configure_postgres_beta.sh")
@@ -66,6 +74,20 @@ def test_bootstrap_does_not_enable_caddy_or_firewall_before_configuration() -> N
     assert "systemctl enable --now caddy" not in bootstrap
     assert "ufw --force enable" not in bootstrap
     assert "INSTALL_LIBREOFFICE=\"${INSTALL_LIBREOFFICE:-0}\"" in bootstrap
+
+
+def test_host_preflight_separates_minimum_and_recommended_capacity() -> None:
+    preflight = _text("scripts/host_preflight_ubuntu.sh")
+    assert "minimum_cpu_count=2" in preflight
+    assert "recommended_cpu_count=3" in preflight
+    assert "minimum_memory_kib=3600000" in preflight
+    assert "recommended_memory_kib=7600000" in preflight
+    assert "recommended_swap_kib=1048576" in preflight
+    assert "fail capacity_blocking_cpu" in preflight
+    assert "fail capacity_blocking_memory" in preflight
+    assert "warn capacity_cpu_below_recommended" in preflight
+    assert "warn capacity_memory_below_recommended" in preflight
+    assert "warn capacity_swap_below_recommended" in preflight
 
 
 def test_public_launch_runbook_uses_verified_artifact_not_a_mutable_checkout() -> None:

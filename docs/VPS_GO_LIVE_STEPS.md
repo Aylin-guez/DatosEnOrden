@@ -5,8 +5,20 @@ not deploy from a mutable clone, and it does not contain credentials.
 
 ## Preconditions
 
-- The target is a verified Ubuntu 24.04 VPS with at least 3 vCPU, about 8 GB
-  RAM, and 75 GB NVMe storage.
+- The minimum supported target is a verified Ubuntu 24.04 VPS with 2 vCPU,
+  about 4 GiB RAM, and at least 50 GB free storage. This profile is restricted
+  to one low-traffic Reflex service with local PostgreSQL; build, migration,
+  backup, and restore work must run sequentially, without beta/production
+  service overlap.
+- On later deployments to the minimum profile, stop the active application
+  before target-side dependency installation and Reflex compilation. Restoring
+  zero-downtime deployment requires the recommended profile or a separately
+  certified prebuilt-runtime artifact contract; it must not be improvised.
+- The recommended target remains 3 vCPU and about 8 GB RAM. Falling below the
+  recommended CPU or memory is a capacity warning, not a blocking failure,
+  when the minimum profile and its operational restrictions are satisfied.
+- A minimum-memory target should have at least 1 GiB swap as an emergency
+  buffer. Swap is not runtime capacity: sustained use is a scale-up trigger.
 - SSH key access and the host fingerprint are verified out of band.
 - The release artifact, its SHA-256, and its 40-hex release ID are known.
 - A root-owned `/etc/datosenorden/beta.env` exists with mode `0640` and group
