@@ -48,6 +48,7 @@ class _EntitySummary:
 
 def _patch_session(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(app_services, "SessionLocal", lambda: _SessionContext())
+    monkeypatch.setattr(app_services, "enrich_public_ecosystem", lambda session, ecosystem: ecosystem)
 
 
 def _investigation_view() -> InvestigationView:
@@ -597,6 +598,14 @@ def test_dataset_summary_includes_active_datasets(monkeypatch) -> None:
     _patch_session(monkeypatch)
     monkeypatch.setattr(
         app_services,
+        "build_public_dataset_summary",
+        lambda session, datasets: {
+            "datasets": [{**datasets[0], "health": "active"}, datasets[1]],
+            "totals": {"active_datasets": 1},
+        },
+    )
+    monkeypatch.setattr(
+        app_services,
         "list_datasets",
         lambda session: (
             DatasetSummary("chilecompra", "ChileCompra", 1, 2, 3, 4, 5, "active", False),
@@ -735,7 +744,7 @@ def test_source_population_enriches_lobby_surfaces(monkeypatch) -> None:
 
     assert lobby["population_records"] == 1
     assert lobby["population_status_label"] == "muestra local controlada"
-    assert any(match["source_label"] == "InfoLobby" for match in search["matches"])
+    assert not any(match["source_label"] == "InfoLobby" for match in search["matches"])
     assert any(topic["id"] == "pulse-infolobby-minimal-v1" for topic in topics)
 
 def test_chilecompra_connector_feeds_core_surfaces(monkeypatch) -> None:
@@ -758,7 +767,7 @@ def test_chilecompra_connector_feeds_core_surfaces(monkeypatch) -> None:
     assert connector["produces"]["relationships"] == ["ISSUES_PURCHASE_ORDER", "RECEIVES_CONTRACT"]
     assert chilecompra["connector_entities"] >= 5
     assert chilecompra["connector_relationships"] >= 6
-    assert any(match["source_label"] == "ChileCompra Connector" for match in search["matches"])
+    assert not any(match["source_label"] == "ChileCompra Connector" for match in search["matches"])
     assert any(topic["source"] == "ChileCompra Connector" for topic in topics)
     assert any(event["source"] == "ChileCompra Connector" for event in tracking["events"])
 
@@ -786,8 +795,8 @@ def test_infolobby_connector_feeds_core_surfaces(monkeypatch) -> None:
     assert lobby["connector_entities"] == 3
     assert lobby["connector_relationships"] == 2
     assert lobby["connector_events"] == 1
-    assert any(match["source_label"] == "InfoLobby Connector" for match in search["matches"])
-    assert any(match["entity_name"] == "MARLENE BEATRIZ FLORES PATINO" for match in search["matches"])
+    assert not any(match["source_label"] == "InfoLobby Connector" for match in search["matches"])
+    assert not any(match["entity_name"] == "MARLENE BEATRIZ FLORES PATINO" for match in search["matches"])
     assert any(topic["source"] == "InfoLobby Connector" for topic in topics)
     assert any(event["source"] == "InfoLobby Connector" for event in tracking["events"])
 
@@ -815,8 +824,8 @@ def test_diario_oficial_connector_feeds_core_surfaces(monkeypatch) -> None:
     assert diario["connector_entities"] == 4
     assert diario["connector_relationships"] == 3
     assert diario["connector_events"] == 1
-    assert any(match["source_label"] == "Diario Oficial Connector" for match in search["matches"])
-    assert any(match["entity_name"] == "Persona de Muestra Uno" for match in search["matches"])
+    assert not any(match["source_label"] == "Diario Oficial Connector" for match in search["matches"])
+    assert not any(match["entity_name"] == "Persona de Muestra Uno" for match in search["matches"])
     assert any(topic["source"] == "Diario Oficial Connector" for topic in topics)
     assert any(event["source"] == "Diario Oficial Connector" for event in tracking["events"])
 

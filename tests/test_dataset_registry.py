@@ -250,5 +250,5 @@ def test_summarize_real_dataset_registry_is_json_safe_without_session() -> None:
     summary = summarize_real_dataset_registry()
 
     assert summary["totals"]["sources"] >= 1
-    assert summary["totals"]["ready"] >= 1
+    assert summary["totals"]["ready"] == 0
     assert any(entry["id"] == "chilecompra" for entry in summary["entries"])

@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import or_, select
 
 from datosenorden.db.session import SessionLocal
+from datosenorden.application.provenance.service import build_public_usable_content
 from datosenorden.maintenance.entity_comparison import build_entity_comparison
 from datosenorden.maintenance.entity_explorer import get_entity_profile
 from datosenorden.maintenance.entity_matching import match_entity_candidates
@@ -67,6 +68,11 @@ def search_workspace(query: str, limit: int = 12) -> dict[str, object]:
 
 def _collect_matches(session, query: str, *, limit: int) -> tuple[SearchWorkspaceMatch, ...]:  # noqa: ANN001
     merged: dict[str, SearchWorkspaceMatch] = {}
+    usable_entity_ids = (
+        {str(value) for value in build_public_usable_content(session)["entity_ids"]}
+        if hasattr(session, "execute")
+        else None
+    )
     normalized_limit = max(limit, 20)
 
     entity_types = session.scalars(select(Entity.entity_type).distinct().order_by(Entity.entity_type.asc())).all()
@@ -74,11 +80,11 @@ def _collect_matches(session, query: str, *, limit: int) -> tuple[SearchWorkspac
     if resolved.found and resolved.entity is not None:
         entity = _entity_for_resolved_registry_entry(session, resolved.entity.id, resolved.entity.canonical_name)
         if entity is not None:
-            _merge_candidate(merged, session, str(entity.id), entity.name, entity.entity_type, 1.0)
+            _merge_candidate(merged, session, str(entity.id), entity.name, entity.entity_type, 1.0, usable_entity_ids)
 
     for entity_type in entity_types:
         for candidate in match_entity_candidates(session, entity_type=str(entity_type), name=query, limit=normalized_limit):
-            _merge_candidate(merged, session, candidate.candidate_entity_id, candidate.candidate_name, candidate.entity_type, candidate.score)
+            _merge_candidate(merged, session, candidate.candidate_entity_id, candidate.candidate_name, candidate.entity_type, candidate.score, usable_entity_ids)
 
     pattern = f"%{query}%"
     direct_rows = session.scalars(
@@ -87,14 +93,14 @@ def _collect_matches(session, query: str, *, limit: int) -> tuple[SearchWorkspac
         .order_by(Entity.name.asc(), Entity.id.asc())
     ).all()
     for entity in direct_rows:
-        _merge_candidate(merged, session, str(entity.id), entity.name, entity.entity_type, 0.75)
+        _merge_candidate(merged, session, str(entity.id), entity.name, entity.entity_type, 0.75, usable_entity_ids)
 
     normalized_query = _normalize(query)
     if normalized_query:
         rows = session.scalars(select(Entity)).all()
         for entity in rows:
             if normalized_query in _normalize(entity.name) or normalized_query in _normalize(str(getattr(entity, "external_id", "") or "")):
-                _merge_candidate(merged, session, str(entity.id), entity.name, entity.entity_type, 0.7)
+                _merge_candidate(merged, session, str(entity.id), entity.name, entity.entity_type, 0.7, usable_entity_ids)
 
     for extra in _document_matches(query):
         merged[f"document:{extra.entity_id}"] = extra
@@ -118,7 +124,10 @@ def _merge_candidate(
     entity_name: str,
     entity_type: str,
     score: float,
+    usable_entity_ids: set[str] | None,
 ) -> None:  # noqa: ANN001
+    if usable_entity_ids is not None and entity_id not in usable_entity_ids:
+        return
     profile = get_entity_profile(session, entity_id)
     comparison = build_entity_comparison(entity_id)
     datasets = tuple(str(dataset) for dataset in comparison.get("datasets_present", ()))

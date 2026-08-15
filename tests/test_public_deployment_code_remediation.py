@@ -34,7 +34,7 @@ def test_public_reflex_states_do_not_define_export_paths_or_raw_error_interpolat
         assert not any(marker in text for marker in forbidden), path
 
 
-@pytest.mark.parametrize("handler_name, dependency_name", (("load_catalog", "load_expedient_catalog"), ("load_expedient", "get_expedient")))
+@pytest.mark.parametrize("handler_name, dependency_name", (("load_catalog", "list_public_expedient_catalog"), ("load_expedient", "get_public_expedient")))
 def test_laboratory_error_state_keeps_only_the_final_public_contract(monkeypatch, handler_name: str, dependency_name: str) -> None:
     evidence = r"C:\private\secret.pdf; SELECT * FROM users; password=supersecret; InternalRepositoryError"
 

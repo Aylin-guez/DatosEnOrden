@@ -63,7 +63,8 @@ def test_source_presentation_status_is_conservative() -> None:
     assert _presentation_status({"status": "planned"}) == "CONNECTOR_PLANNED"
     assert _presentation_status({"status": "prototype"}) == "CONNECTOR_PROTOTYPE"
     assert _presentation_status({"status": "active"}) == "CATALOGUED"
-    assert _presentation_status({"status": "active", "population_records": 2}) == "DATA_AVAILABLE"
+    assert _presentation_status({"status": "active", "population_records": 2}) == "CATALOGUED"
+    assert _presentation_status({"status": "active", "real_available_records": 2}) == "DATA_AVAILABLE"
 
 
 def test_visible_public_files_do_not_contain_mojibake() -> None:

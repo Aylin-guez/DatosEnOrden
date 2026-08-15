@@ -44,6 +44,11 @@ class SourcesState(rx.State):
                     "connects_with_text": " | ".join(str(item) for item in row.get("connects_with", [])),
                     "entities_text": " | ".join(str(item) for item in row.get("entities", [])),
                     "population_records": int(row.get("population_records", 0) or 0),
+                    "real_records": int(row.get("real_records", 0) or 0),
+                    "real_available_records": int(row.get("real_available_records", 0) or 0),
+                    "real_rejected_records": int(row.get("real_rejected_records", 0) or 0),
+                    "real_relationships": int(row.get("real_relationships", 0) or 0),
+                    "provenance_status": str(row.get("provenance_status", "UNKNOWN")),
                     "population_summary": str(row.get("population_summary", "")),
                     "population_status_label": str(row.get("population_status_label", "")),
                     "population_label": (
@@ -102,21 +107,23 @@ class SourcesState(rx.State):
             self.real_data_partial_count = int(totals.get("partial", 0) or 0)
             self.real_data_demo_count = int(totals.get("demo", 0) or 0)
             self.real_data_without_loader_count = int(totals.get("without_loader", 0) or 0)
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             self.sources_error_code, self.sources_error = public_error()
 
 
 def _presentation_status(row: dict) -> str:
     status = str(row.get("status", "")).lower()
     connector = str(row.get("connector_status", "")).lower()
-    population = int(row.get("population_records", 0) or 0)
-    relationships = int(row.get("connector_relationships", 0) or 0)
+    real_available = int(row.get("real_available_records", 0) or 0)
+    relationships = int(row.get("real_relationships", 0) or 0)
     if status == "planned":
         return "CONNECTOR_PLANNED"
     if status == "prototype":
         return "CONNECTOR_PROTOTYPE"
-    if status == "active" and (population or relationships or connector == "active"):
-        return "DATA_AVAILABLE" if population or relationships else "CONNECTOR_ACTIVE"
+    if status == "active" and (real_available or relationships):
+        return "DATA_AVAILABLE"
+    if status == "active" and connector == "active":
+        return "CONNECTOR_ACTIVE"
     if status == "active":
         return "CATALOGUED"
     return "CATALOGUED"
@@ -134,15 +141,15 @@ def _connector_status_label(row: dict) -> str:
 
 
 def _data_status_label(row: dict) -> str:
-    population = int(row.get("population_records", 0) or 0)
-    relationships = int(row.get("connector_relationships", 0) or 0)
-    if population or relationships:
-        return f"Datos disponibles localmente: {population} registros base y {relationships} relaciones."
-    return "Datos disponibles: no confirmados en esta publicacion."
+    records = int(row.get("real_available_records", 0) or 0)
+    relationships = int(row.get("real_relationships", 0) or 0)
+    if records or relationships:
+        return f"Datos REAL disponibles: {records} registros base y {relationships} relaciones."
+    return "Datos REAL disponibles: no confirmados en esta publicacion."
 
 
 def _coverage_status_label(row: dict) -> str:
     coverage = str(row.get("coverage", "")).strip() or "sin detalle"
-    if int(row.get("population_records", 0) or 0) or int(row.get("connector_relationships", 0) or 0):
+    if int(row.get("real_available_records", 0) or 0) or int(row.get("real_relationships", 0) or 0):
         return f"Cobertura informada: {coverage}. Puede ser parcial."
     return f"Cobertura informada: {coverage}. No equivale a cobertura suficiente."

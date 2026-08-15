@@ -8,6 +8,7 @@ from typing import Iterable
 from sqlalchemy import distinct, func, select, union_all
 from sqlalchemy.orm import Session
 
+from datosenorden.application.provenance.service import build_provenance_snapshot
 from datosenorden.datasets import dataset_definition_for_name
 from datosenorden.datasets import dataset_catalog
 from datosenorden.maintenance.human_readable import explain_dataset
@@ -251,22 +252,34 @@ def get_real_dataset_entry(dataset_id: str) -> RealDatasetRegistryEntry | None:
 def summarize_real_dataset_registry(session: Session | None = None) -> dict[str, object]:
     entries = []
     source_stats = {row.slug: row for row in list_datasets(session)} if session is not None else {}
+    provenance_metrics = {}
+    if session is not None:
+        provenance_metrics = {
+            str(row["dataset_name"]): row
+            for row in build_provenance_snapshot(session).source_metrics
+        }
     for entry in REAL_DATASET_REGISTRY:
         row = source_stats.get(entry.id)
-        markers = _real_data_markers(session, entry) if session is not None else {"official_records": 0, "test_records": 0, "last_loaded": ""}
+        definition = resolve_dataset(entry.id)
+        metrics = next(
+            (provenance_metrics[name] for name in (definition.dataset_names if definition is not None else ()) if name in provenance_metrics),
+            {},
+        )
         entries.append(
             {
                 **asdict(entry),
-                "source_records": row.source_records if row is not None else 0,
-                "entities": row.entities if row is not None else 0,
-                "claims": row.claims if row is not None else 0,
-                "evidence": row.evidence if row is not None else 0,
-                "relationships": row.relationships if row is not None else 0,
+                "source_records": int(metrics.get("real_records", 0)),
+                "entities": int(metrics.get("real_entities", 0)),
+                "claims": int(metrics.get("real_claims", 0)),
+                "evidence": int(metrics.get("real_evidence", 0)),
+                "relationships": int(metrics.get("real_relationships", 0)),
                 "health": row.health if row is not None else "unknown",
-                "official_records": markers["official_records"],
-                "test_records": markers["test_records"],
-                "last_loaded": markers["last_loaded"] or entry.last_loaded,
-                "ready_for_real_data": entry.status == "connected_file_loader" and bool(entry.loader_script),
+                "official_records": int(metrics.get("real_records", 0)),
+                "test_records": 0,
+                "available_records": int(metrics.get("available_real_records", 0)),
+                "rejected_records": int(metrics.get("rejected_real_records", 0)),
+                "last_loaded": entry.last_loaded,
+                "ready_for_real_data": bool(metrics.get("available_real_records", 0)),
             }
         )
     return {
@@ -279,30 +292,6 @@ def summarize_real_dataset_registry(session: Session | None = None) -> dict[str,
             "without_loader": sum(1 for entry in entries if not str(entry["loader_script"]).strip()),
         },
     }
-
-
-def _real_data_markers(session: Session, entry: RealDatasetRegistryEntry) -> dict[str, object]:
-    definition = resolve_dataset(entry.id)
-    dataset_names = definition.dataset_names if definition is not None else ()
-    if not dataset_names:
-        return {"official_records": 0, "test_records": 0, "last_loaded": ""}
-    rows = session.scalars(
-        select(SourceRecord)
-        .join(Dataset, SourceRecord.dataset_id == Dataset.id)
-        .where(Dataset.name.in_(dataset_names))
-        .order_by(SourceRecord.retrieved_at.desc())
-    ).all()
-    official = 0
-    test = 0
-    for row in rows:
-        payload = row.raw_payload or {}
-        marker = str(payload.get("_datosenorden_data_classification", payload.get("Version", "")))
-        if marker == "OFFICIAL_DATA_OPERATOR_PROVIDED":
-            official += 1
-        elif marker:
-            test += 1
-    last_loaded = rows[0].retrieved_at.isoformat() if rows else ""
-    return {"official_records": official, "test_records": test, "last_loaded": last_loaded}
 
 
 def get_dataset_details(session: Session, dataset_slug: str) -> DatasetDetails | None:

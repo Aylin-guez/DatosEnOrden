@@ -16,6 +16,7 @@ if str(SRC) not in sys.path:
 from datosenorden.db.session import SessionLocal
 from datosenorden.maintenance.source_plugins import get_source_plugins
 from datosenorden.web.app_services import get_data_ecosystem
+from datosenorden.web.app_services import get_dataset_summary
 from datosenorden.web.app_services import get_guided_questions
 from datosenorden.web.app_services import get_investigation
 from datosenorden.web.app_services import get_investigation_timeline
@@ -97,7 +98,17 @@ def main(argv: list[str] | None = None) -> int:
 
     search = search_workspace("Servicio de Salud Arauco")
     matches = _field(search, "matches", []) or []
-    checks.append(("search finds Servicio de Salud Arauco", any(str(_field(match, "canonical_entity_id", "")) == entity_id for match in matches), str(len(matches))))
+    checks.append(
+        (
+            "public search excludes the DEMO investigation entity",
+            bool(matches)
+            and not any(
+                str(_field(match, "canonical_entity_id", "")) == entity_id
+                for match in matches
+            ),
+            str(len(matches)),
+        )
+    )
     partial_search = search_workspace("arauco")
     partial_matches = _field(partial_search, "matches", []) or []
     checks.append(
@@ -131,7 +142,24 @@ def main(argv: list[str] | None = None) -> int:
     checks.append(("source plugins available", len(plugin_sources) >= 11, str(len(plugin_sources))))
     readiness = get_real_data_readiness()
     readiness_totals = _field(readiness, "totals", {}) or {}
-    checks.append(("real data readiness has connected source", int(_field(readiness_totals, "ready", 0) or 0) >= 1, str(_field(readiness_totals, "ready", 0))))
+    public_totals = _field(get_dataset_summary(), "totals", {}) or {}
+    checks.append(
+        (
+            "public metrics contain usable REAL source records",
+            int(_field(public_totals, "source_records", 0) or 0) >= 1,
+            str(_field(public_totals, "source_records", 0)),
+        )
+    )
+    checks.append(
+        (
+            "readiness registry remains conservative",
+            int(_field(readiness_totals, "sources", 0) or 0) >= 1,
+            (
+                f"sources={_field(readiness_totals, 'sources', 0)} "
+                f"ready={_field(readiness_totals, 'ready', 0)}"
+            ),
+        )
+    )
 
     if args.include_real_legislative:
         checks.extend(_official_legislative_checks())

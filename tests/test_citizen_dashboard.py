@@ -18,6 +18,11 @@ def test_build_citizen_dashboard_returns_local_metrics(monkeypatch) -> None:
     monkeypatch.setattr(citizen_dashboard, "SessionLocal", lambda: _SessionContext())
     monkeypatch.setattr(
         citizen_dashboard,
+        "build_public_metric_projection",
+        lambda session: {"contracts": 1, "suppliers": 1, "meetings": 0, "authorities": 0},
+    )
+    monkeypatch.setattr(
+        citizen_dashboard,
         "read_budget_summary",
         lambda session: (
             SimpleNamespace(organization_name="Entidad demo", budget_entity_name="Entidad demo", fiscal_year=2026, approved_budget=10, executed_budget=8, purchase_orders=2, suppliers=1, currency="CLP"),
@@ -46,7 +51,7 @@ def test_build_citizen_dashboard_returns_local_metrics(monkeypatch) -> None:
 
     dashboard = citizen_dashboard.build_citizen_dashboard()
 
-    assert dashboard["metrics"]["budget_total"] == 8
-    assert dashboard["metrics"]["contracts"] >= 0
+    assert dashboard["metrics"]["budget_total"] == 0
+    assert dashboard["metrics"]["contracts"] == 1
     assert dashboard["featured_entities"][0]["organization_name"] == "Entidad demo"
     assert dashboard["discovery_cases"][0]["id"] == "public_spending"

@@ -36,7 +36,7 @@ def expedition_catalog_card(row: dict) -> rx.Component:
         rx.text(row["summary"], class_name="muted small"),
         rx.text(f"Actualizado: {row['updated_at']}", class_name="source-fact"),
         rx.button(
-            "Abrir expediente de laboratorio",
+            "Abrir expediente",
             on_click=rx.redirect(f"/laboratory/expedient?id={row['id']}"),
             class_name="button",
         ),
@@ -132,7 +132,14 @@ def section_body() -> rx.Component:
 def summary_panel() -> rx.Component:
     return rx.vstack(
         rx.text("Lectura inicial", class_name="section-title"),
-        rx.text("Este expediente organiza una hipotesis publica inicial. Sus datos aun estan en investigacion.", class_name="muted"),
+        rx.cond(
+            LaboratoryState.expedient_provenance_class == "REAL",
+            rx.text(
+                "Este expediente organiza referencias públicas verificadas y no atribuye irregularidad, causalidad ni responsabilidad.",
+                class_name="muted",
+            ),
+            rx.text("Este expediente organiza una hipotesis publica inicial. Sus datos aun estan en investigacion.", class_name="muted"),
+        ),
         rx.text("Preguntas abiertas: ", LaboratoryState.open_questions_summary, class_name="story-summary"),
         reading_progress(),
         class_name="laboratory-panel",

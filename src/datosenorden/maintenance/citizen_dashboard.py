@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import asdict, is_dataclass
-from datetime import date, datetime
-
 from sqlalchemy import distinct, func, select
 
 from datosenorden.db.session import SessionLocal
+from datosenorden.application.provenance.service import build_public_metric_projection
 from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
 from datosenorden.maintenance.dipres_prototype import read_budget_summary
 from datosenorden.maintenance.discovery_cases import get_discovery_cases
@@ -15,7 +13,7 @@ from datosenorden.models import Claim, Entity
 def build_citizen_dashboard() -> dict[str, object]:
     with SessionLocal() as session:
         budget_rows = read_budget_summary(session)
-        budget_total = sum(row.executed_budget or row.approved_budget for row in budget_rows)
+        public_metrics = build_public_metric_projection(session)
         budget_currency = _budget_currency(budget_rows)
         organizations = list_cross_dataset_organizations(session)
 
@@ -26,12 +24,12 @@ def build_citizen_dashboard() -> dict[str, object]:
                 "proveedores, reuniones y autoridades visibles."
             ),
             "metrics": {
-                "budget_total": budget_total,
+                "budget_total": 0,
                 "budget_currency": budget_currency,
-                "contracts": _count_contracts(session),
-                "suppliers": _count_entities(session, "COMPANY"),
-                "meetings": _count_meetings(session),
-                "authorities": _count_authorities(session),
+                "contracts": public_metrics["contracts"],
+                "suppliers": public_metrics["suppliers"],
+                "meetings": public_metrics["meetings"],
+                "authorities": public_metrics["authorities"],
             },
             "budget_rows": [
                 {

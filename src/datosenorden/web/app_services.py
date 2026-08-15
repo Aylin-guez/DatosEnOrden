@@ -12,6 +12,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from datosenorden.db.session import SessionLocal
+from datosenorden.application.provenance.public_views import build_public_dataset_summary
+from datosenorden.application.provenance.public_views import enrich_public_ecosystem
 from datosenorden.maintenance.cross_dataset_explorer import list_cross_dataset_organizations
 from datosenorden.maintenance.dataset_registry import list_datasets
 from datosenorden.maintenance.dataset_registry import summarize_real_dataset_registry
@@ -308,19 +310,7 @@ def get_investigation_knowledge(investigation: dict[str, Any]) -> dict[str, Any]
 def get_dataset_summary() -> dict[str, Any]:
     with _session_scope() as session:
         datasets = [_jsonify(row) for row in list_datasets(session)]
-
-    return {
-        "datasets": datasets,
-        "totals": {
-            "datasets": len(datasets),
-            "active_datasets": sum(1 for row in datasets if row["health"] == "active"),
-            "source_records": sum(int(row["source_records"]) for row in datasets),
-            "entities": sum(int(row["entities"]) for row in datasets),
-            "claims": sum(int(row["claims"]) for row in datasets),
-            "evidence": sum(int(row["evidence"]) for row in datasets),
-            "relationships": sum(int(row["relationships"]) for row in datasets),
-        },
-    }
+        return build_public_dataset_summary(session, datasets)
 
 
 def get_real_data_readiness() -> dict[str, Any]:
@@ -331,6 +321,7 @@ def get_real_data_readiness() -> dict[str, Any]:
 def get_data_ecosystem() -> dict[str, Any]:
     with _session_scope() as session:
         ecosystem = _jsonify(build_ecosystem_registry(session))
+        ecosystem = enrich_public_ecosystem(session, ecosystem)
     ecosystem = _apply_source_population_to_ecosystem(ecosystem)
     return _apply_connectors_to_ecosystem(ecosystem)
 
@@ -551,6 +542,8 @@ def _connector_search_matches(query: str) -> list[dict[str, Any]]:
         return []
     matches: list[dict[str, Any]] = []
     for connector in _loaded_connectors():
+        if str(connector.get("official_status", "")) == "NOT_OFFICIAL_DATA":
+            continue
         for entity in _jsonify(connector.get("entities", [])):
             haystack = _normalize_for_population(" ".join([str(entity.get("name", "")), str(entity.get("id", "")), str(entity.get("entity_type", "")), str(connector.get("display_name", ""))]))
             if not _population_query_matches(normalized_query, haystack):
@@ -656,6 +649,8 @@ def _source_population_search_matches(query: str) -> list[dict[str, Any]]:
     if not normalized_query:
         return []
     population = _load_source_population()
+    if str(population.get("official_status", "")) == "NOT_OFFICIAL_DATA":
+        return []
     matches: list[dict[str, Any]] = []
     for row in _jsonify(population.get("ui", {}).get("search_entities", [])):
         haystack = _normalize_for_population(" ".join([str(row.get("entity_name", "")), str(row.get("entity_id", "")), " ".join(row.get("datasets", []))]))

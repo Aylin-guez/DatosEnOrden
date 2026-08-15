@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import reflex as rx
 
-from datosenorden.application.laboratory.service import get_expedient, load_expedient_catalog
+from datosenorden.application.real_expedient.public_facade import (
+    get_public_expedient,
+    list_public_expedient_catalog,
+)
 from datosenorden.application.public_deployment.sanitization import public_error
 from reflex_app.helpers.routing import _router_query_value
 
@@ -17,6 +20,7 @@ class LaboratoryState(rx.State):
     expedient_title: str = ""
     expedient_summary: str = ""
     expedient_status: str = ""
+    expedient_provenance_class: str = ""
     expedient_scope: str = ""
     expedient_territory: str = ""
     expedient_period: str = ""
@@ -49,7 +53,7 @@ class LaboratoryState(rx.State):
         self.load_status = "loading"
         self.error_message = ""
         try:
-            self.catalog_rows = load_expedient_catalog()
+            self.catalog_rows = list_public_expedient_catalog()
             self.load_status = "loaded" if self.catalog_rows else "empty"
         except Exception:  # noqa: BLE001
             self.catalog_rows = []
@@ -62,10 +66,14 @@ class LaboratoryState(rx.State):
         requested = _router_query_value(self.router, "id") or "EXP-001"
         self.requested_expedient_id = requested
         try:
-            payload = get_expedient(requested)
+            payload = get_public_expedient(requested)
             if not payload:
                 self._clear_expedient()
                 self.load_status = "not_found"
+                return
+            if payload.get("provenance_class") == "REAL":
+                self._load_real_expedient(payload)
+                self.load_status = "loaded"
                 return
             self.expedient_id = str(payload["id"])
             self.expedient_title = str(payload["title"])
@@ -117,8 +125,101 @@ class LaboratoryState(rx.State):
         self.reading_progress = int((completed / len(REQUIRED_SECTIONS)) * 100)
         self.reading_complete = completed == len(REQUIRED_SECTIONS)
 
+    def _load_real_expedient(self, payload: dict[str, object]) -> None:
+        references = payload.get("references", {})
+        statements = payload.get("statements", [])
+        self.expedient_id = str(payload["id"])
+        self.expedient_title = str(payload["title"])
+        self.expedient_summary = str(payload["summary"])
+        self.expedient_status = str(payload["status"])
+        self.expedient_provenance_class = "REAL"
+        self.expedient_scope = "Referencias públicas verificadas"
+        self.expedient_territory = "Chile"
+        self.expedient_period = str(payload.get("updated_at", ""))[:10]
+        self.expedient_updated_at = str(payload.get("updated_at", ""))
+        self.problem_title = str(payload["question"])
+        self.problem_description = str(payload["summary"])
+        self.problem_scope = "Lectura de una orden de compra ya registrada."
+        self.problem_affected_population = "No determinada por este expediente."
+        self.problem_territory = "Chile"
+        self.problem_period = self.expedient_period
+        self.problem_status = "DOCUMENTED"
+        self.sections = [
+            {"id": section, "title": title, "summary": "Contenido disponible según referencias verificadas.", "status": "READY"}
+            for section, title in (
+                ("summary", "Resumen"),
+                ("problem", "Pregunta pública"),
+                ("evidence", "Evidencia"),
+                ("claims", "Afirmaciones"),
+                ("hypotheses", "Preguntas abiertas"),
+                ("indicators", "Indicadores"),
+                ("sources", "Fuentes"),
+                ("relationships", "Relaciones"),
+                ("participation", "Participación"),
+            )
+        ]
+        evidence_ids = _reference_ids(references, "evidences")
+        source_ids = _reference_ids(references, "sources")
+        relationship_ids = _reference_ids(references, "relationships")
+        self.evidence_items = [
+            {
+                "id": value,
+                "title": "Evidencia oficial referenciada",
+                "type": "OFFICIAL_REFERENCE",
+                "source": "Fuente pública registrada",
+                "fragment_reference": value,
+                "status": "VERIFIED",
+                "limitations": "La ficha oficial se consulta mediante la navegación de referencias.",
+            }
+            for value in evidence_ids
+        ]
+        self.claims = [
+            {
+                "id": str(row.get("id", "")),
+                "text": str(row.get("text", "")),
+                "type": str(row.get("epistemic_class", "UNKNOWN")),
+                "status": "SUPPORTED",
+                "certainty": str(row.get("epistemic_class", "UNKNOWN")),
+            }
+            for row in statements
+            if isinstance(row, dict)
+        ]
+        self.hypotheses = []
+        self.indicators = []
+        self.sources = [
+            {
+                "id": value,
+                "name": "Fuente pública referenciada",
+                "type": "PUBLIC_SOURCE",
+                "issuer": "Registrado en el expediente",
+                "status": "VERIFIED",
+                "warning": "La fuente conserva su identificación pública sin copiar payloads.",
+            }
+            for value in source_ids
+        ]
+        self.relationships = [
+            {
+                "id": value,
+                "source_entity": "Entidad referenciada",
+                "relation_type": "RELACIÓN DOCUMENTADA",
+                "target_entity": "Entidad referenciada",
+                "status": "VERIFIED",
+                "context": "La relación se resuelve desde la referencia pública del expediente.",
+            }
+            for value in relationship_ids
+        ]
+        self.open_questions_summary = (
+            "Este expediente no determina causalidad, regularidad ni responsabilidad; "
+            "solo organiza las referencias seleccionadas."
+        )
+        self.participation_status = "LOCKED"
+        self.active_section = "summary"
+        self.visited_sections = ["summary"]
+        self._recalculate_progress()
+
     def _clear_expedient(self) -> None:
         self.expedient_id = ""
+        self.expedient_provenance_class = ""
         self.expedient_title = ""
         self.expedient_summary = ""
         self.sections = []
@@ -131,3 +232,10 @@ class LaboratoryState(rx.State):
         self.visited_sections = []
         self.reading_progress = 0
         self.reading_complete = False
+
+
+def _reference_ids(references: object, key: str) -> list[str]:
+    if not isinstance(references, dict):
+        return []
+    values = references.get(key, [])
+    return [str(value) for value in values] if isinstance(values, list) else []
