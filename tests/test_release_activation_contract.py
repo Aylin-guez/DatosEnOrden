@@ -64,6 +64,7 @@ def _base_environment(tmp_path: Path) -> tuple[dict[str, str], Path, Path]:
             "SERVICE": "datosenorden",
             "SYSTEMCTL_LOG": _msys(tmp_path / "systemctl.log"),
             "SMOKE_LOG": _msys(tmp_path / "smoke.log"),
+            "PREPARE_CWD_LOG": _msys(tmp_path / "prepare-cwd.log"),
         }
     )
     _write_command(fake_bin, "id", '[[ "${1:-}" == "-u" ]] && echo 0\n')
@@ -111,11 +112,14 @@ def _install_prepare_fakes(fake_bin: Path, log: Path) -> None:
         fake_bin,
         "runuser",
         f'printf "%s\\n" "$*" >> "{_msys(log)}"\n'
+        'while (($#)) && [[ "$1" != "--" ]]; do shift; done\n'
+        '[[ "${1:-}" == "--" ]] && shift\n'
+        'if [[ "${1:-}" == "bash" ]]; then exec "$@"; fi\n'
         "while (($#)); do\n"
         "  if [[ \"$1\" == \"venv\" ]]; then\n"
         "    target=\"$2\"\n"
         "    mkdir -p \"$target/bin\"\n"
-        "    printf '#!/usr/bin/env bash\\nexit 0\\n' > \"$target/bin/python\"\n"
+        "    printf '#!/usr/bin/env bash\\nif [[ \"${1:-}\" == \"-m\" && \"${2:-}\" == \"reflex\" ]]; then pwd > \"$PREPARE_CWD_LOG\"; fi\\nexit 0\\n' > \"$target/bin/python\"\n"
         "    printf '#!/usr/bin/env bash\\nexit 0\\n' > \"$target/bin/reflex\"\n"
         "    chmod 0755 \"$target/bin/python\" \"$target/bin/reflex\"\n"
         "    exit 0\n"
@@ -212,6 +216,7 @@ def test_prepare_is_single_use_and_never_activates(tmp_path: Path) -> None:
     assert " -m venv " in f" {prepare_calls} "
     assert "pip install" in prepare_calls
     assert "reflex compile --dry" in prepare_calls
+    assert (tmp_path / "prepare-cwd.log").read_text(encoding="utf-8").strip() == _msys(target)
 
     second = _run("scripts/deploy_release_ubuntu.sh", args, environment, tmp_path)
 

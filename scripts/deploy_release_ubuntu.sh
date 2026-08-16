@@ -35,8 +35,11 @@ runuser -u "$APP_USER" -- python3 -m venv "$target/.venv"
 runuser -u "$APP_USER" -- "$target/.venv/bin/python" -m pip install --upgrade pip
 runuser -u "$APP_USER" -- "$target/.venv/bin/python" -m pip install "$target"
 runuser -u "$APP_USER" -- "$target/.venv/bin/python" -m pip check
-runuser -u "$APP_USER" -- env -u DATABASE_URL -u DATOSENORDEN_DATABASE_URL \
-    DATOSENORDEN_ENV=local "$target/.venv/bin/python" -m reflex compile --dry --no-rich
+runuser -u "$APP_USER" -- bash -c '
+    cd "$1"
+    exec env -u DATABASE_URL -u DATOSENORDEN_DATABASE_URL \
+        DATOSENORDEN_ENV=local "$2" -m reflex compile --dry --no-rich
+' -- "$target" "$target/.venv/bin/python"
 pending_marker="$target/.deo-release-ready.pending"
 ready_marker="$target/.deo-release-ready"
 printf 'release_id=%s\nartifact_sha256=%s\n' "$release_id" "${expected_sha,,}" > "$pending_marker"
