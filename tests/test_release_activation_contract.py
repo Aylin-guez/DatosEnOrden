@@ -7,6 +7,8 @@ import subprocess
 import tarfile
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 R1 = "1" * 40
 R2 = "2" * 40
@@ -127,6 +129,16 @@ def _install_prepare_fakes(fake_bin: Path, log: Path) -> None:
         "  shift\n"
         "done\n",
     )
+    _write_command(
+        fake_bin,
+        "find",
+        'if [[ -n "${DEO_FIND_VIOLATION:-}" ]]; then\n'
+        '  [[ " $* " == *" -type f "* && " $* " == *" -type d "* ]] || exit 99\n'
+        '  printf "%s\\n" "$DEO_FIND_VIOLATION"\n'
+        '  exit 0\n'
+        'fi\n'
+        'exec /usr/bin/find "$@"\n',
+    )
 
 
 def _prepared_release(app_root: Path, release_id: str) -> Path:
@@ -223,6 +235,45 @@ def test_prepare_is_single_use_and_never_activates(tmp_path: Path) -> None:
     assert second.returncode != 0
     assert "Release already exists" in second.stderr
     assert runuser_log.read_text(encoding="utf-8") == prepare_calls
+
+
+def test_prepare_immutability_gate_excludes_symlinks_but_checks_files_and_directories() -> None:
+    deploy = (ROOT / "scripts" / "deploy_release_ubuntu.sh").read_text(encoding="utf-8")
+
+    assert 'find "$target" -xdev \\( -type f -o -type d \\) -perm /022' in deploy
+
+
+@pytest.mark.parametrize(
+    "violation",
+    ("group-writable-regular-file", "group-writable-directory", "other-writable-regular-file"),
+)
+def test_prepare_rejects_writable_files_and_directories_without_marker(
+    tmp_path: Path, violation: str
+) -> None:
+    environment, app_root, fake_bin = _base_environment(tmp_path)
+    _install_prepare_fakes(fake_bin, tmp_path / "runuser.log")
+    environment["DEO_FIND_VIOLATION"] = violation
+    archive, digest = _artifact(tmp_path)
+
+    failed = _run(
+        "scripts/deploy_release_ubuntu.sh",
+        [
+            "--prepare",
+            "--artifact",
+            _msys(archive),
+            "--sha256",
+            digest,
+            "--release-id",
+            R1,
+        ],
+        environment,
+        tmp_path,
+    )
+
+    target = app_root / "releases" / R1
+    assert failed.returncode != 0
+    assert "Prepared release remains writable" in failed.stderr
+    assert not (target / ".deo-release-ready").exists()
 
 
 def test_first_second_and_repeated_activation_preserve_pointers(tmp_path: Path) -> None:

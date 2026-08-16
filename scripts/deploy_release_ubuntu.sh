@@ -45,7 +45,7 @@ ready_marker="$target/.deo-release-ready"
 printf 'release_id=%s\nartifact_sha256=%s\n' "$release_id" "${expected_sha,,}" > "$pending_marker"
 chown -R root:"$APP_USER" "$target"
 chmod -R go-w "$target"
-if find "$target" -xdev -perm /022 -print -quit | grep -q .; then
+if find "$target" -xdev \( -type f -o -type d \) -perm /022 -print -quit | grep -q .; then
     echo "Prepared release remains writable by its runtime user or group." >&2
     exit 1
 fi
