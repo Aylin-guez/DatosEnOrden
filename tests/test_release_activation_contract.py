@@ -243,6 +243,36 @@ def test_prepare_immutability_gate_excludes_symlinks_but_checks_files_and_direct
     assert 'find "$target" -xdev \\( -type f -o -type d \\) -perm /022' in deploy
 
 
+def test_prepare_and_activate_share_immutability_gate_semantics() -> None:
+    deploy = (ROOT / "scripts" / "deploy_release_ubuntu.sh").read_text(encoding="utf-8")
+    activate = (ROOT / "scripts" / "activate_release_ubuntu.sh").read_text(encoding="utf-8")
+    gate = 'find "$target" -xdev \\( -type f -o -type d \\) -perm /022 -print -quit'
+
+    assert gate in deploy
+    assert gate in activate
+
+
+@pytest.mark.parametrize(
+    "violation",
+    ("group-writable-regular-file", "group-writable-directory", "other-writable-regular-file"),
+)
+def test_activation_rejects_writable_files_and_directories_before_current_switch(
+    tmp_path: Path, violation: str
+) -> None:
+    environment, app_root, fake_bin = _base_environment(tmp_path)
+    _install_prepare_fakes(fake_bin, tmp_path / "runuser.log")
+    _install_activation_fakes(fake_bin)
+    _prepared_release(app_root, R1)
+    environment["DEO_FIND_VIOLATION"] = violation
+
+    failed = _run("scripts/activate_release_ubuntu.sh", _activation_args(R1), environment, tmp_path)
+
+    assert failed.returncode != 0
+    assert "Prepared release is writable" in failed.stderr
+    assert not (app_root / "current").exists()
+    assert not (app_root / "previous").exists()
+
+
 @pytest.mark.parametrize(
     "violation",
     ("group-writable-regular-file", "group-writable-directory", "other-writable-regular-file"),

@@ -45,6 +45,7 @@ def test_preprovisioning_pack_keeps_services_and_database_private() -> None:
     postgres = _text("scripts/configure_postgres_beta.sh")
     firewall = _text("scripts/configure_ufw.sh")
     smoke = _text("scripts/post_deploy_smoke.sh")
+    caddy = _text("deployment/Caddyfile")
     assert "User=datosenorden" in service
     assert "WorkingDirectory=/opt/datosenorden/current" in service
     assert "EnvironmentFile=/etc/datosenorden/beta.env" in service
@@ -59,6 +60,11 @@ def test_preprovisioning_pack_keeps_services_and_database_private() -> None:
     assert "private_ports" in smoke
     assert "MIN_MEMORY_KIB" in smoke
     assert "MIN_DISK_KIB" in smoke
+    assert "beta.datosenorden.cl {" in caddy
+    assert "reverse_proxy 127.0.0.1:3000" in caddy
+    assert "\ndatosenorden.cl {" not in caddy
+    assert "\nwww.datosenorden.cl {" not in caddy
+    assert "Strict-Transport-Security" not in caddy
 
 
 def test_preprovisioning_scripts_are_portable_and_do_not_reference_private_repos() -> None:

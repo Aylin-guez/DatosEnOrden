@@ -21,11 +21,3 @@
 beta.datosenorden.cl {
     import datosenorden_common
 }
-
-datosenorden.cl {
-    import datosenorden_common
-}
-
-www.datosenorden.cl {
-    redir https://datosenorden.cl{uri}
-}

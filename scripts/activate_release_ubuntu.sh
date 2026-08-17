@@ -35,7 +35,7 @@ grep -Fxq "release_id=$release_id" "$ready_marker" || fail "Release readiness ma
 grep -Eq '^artifact_sha256=[A-Fa-f0-9]{64}$' "$ready_marker" || fail "Release readiness marker has no artifact SHA-256."
 [[ -x "$target/.venv/bin/python" && -x "$target/.venv/bin/reflex" ]] || fail "Release virtual environment is incomplete."
 [[ -f "$target/scripts/post_deploy_smoke.sh" ]] || fail "Release post-deploy smoke script is missing."
-if find "$target" -xdev -perm /022 -print -quit | grep -q .; then
+if find "$target" -xdev \( -type f -o -type d \) -perm /022 -print -quit | grep -q .; then
     fail "Prepared release is writable by its runtime user or group."
 fi
 [[ -f "$ENV_FILE" ]] || fail "Missing external environment file: $ENV_FILE"
