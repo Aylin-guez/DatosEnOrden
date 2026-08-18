@@ -105,11 +105,15 @@ not deploy from a mutable clone, and it does not contain credentials.
    must never invoke Reflex compilation or import the Reflex application.
 9. **GATE**: extract only `deployment/datosenorden.service` and
    `deployment/Caddyfile` from the verified artifact into their system
-   locations, then validate them.
-   Validate with `systemd-analyze verify /etc/systemd/system/datosenorden.service`
-   and `caddy validate --config /etc/caddy/Caddyfile`. Enable the application
-   unit without starting it: `sudo systemctl enable datosenorden`. Make Caddy
-   ready according to its separately validated foundation before activation.
+   locations, then validate and reload them. `deployment/Caddyfile` is
+   Caddyfile syntax (not native JSON), so declare its adapter explicitly:
+   `sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`.
+   Validate the unit with `systemd-analyze verify
+   /etc/systemd/system/datosenorden.service`, then reload the Caddyfile with
+   `sudo caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`.
+   Enable the application unit without starting it: `sudo systemctl enable
+   datosenorden`. Make Caddy ready according to its separately validated
+   foundation before activation.
 10. **AUTOMATED**: activate the already prepared release; never invoke prepare
     again for the same release:
 

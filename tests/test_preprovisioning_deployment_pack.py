@@ -60,11 +60,23 @@ def test_preprovisioning_pack_keeps_services_and_database_private() -> None:
     assert "private_ports" in smoke
     assert "MIN_MEMORY_KIB" in smoke
     assert "MIN_DISK_KIB" in smoke
+    assert "# Caddy handles WebSocket upgrades automatically" in caddy
     assert "beta.datosenorden.cl {" in caddy
     assert "reverse_proxy 127.0.0.1:3000" in caddy
     assert "\ndatosenorden.cl {" not in caddy
     assert "\nwww.datosenorden.cl {" not in caddy
     assert "Strict-Transport-Security" not in caddy
+
+
+def test_caddyfile_operations_declare_the_caddyfile_adapter() -> None:
+    runbook = _text("docs/VPS_GO_LIVE_STEPS.md")
+    troubleshooting = _text("docs/FIRST_DEPLOY_TROUBLESHOOTING.md")
+    validate = "caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile"
+    reload = "caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"
+    assert validate in runbook
+    assert reload in runbook
+    assert validate in troubleshooting
+    assert reload in troubleshooting
 
 
 def test_preprovisioning_scripts_are_portable_and_do_not_reference_private_repos() -> None:

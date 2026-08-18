@@ -121,9 +121,9 @@ curl -I http://127.0.0.1:3000/api/_health
 Como solucionarlo
 
 ```bash
-sudo caddy validate --config /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 sudo systemctl restart datosenorden
-sudo systemctl reload caddy
+sudo caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
 
 Confirma que `/etc/caddy/Caddyfile` haga proxy solo a `127.0.0.1:3000`.
@@ -147,7 +147,7 @@ getent hosts datosenorden.cl
 getent hosts beta.datosenorden.cl
 sudo ufw status
 sudo journalctl -u caddy -n 100 --no-pager
-sudo caddy validate --config /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
 
 Como solucionarlo
@@ -186,7 +186,7 @@ Como solucionarlo
 ```bash
 sudo -u datosenorden bash -lc 'cd /opt/datosenorden && set -a && source .env && set +a && source .venv/bin/activate && python3 -m reflex run --env prod --single-port --frontend-port 3000 --backend-host 127.0.0.1'
 sudo systemctl restart datosenorden
-sudo systemctl reload caddy
+sudo caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
 
 ## Puerto ocupado
@@ -393,7 +393,7 @@ Como solucionarlo
 
 ```bash
 sudo systemctl restart datosenorden
-sudo systemctl reload caddy
+sudo caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 sudo journalctl -u datosenorden -n 100 --no-pager
 sudo journalctl -u caddy -n 100 --no-pager
 ```
