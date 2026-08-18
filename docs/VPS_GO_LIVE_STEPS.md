@@ -135,7 +135,11 @@ not deploy from a mutable clone, and it does not contain credentials.
     reloads and restarts systemd, then runs the mandatory full
     `systemd-analyze verify /etc/systemd/system/datosenorden.service` only
     after `current` resolves to the newly activated release, followed by the
-    post-deploy smoke. It performs no pip, build, Alembic or data import. A
+    post-deploy smoke. The smoke polls `http://127.0.0.1:3000/` for a 2xx
+    response with a bounded 45-second readiness budget, one-second interval
+    and three-second per-attempt timeout; it fails early if the service stops.
+    Once ready, it runs the remaining privacy, release, PostgreSQL and
+    resource gates. It performs no pip, build, Alembic or data import. A
     failed post-activation systemd verification follows the same fail-closed
     rollback path as a failed restart or smoke. First activation leaves
     `previous` absent. On an update, the full verification applies to the new

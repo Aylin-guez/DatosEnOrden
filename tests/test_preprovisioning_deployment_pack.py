@@ -62,6 +62,12 @@ def test_preprovisioning_pack_keeps_services_and_database_private() -> None:
     assert "private_ports" in smoke
     assert "MIN_MEMORY_KIB" in smoke
     assert "MIN_DISK_KIB" in smoke
+    assert 'READINESS_TIMEOUT_SECONDS="${READINESS_TIMEOUT_SECONDS:-45}"' in smoke
+    assert 'READINESS_INTERVAL_SECONDS="${READINESS_INTERVAL_SECONDS:-1}"' in smoke
+    assert 'PER_ATTEMPT_TIMEOUT_SECONDS="${PER_ATTEMPT_TIMEOUT_SECONDS:-3}"' in smoke
+    assert "wait_for_backend_readiness" in smoke
+    assert "backend_service_inactive_during_readiness" in smoke
+    assert "^2[0-9]{2}$" in smoke
     assert "# Caddy handles WebSocket upgrades automatically" in caddy
     assert "beta.datosenorden.cl {" in caddy
     assert "reverse_proxy 127.0.0.1:3000" in caddy
