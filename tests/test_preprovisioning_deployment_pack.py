@@ -25,6 +25,8 @@ def test_preprovisioning_scripts_use_immutable_release_contracts() -> None:
     assert "pip install" not in activate
     assert "mv -Tf" in activate
     assert "restore_old_current" in activate
+    assert "systemd-analyze verify" in activate
+    assert "post-activation systemd verification failed" in activate
     assert "post_deploy_smoke.sh" in activate
     assert "alembic" not in activate
     assert "import_production_data" not in activate
@@ -77,6 +79,18 @@ def test_caddyfile_operations_declare_the_caddyfile_adapter() -> None:
     assert reload in runbook
     assert validate in troubleshooting
     assert reload in troubleshooting
+
+
+def test_first_activation_defers_full_systemd_verify_until_current_exists() -> None:
+    runbook = _text("docs/VPS_GO_LIVE_STEPS.md")
+    activate = _text("scripts/activate_release_ubuntu.sh")
+    static_gate = "Do **not** run `systemd-analyze\n   verify` before activation"
+    full_verify = "systemd-analyze verify /etc/systemd/system/datosenorden.service"
+
+    assert static_gate in runbook
+    assert full_verify in runbook
+    assert runbook.index(static_gate) < runbook.index(full_verify)
+    assert activate.index('mv -Tf "$current_new" "$current"') < activate.index("systemd-analyze verify")
 
 
 def test_preprovisioning_scripts_are_portable_and_do_not_reference_private_repos() -> None:

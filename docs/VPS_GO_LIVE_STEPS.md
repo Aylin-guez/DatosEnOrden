@@ -105,14 +105,19 @@ not deploy from a mutable clone, and it does not contain credentials.
    must never invoke Reflex compilation or import the Reflex application.
 9. **GATE**: extract only `deployment/datosenorden.service` and
    `deployment/Caddyfile` from the verified artifact into their system
-   locations, then validate and reload them. `deployment/Caddyfile` is
-   Caddyfile syntax (not native JSON), so declare its adapter explicitly:
-   `sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`.
-   Validate the unit with `systemd-analyze verify
-   /etc/systemd/system/datosenorden.service`, then reload the Caddyfile with
-   `sudo caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`.
-   Enable the application unit without starting it: `sudo systemctl enable
-   datosenorden`. Make Caddy ready according to its separately validated
+   locations. Before first activation, `current` is deliberately absent, so
+   run only static unit checks which do not resolve `ExecStart` through
+   `/opt/datosenorden/current`: confirm the installed unit with
+   `sudo systemctl cat datosenorden` and enable it without starting it with
+   `sudo systemctl enable datosenorden`. Do **not** run `systemd-analyze
+   verify` before activation: it requires the `ExecStart` target to exist and
+   would incorrectly reject a first deployment.
+
+   Validate and reload Caddy separately. `deployment/Caddyfile` is Caddyfile
+   syntax (not native JSON), so declare its adapter explicitly:
+   `sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`
+   followed by `sudo caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`.
+   Make Caddy ready according to its separately validated
    foundation before activation.
 10. **AUTOMATED**: activate the already prepared release; never invoke prepare
     again for the same release:
@@ -127,9 +132,15 @@ not deploy from a mutable clone, and it does not contain credentials.
     migration, data import and pre-activation checks passed. Activation also
     verifies the readiness marker, venv, smoke script, installed systemd unit,
     external environment and immutable permissions. It atomically switches `current`,
-    restarts systemd and runs post-deploy smoke without pip, build, Alembic or
-    data import. First activation leaves `previous` absent. On an update,
-    successful activation sets `previous` to the old `current`.
+    reloads and restarts systemd, then runs the mandatory full
+    `systemd-analyze verify /etc/systemd/system/datosenorden.service` only
+    after `current` resolves to the newly activated release, followed by the
+    post-deploy smoke. It performs no pip, build, Alembic or data import. A
+    failed post-activation systemd verification follows the same fail-closed
+    rollback path as a failed restart or smoke. First activation leaves
+    `previous` absent. On an update, the full verification applies to the new
+    `current` release (not the resolvable old release); successful activation
+    then sets `previous` to the old `current`.
 11. **FAILURE CONTRACT**: if restart or post-activation smoke fails, activation
     stops the failed service and restores the old `current`. It then attempts
     to restart the old release; if that is unhealthy the service stays stopped.

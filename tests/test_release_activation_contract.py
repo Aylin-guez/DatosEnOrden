@@ -65,6 +65,7 @@ def _base_environment(tmp_path: Path) -> tuple[dict[str, str], Path, Path]:
             "ENV_FILE": _msys(env_file),
             "SERVICE": "datosenorden",
             "SYSTEMCTL_LOG": _msys(tmp_path / "systemctl.log"),
+            "SYSTEMD_ANALYZE_LOG": _msys(tmp_path / "systemd-analyze.log"),
             "SMOKE_LOG": _msys(tmp_path / "smoke.log"),
             "PREPARE_CWD_LOG": _msys(tmp_path / "prepare-cwd.log"),
         }
@@ -197,6 +198,15 @@ def _install_activation_fakes(fake_bin: Path) -> None:
         '  stop) rm -f "$APP_ROOT/.service-active"; exit 0 ;;\n'
         "  *) exit 0 ;;\n"
         "esac\n",
+    )
+    _write_command(
+        fake_bin,
+        "systemd-analyze",
+        'printf "%s\\n" "$*" >> "$SYSTEMD_ANALYZE_LOG"\n'
+        '[[ "${1:-}" == "verify" && "${2:-}" == "/etc/systemd/system/datosenorden.service" ]]\n'
+        '[[ -L "$APP_ROOT/current" ]]\n'
+        'active="$(basename "$(readlink -f "$APP_ROOT/current")")"\n'
+        '[[ "$active" != "${FAIL_SYSTEMD_VERIFY_RELEASE:-}" ]]\n',
     )
 
 
@@ -333,11 +343,18 @@ def test_first_second_and_repeated_activation_preserve_pointers(tmp_path: Path) 
     assert first.returncode == 0, first.stderr
     assert (app_root / "current").resolve() == first_release.resolve()
     assert not (app_root / "previous").exists()
+    assert (tmp_path / "systemd-analyze.log").read_text(encoding="utf-8").splitlines() == [
+        "verify /etc/systemd/system/datosenorden.service"
+    ]
 
     second = _run("scripts/activate_release_ubuntu.sh", _activation_args(R2), environment, tmp_path)
     assert second.returncode == 0, second.stderr
     assert (app_root / "current").resolve() == second_release.resolve()
     assert (app_root / "previous").resolve() == first_release.resolve()
+    assert (tmp_path / "systemd-analyze.log").read_text(encoding="utf-8").splitlines() == [
+        "verify /etc/systemd/system/datosenorden.service",
+        "verify /etc/systemd/system/datosenorden.service",
+    ]
     systemctl_log = (tmp_path / "systemctl.log").read_text(encoding="utf-8")
     restarts = systemctl_log.count("restart datosenorden")
 
@@ -353,6 +370,42 @@ def test_first_second_and_repeated_activation_preserve_pointers(tmp_path: Path) 
     assert (app_root / "previous").resolve() == first_release.resolve()
     final_log = (tmp_path / "systemctl.log").read_text(encoding="utf-8")
     assert final_log.count("restart datosenorden") == restarts
+    assert (tmp_path / "systemd-analyze.log").read_text(encoding="utf-8").splitlines() == [
+        "verify /etc/systemd/system/datosenorden.service",
+        "verify /etc/systemd/system/datosenorden.service",
+    ]
+
+
+def test_first_activation_never_creates_fake_current_before_full_systemd_verify(tmp_path: Path) -> None:
+    environment, app_root, fake_bin = _base_environment(tmp_path)
+    _install_activation_fakes(fake_bin)
+    release = _prepared_release(app_root, R1)
+
+    assert not (app_root / "current").exists()
+    result = _run("scripts/activate_release_ubuntu.sh", _activation_args(R1), environment, tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert (app_root / "current").resolve() == release.resolve()
+    verify_log = (tmp_path / "systemd-analyze.log").read_text(encoding="utf-8")
+    assert verify_log == "verify /etc/systemd/system/datosenorden.service\n"
+
+
+def test_post_activation_systemd_verify_failure_rolls_back_update(tmp_path: Path) -> None:
+    environment, app_root, fake_bin = _base_environment(tmp_path)
+    _install_activation_fakes(fake_bin)
+    first_release = _prepared_release(app_root, R1)
+    _prepared_release(app_root, R2)
+    first = _run("scripts/activate_release_ubuntu.sh", _activation_args(R1), environment, tmp_path)
+    assert first.returncode == 0, first.stderr
+    environment["FAIL_SYSTEMD_VERIFY_RELEASE"] = R2
+
+    failed = _run("scripts/activate_release_ubuntu.sh", _activation_args(R2), environment, tmp_path)
+
+    assert failed.returncode != 0
+    assert "post-activation systemd verification failed" in failed.stderr
+    assert (app_root / "current").resolve() == first_release.resolve()
+    assert not (app_root / "previous").exists()
+    assert (app_root / ".service-active").exists()
 
 
 def test_activation_rejects_missing_and_incomplete_release(tmp_path: Path) -> None:

@@ -88,6 +88,8 @@ elif ! systemctl restart "$SERVICE"; then
     activation_failure="service restart failed"
 elif ! systemctl is-active --quiet "$SERVICE"; then
     activation_failure="service did not become active"
+elif ! systemd-analyze verify "/etc/systemd/system/${SERVICE}.service"; then
+    activation_failure="post-activation systemd verification failed"
 elif ! bash "$target/scripts/post_deploy_smoke.sh" "$release_id"; then
     activation_failure="post-activation smoke failed"
 fi
