@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 import json
 import os
 import subprocess
 import sys
+from dataclasses import dataclass
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_ENV = (
@@ -153,7 +153,14 @@ def _route_check() -> Check:
 
 
 def _prelaunch_check() -> Check:
-    result = subprocess.run([sys.executable, "scripts/prelaunch_public_check.py"], cwd=ROOT, capture_output=True, text=True, check=False, timeout=240)
+    result = subprocess.run(
+        [sys.executable, "scripts/prelaunch_public_check.py", "--read-only"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=240,
+    )
     lines = (result.stdout or result.stderr or "").strip().splitlines()
     detail = lines[-1] if lines else f"exit={result.returncode}"
     return Check("prelaunch public check", result.returncode == 0, detail)

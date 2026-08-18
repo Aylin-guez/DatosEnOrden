@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
+import argparse
 import json
 import subprocess
 import sys
+from dataclasses import dataclass
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REFLEX_APP = ROOT / "reflex_app" / "reflex_app.py"
@@ -67,9 +68,16 @@ class Check:
     detail: str
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run public prelaunch checks.")
+    parser.add_argument(
+        "--read-only",
+        action="store_true",
+        help="skip Reflex compilation for an immutable, already-prepared release",
+    )
+    args = parser.parse_args(argv)
     checks = [
-        _reflex_compile_check(),
+        _compile_authority_check(args.read_only),
         _asset_check(),
         _manifest_check(),
         _robots_check(),
@@ -83,10 +91,30 @@ def main() -> int:
         _compose_check(),
         _tracked_cache_check(),
         _large_asset_check(),
-        _public_routes_check(),
+        _route_import_authority_check(args.read_only),
     ]
     _print_report(checks)
     return 1 if any(not check.ok for check in checks) else 0
+
+
+def _compile_authority_check(read_only: bool) -> Check:
+    if read_only:
+        return Check(
+            "Reflex compile authority",
+            True,
+            "not run: PREPARE must compile before release hardening",
+        )
+    return _reflex_compile_check()
+
+
+def _route_import_authority_check(read_only: bool) -> Check:
+    if read_only:
+        return Check(
+            "Reflex route import authority",
+            True,
+            "not run: PREPARE compile validates routes before release hardening",
+        )
+    return _public_routes_check()
 
 
 def _reflex_compile_check() -> Check:

@@ -121,7 +121,7 @@ def _install_prepare_fakes(fake_bin: Path, log: Path) -> None:
         "  if [[ \"$1\" == \"venv\" ]]; then\n"
         "    target=\"$2\"\n"
         "    mkdir -p \"$target/bin\"\n"
-        "    printf '#!/usr/bin/env bash\\nif [[ \"${1:-}\" == \"-m\" && \"${2:-}\" == \"reflex\" ]]; then pwd > \"$PREPARE_CWD_LOG\"; fi\\nexit 0\\n' > \"$target/bin/python\"\n"
+        "    printf '#!/usr/bin/env bash\\nif [[ \"${1:-}\" == \"-m\" && \"${2:-}\" == \"reflex\" ]]; then pwd > \"$PREPARE_CWD_LOG\"; [[ -z \"${FAIL_PREPARE_COMPILE:-}\" ]] || exit 1; fi\\nexit 0\\n' > \"$target/bin/python\"\n"
         "    printf '#!/usr/bin/env bash\\nexit 0\\n' > \"$target/bin/reflex\"\n"
         "    chmod 0755 \"$target/bin/python\" \"$target/bin/reflex\"\n"
         "    exit 0\n"
@@ -241,6 +241,23 @@ def test_prepare_immutability_gate_excludes_symlinks_but_checks_files_and_direct
     deploy = (ROOT / "scripts" / "deploy_release_ubuntu.sh").read_text(encoding="utf-8")
 
     assert 'find "$target" -xdev \\( -type f -o -type d \\) -perm /022' in deploy
+
+
+def test_prepare_compile_failure_never_writes_ready_marker(tmp_path: Path) -> None:
+    environment, app_root, fake_bin = _base_environment(tmp_path)
+    _install_prepare_fakes(fake_bin, tmp_path / "runuser.log")
+    environment["FAIL_PREPARE_COMPILE"] = "1"
+    archive, digest = _artifact(tmp_path)
+
+    failed = _run(
+        "scripts/deploy_release_ubuntu.sh",
+        ["--prepare", "--artifact", _msys(archive), "--sha256", digest, "--release-id", R1],
+        environment,
+        tmp_path,
+    )
+
+    assert failed.returncode != 0
+    assert not (app_root / "releases" / R1 / ".deo-release-ready").exists()
 
 
 def test_prepare_and_activate_share_immutability_gate_semantics() -> None:

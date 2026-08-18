@@ -92,7 +92,7 @@ def test_deploy_check_calls_prelaunch_public_check(monkeypatch) -> None:
     result = module._prelaunch_check()
 
     assert result.ok is True
-    assert calls == [[sys.executable, "scripts/prelaunch_public_check.py"]]
+    assert calls == [[sys.executable, "scripts/prelaunch_public_check.py", "--read-only"]]
 
 
 def test_deploy_check_requires_public_launch_assets(tmp_path: Path, monkeypatch) -> None:

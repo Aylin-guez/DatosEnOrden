@@ -133,6 +133,46 @@ def test_prelaunch_public_check_reflex_compile_uses_dry_run(monkeypatch) -> None
     assert calls == [[sys.executable, "-m", "reflex", "compile", "--dry", "--no-rich"]]
 
 
+def test_prelaunch_read_only_mode_preserves_prepare_compile_authority(monkeypatch) -> None:
+    module = _load_script()
+    calls = []
+    monkeypatch.setattr(module, "_reflex_compile_check", lambda: calls.append("compile"))
+
+    result = module._compile_authority_check(read_only=True)
+
+    assert result.ok is True
+    assert "PREPARE" in result.detail
+    assert calls == []
+
+
+def test_prelaunch_local_mode_still_compiles(monkeypatch) -> None:
+    module = _load_script()
+    expected = module.Check("Reflex compiles", True, "ok")
+    monkeypatch.setattr(module, "_reflex_compile_check", lambda: expected)
+
+    assert module._compile_authority_check(read_only=False) is expected
+
+
+def test_prelaunch_read_only_mode_skips_route_imports(monkeypatch) -> None:
+    module = _load_script()
+    calls = []
+    monkeypatch.setattr(module, "_public_routes_check", lambda: calls.append("routes"))
+
+    result = module._route_import_authority_check(read_only=True)
+
+    assert result.ok is True
+    assert "PREPARE" in result.detail
+    assert calls == []
+
+
+def test_prelaunch_local_mode_still_imports_routes(monkeypatch) -> None:
+    module = _load_script()
+    expected = module.Check("public routes registered", True, "ok")
+    monkeypatch.setattr(module, "_public_routes_check", lambda: expected)
+
+    assert module._route_import_authority_check(read_only=False) is expected
+
+
 def test_prelaunch_public_check_validates_public_web_assets(tmp_path: Path, monkeypatch) -> None:
     module = _load_script()
     favicon = tmp_path / "assets" / "favicon.ico"

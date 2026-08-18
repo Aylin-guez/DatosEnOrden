@@ -98,7 +98,11 @@ not deploy from a mutable clone, and it does not contain credentials.
 
 8. **GATE**: execute the prepared release's prelaunch/deploy checks against the
    migrated database. This is the pre-activation application smoke; it must not
-   expose traffic or change `current`.
+   expose traffic, change `current`, or write inside the release. PREPARE is the
+   sole authority for Reflex compilation: it compiles before hardening and before
+   `.deo-release-ready` is written. Post-PREPARE validation uses
+   `scripts/prelaunch_public_check.py --read-only` (via `deploy_check.py`) and
+   must never invoke Reflex compilation or import the Reflex application.
 9. **GATE**: extract only `deployment/datosenorden.service` and
    `deployment/Caddyfile` from the verified artifact into their system
    locations, then validate them.
