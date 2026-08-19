@@ -71,6 +71,12 @@ def _base_environment(tmp_path: Path) -> tuple[dict[str, str], Path, Path]:
         }
     )
     _write_command(fake_bin, "id", '[[ "${1:-}" == "-u" ]] && echo 0\n')
+    _write_command(
+        fake_bin,
+        "getent",
+        '[[ "${1:-}" == "passwd" && "${2:-}" == "datosenorden" ]]\n'
+        'printf "datosenorden:x:1:1::/tmp:/bin/bash\\n"\n',
+    )
     return environment, app_root, fake_bin
 
 
@@ -117,12 +123,17 @@ def _install_prepare_fakes(fake_bin: Path, log: Path) -> None:
         f'printf "%s\\n" "$*" >> "{_msys(log)}"\n'
         'while (($#)) && [[ "$1" != "--" ]]; do shift; done\n'
         '[[ "${1:-}" == "--" ]] && shift\n'
+        'if [[ "${1:-}" == "env" ]]; then\n'
+        '  shift\n'
+        '  while [[ "${1:-}" == *=* ]]; do shift; done\n'
+        '  exec "$@"\n'
+        'fi\n'
         'if [[ "${1:-}" == "bash" ]]; then exec "$@"; fi\n'
         "while (($#)); do\n"
         "  if [[ \"$1\" == \"venv\" ]]; then\n"
         "    target=\"$2\"\n"
         "    mkdir -p \"$target/bin\"\n"
-        "    printf '#!/usr/bin/env bash\\nif [[ \"${1:-}\" == \"-m\" && \"${2:-}\" == \"reflex\" ]]; then pwd > \"$PREPARE_CWD_LOG\"; [[ -z \"${FAIL_PREPARE_COMPILE:-}\" ]] || exit 1; fi\\nexit 0\\n' > \"$target/bin/python\"\n"
+        "    printf '#!/usr/bin/env bash\\nif [[ \"${1:-}\" == \"-m\" && \"${2:-}\" == \"reflex\" ]]; then pwd > \"$PREPARE_CWD_LOG\"; [[ -z \"${FAIL_PREPARE_COMPILE:-}\" ]] || exit 1; mkdir -p .web/backend .web/build/client; printf \"[]\" > .web/backend/stateful_pages.json; printf \"<!doctype html>\" > .web/build/client/index.html; fi\\nexit 0\\n' > \"$target/bin/python\"\n"
         "    printf '#!/usr/bin/env bash\\nexit 0\\n' > \"$target/bin/reflex\"\n"
         "    chmod 0755 \"$target/bin/python\" \"$target/bin/reflex\"\n"
         "    exit 0\n"
@@ -237,7 +248,7 @@ def test_prepare_is_single_use_and_never_activates(tmp_path: Path) -> None:
     prepare_calls = runuser_log.read_text(encoding="utf-8")
     assert " -m venv " in f" {prepare_calls} "
     assert "pip install" in prepare_calls
-    assert "reflex compile --dry" in prepare_calls
+    assert "reflex export --no-zip --env prod --no-ssr" in prepare_calls
     assert (tmp_path / "prepare-cwd.log").read_text(encoding="utf-8").strip() == _msys(target)
 
     second = _run("scripts/deploy_release_ubuntu.sh", args, environment, tmp_path)

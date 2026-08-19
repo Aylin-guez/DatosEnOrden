@@ -34,12 +34,16 @@ def test_preprovisioning_scripts_use_immutable_release_contracts() -> None:
     assert "activate_release_ubuntu.sh" in rollback
 
 
-def test_production_reflex_runtime_is_exact_and_uses_current_single_port_contract() -> None:
+def test_production_reflex_runtime_uses_prepared_backend_only_contract() -> None:
     project = _text("pyproject.toml")
     service = _text("deployment/datosenorden.service")
     assert '"reflex==0.9.8"' in project
-    assert "reflex run --env prod --frontend-port 3000" in service
-    assert "--single-port" not in service
+    assert "reflex run --env prod --backend-only --backend-port 3000" in service
+    assert "REFLEX_WEB_WORKDIR=/opt/datosenorden/current/.web" in service
+    assert "REFLEX_STATES_WORKDIR=/var/lib/datosenorden/reflex-states" in service
+    assert "REFLEX_CHECK_LATEST_VERSION=false" in service
+    assert "Environment=HOME=/var/lib/datosenorden" in service
+    assert "StateDirectory=datosenorden" in service
 
 
 def test_preprovisioning_pack_keeps_services_and_database_private() -> None:
@@ -68,9 +72,13 @@ def test_preprovisioning_pack_keeps_services_and_database_private() -> None:
     assert "wait_for_backend_readiness" in smoke
     assert "backend_service_inactive_during_readiness" in smoke
     assert "^2[0-9]{2}$" in smoke
+    assert 'READINESS_URL="${READINESS_URL:-http://127.0.0.1:3000/api/_health}"' in smoke
     assert "# Caddy handles WebSocket upgrades automatically" in caddy
     assert "beta.datosenorden.cl {" in caddy
     assert "reverse_proxy 127.0.0.1:3000" in caddy
+    assert "@reflex_backend path /api /api/*" in caddy
+    assert "root * /opt/datosenorden/current/.web/build/client" in caddy
+    assert "try_files {path} /index.html" in caddy
     assert "\ndatosenorden.cl {" not in caddy
     assert "\nwww.datosenorden.cl {" not in caddy
     assert "Strict-Transport-Security" not in caddy

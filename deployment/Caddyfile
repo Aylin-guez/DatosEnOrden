@@ -2,8 +2,9 @@
 # - DATOSENORDEN_PUBLIC_BASE_URL matches the hostname in use.
 # - API_URL / REFLEX_API_URL matches the same hostname.
 # - REFLEX_BACKEND_PATH=/api in /opt/datosenorden/.env.
-# - Reflex prod runs in single-port mode on 127.0.0.1:3000.
-# - API and WebSocket stay under /api on the same Reflex process.
+# - PREPARE exports the immutable frontend to current/.web/build/client.
+# - Reflex runs backend-only on 127.0.0.1:3000.
+# - API and WebSocket stay under /api on that private backend.
 # Caddy handles WebSocket upgrades automatically inside reverse_proxy.
 
 (datosenorden_common) {
@@ -15,7 +16,15 @@
         Permissions-Policy "camera=(), microphone=(), geolocation=()"
         X-Frame-Options "SAMEORIGIN"
     }
-    reverse_proxy 127.0.0.1:3000
+    @reflex_backend path /api /api/*
+    handle @reflex_backend {
+        reverse_proxy 127.0.0.1:3000
+    }
+    handle {
+        root * /opt/datosenorden/current/.web/build/client
+        try_files {path} /index.html
+        file_server
+    }
 }
 
 beta.datosenorden.cl {

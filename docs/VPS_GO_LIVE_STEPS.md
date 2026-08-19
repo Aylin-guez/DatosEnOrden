@@ -99,8 +99,13 @@ not deploy from a mutable clone, and it does not contain credentials.
 8. **GATE**: execute the prepared release's prelaunch/deploy checks against the
    migrated database. This is the pre-activation application smoke; it must not
    expose traffic, change `current`, or write inside the release. PREPARE is the
-   sole authority for Reflex compilation: it compiles before hardening and before
-   `.deo-release-ready` is written. Post-PREPARE validation uses
+   sole authority for the Reflex production export: it writes the frontend build
+   and backend `stateful_pages.json` marker before hardening and before
+   `.deo-release-ready` is written. At runtime systemd consumes those prepared
+   artifacts with `reflex run --backend-only`; it must not compile the source
+   release. Reflex runtime state and its home directory live under the
+   systemd-managed `/var/lib/datosenorden`, not inside a release. Post-PREPARE
+   validation uses
    `scripts/prelaunch_public_check.py --read-only` (via `deploy_check.py`) and
    must never invoke Reflex compilation or import the Reflex application.
 9. **GATE**: extract only `deployment/datosenorden.service` and
@@ -117,8 +122,9 @@ not deploy from a mutable clone, and it does not contain credentials.
    syntax (not native JSON), so declare its adapter explicitly:
    `sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`
    followed by `sudo caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`.
-   Make Caddy ready according to its separately validated
-   foundation before activation.
+   The certified Caddyfile serves `current/.web/build/client` and proxies only
+   `/api` (including Reflex WebSocket upgrades) to `127.0.0.1:3000`. Make Caddy
+   ready according to its separately validated foundation before activation.
 10. **AUTOMATED**: activate the already prepared release; never invoke prepare
     again for the same release:
 
@@ -135,7 +141,7 @@ not deploy from a mutable clone, and it does not contain credentials.
     reloads and restarts systemd, then runs the mandatory full
     `systemd-analyze verify /etc/systemd/system/datosenorden.service` only
     after `current` resolves to the newly activated release, followed by the
-    post-deploy smoke. The smoke polls `http://127.0.0.1:3000/` for a 2xx
+    post-deploy smoke. The smoke polls `http://127.0.0.1:3000/api/_health` for a 2xx
     response with a bounded 45-second readiness budget, one-second interval
     and three-second per-attempt timeout; it fails early if the service stops.
     Once ready, it runs the remaining privacy, release, PostgreSQL and

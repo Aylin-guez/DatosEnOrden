@@ -7,8 +7,8 @@ Regla base del stack actual:
 - Ubuntu 24.04 LTS
 - Python `>=3.12`
 - Node `>=22.12.0`
-- Reflex en modo `single-port` sobre `127.0.0.1:3000`
-- Caddy haciendo proxy de todo el trafico a `127.0.0.1:3000`
+- Reflex backend-only sobre `127.0.0.1:3000`
+- Caddy sirviendo el frontend preparado y haciendo proxy de `/api` a `127.0.0.1:3000`
 - PostgreSQL privado en `localhost`
 
 ## Reflex no inicia
@@ -34,8 +34,10 @@ sudo -u datosenorden bash -lc 'cd /opt/datosenorden && source .venv/bin/activate
 
 Como solucionarlo
 
+El release inmutable no se ejecuta ni recompila manualmente. Reinicie solamente
+el servicio que consume los artefactos ya preparados:
+
 ```bash
-sudo -u datosenorden bash -lc 'cd /opt/datosenorden && set -a && source .env && set +a && source .venv/bin/activate && python3 -m reflex run --env prod --single-port --frontend-port 3000 --backend-host 127.0.0.1'
 sudo systemctl restart datosenorden
 ```
 
@@ -114,7 +116,6 @@ Comando para diagnosticar
 sudo systemctl status caddy --no-pager
 sudo journalctl -u caddy -n 100 --no-pager
 sudo ss -ltnp | grep -E ':80|:443|:3000'
-curl -I http://127.0.0.1:3000/
 curl -I http://127.0.0.1:3000/api/_health
 ```
 
@@ -126,7 +127,8 @@ sudo systemctl restart datosenorden
 sudo caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
 
-Confirma que `/etc/caddy/Caddyfile` haga proxy solo a `127.0.0.1:3000`.
+Confirma que `/etc/caddy/Caddyfile` sirva `current/.web/build/client` y haga
+proxy de `/api` a `127.0.0.1:3000`.
 
 ## SSL no se genera
 
@@ -184,7 +186,6 @@ sudo journalctl -u caddy -n 100 --no-pager
 Como solucionarlo
 
 ```bash
-sudo -u datosenorden bash -lc 'cd /opt/datosenorden && set -a && source .env && set +a && source .venv/bin/activate && python3 -m reflex run --env prod --single-port --frontend-port 3000 --backend-host 127.0.0.1'
 sudo systemctl restart datosenorden
 sudo caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
