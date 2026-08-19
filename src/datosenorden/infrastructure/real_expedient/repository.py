@@ -38,6 +38,17 @@ class PostgresExpedientRepository:
             return None
         return self._load(root, root.current_version)
 
+    def get_version(self, expedient_id: str, version: int) -> StoredExpedient | None:
+        """Return the exact persisted historical version, without changing current state."""
+        if version < 1:
+            raise ValueError("expedient version must be positive")
+        root = self._session.get(RealExpedientRow, expedient_id)
+        if root is None:
+            return None
+        if self._session.get(RealExpedientVersionRow, (expedient_id, version)) is None:
+            return None
+        return self._load(root, version)
+
     def insert(
         self, specification: ExpedientSpecification, content_fingerprint: str
     ) -> StoredExpedient:

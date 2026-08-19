@@ -146,6 +146,11 @@ def test_append_preserves_history_and_optimistic_conflict(postgres_url: str) -> 
         assert first.get("EXP-PG-TEST").specification.version == 1  # type: ignore[union-attr]
         assert second.get("EXP-PG-TEST").specification.version == 1  # type: ignore[union-attr]
         first.revise(_specification(version=2, summary="Resumen v2."), expected_current_version=1)
+        historical = PostgresExpedientRepository(first_session).get_version("EXP-PG-TEST", 1)
+        assert historical is not None
+        assert historical.specification.version == 1
+        assert historical.specification.summary == _specification().summary
+        assert PostgresExpedientRepository(first_session).get_version("EXP-PG-TEST", 99) is None
         with pytest.raises(ExpedientConflictError, match="version conflict"):
             second.revise(_specification(version=2, summary="Otra v2."), expected_current_version=1)
         with Session(engine) as verification:
