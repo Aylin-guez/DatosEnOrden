@@ -30,6 +30,7 @@ from .contract import (
     VerifiedPackage,
     canonical_value,
     logical_content_hash,
+    logical_table_hashes,
     parse_jsonl,
     rows_bytes,
     sha256_bytes,
@@ -118,16 +119,24 @@ def verify_package(path: Path, *, expected_sha256: str) -> VerifiedPackage:
             raise PackageIntegrityError(f"duplicate primary key in {table.name}")
         rows[table.name] = parsed_rows
         hashes[table.name] = digest
-    logical_hash = logical_content_hash(table_hashes=hashes)
+    logical_hash = logical_content_hash(table_hashes=logical_table_hashes(rows=rows))
+    verified_logical_hash = logical_hash
     if manifest["logical_content_hash"] != logical_hash:
-        raise PackageIntegrityError("logical content hash mismatch")
+        # V0.1 packages emitted before the shared logical-hash authority used
+        # the physical table digests.  Preserve their verified read path so an
+        # authorized historical package can be used as a corrective baseline.
+        # The exporter never emits this legacy representation.
+        legacy_logical_hash = logical_content_hash(table_hashes=hashes)
+        if manifest["logical_content_hash"] != legacy_logical_hash:
+            raise PackageIntegrityError("logical content hash mismatch")
+        verified_logical_hash = legacy_logical_hash
     if manifest["content_hashes"] != dict(sorted(hashes.items())):
         raise PackageIntegrityError("content hashes mismatch")
     if manifest["row_counts"] != {name: len(value) for name, value in sorted(rows.items())}:
         raise PackageIntegrityError("row counts mismatch")
     identifier = manifest["package_id"]
     if not identifier.startswith(f"{PACKAGE_PREFIX}-") or not identifier.endswith(
-        logical_hash[:16]
+        verified_logical_hash[:16]
     ):
         raise PackageIntegrityError("package ID is not derived from logical content")
     return VerifiedPackage(path, archive_hash, manifest, rows)

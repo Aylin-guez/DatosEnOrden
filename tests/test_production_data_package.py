@@ -20,6 +20,7 @@ from datosenorden.application.data_release.contract import (
     canonical_json,
     canonical_value,
     logical_content_hash,
+    logical_table_hashes,
     package_id,
 )
 from datosenorden.application.data_release.importer import _database_row_matches, verify_package
@@ -44,6 +45,47 @@ def test_contract_canonicalization_and_package_id_are_deterministic() -> None:
     assert canonical_value(left) == canonical_value(right)
     digest = logical_content_hash(table_hashes={"b": "2" * 64, "a": "1" * 64})
     assert package_id(1, digest) == f"DEO-PROD-DATA-0001-{digest[:16]}"
+
+
+def test_logical_hash_ignores_real_expedient_updated_at() -> None:
+    first = {"real_expedient": ({"expedient_id": "EXP-REAL", "updated_at": "2026-01-01T00:00:00+00:00"},)}
+    second = {"real_expedient": ({"expedient_id": "EXP-REAL", "updated_at": "2026-02-01T00:00:00+00:00"},)}
+    first_hash = logical_content_hash(table_hashes=logical_table_hashes(rows=first))
+    second_hash = logical_content_hash(table_hashes=logical_table_hashes(rows=second))
+    assert first_hash == second_hash
+
+
+def test_logical_hash_ignores_real_expedient_version_created_at() -> None:
+    first = {"real_expedient_version": ({"expedient_id": "EXP-REAL", "version": 2, "created_at": "2026-01-01T00:00:00+00:00"},)}
+    second = {"real_expedient_version": ({"expedient_id": "EXP-REAL", "version": 2, "created_at": "2026-02-01T00:00:00+00:00"},)}
+    first_hash = logical_content_hash(table_hashes=logical_table_hashes(rows=first))
+    second_hash = logical_content_hash(table_hashes=logical_table_hashes(rows=second))
+    assert first_hash == second_hash
+
+
+@pytest.mark.parametrize("table,field", [
+    ("real_expedient_version", "title"),
+    ("real_expedient_version", "question"),
+    ("real_expedient_narrative", "statement"),
+    ("real_expedient_reference", "reference_id"),
+])
+def test_logical_hash_changes_for_semantic_expedient_content(table: str, field: str) -> None:
+    base = {table: ({"expedient_id": "EXP", "version": 1, field: "before"},)}
+    changed = {table: ({"expedient_id": "EXP", "version": 1, field: "after"},)}
+    assert logical_content_hash(table_hashes=logical_table_hashes(rows=base)) != logical_content_hash(table_hashes=logical_table_hashes(rows=changed))
+
+
+def test_verify_package_rejects_physically_tampered_jsonl(tmp_path: Path) -> None:
+    source = Path("private/releases/data/deo-prod-data-0001-81dc47c722518efb.zip")
+    target = tmp_path / "tampered.zip"
+    with zipfile.ZipFile(source) as archive, zipfile.ZipFile(target, "w") as altered:
+        for info in archive.infolist():
+            payload = archive.read(info.filename)
+            if info.filename == "data/real_expedient.jsonl":
+                payload = payload.replace(b'"current_version":1', b'"current_version":9', 1)
+            altered.writestr(info, payload)
+    with pytest.raises(PackageIntegrityError, match="SHA-256 mismatch"):
+        verify_package(target, expected_sha256="4de868d6baa5de5be63a3ef2b858c50f5a5c311df8eadf80c6ffda17262cc3b0")
 
 
 def test_database_timestamp_comparison_uses_the_instant_not_the_rendered_offset() -> None:

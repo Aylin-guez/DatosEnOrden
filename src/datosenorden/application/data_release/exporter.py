@@ -44,6 +44,7 @@ from .contract import (
     canonical_json,
     canonical_value,
     logical_content_hash,
+    logical_table_hashes,
     package_id,
     rows_bytes,
     sha256_bytes,
@@ -123,7 +124,7 @@ def export_production_data_package(
         )
     members = {table.path: rows_bytes(serialized[table.name]) for table in TABLE_CONTRACTS}
     table_hashes = {table.name: sha256_bytes(members[table.path]) for table in TABLE_CONTRACTS}
-    logical_hash = logical_content_hash(table_hashes=table_hashes)
+    logical_hash = logical_content_hash(table_hashes=logical_table_hashes(rows=serialized))
     identifier = package_id(release_number, logical_hash)
     source_revision = sha256_bytes(
         canonical_json(

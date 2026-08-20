@@ -155,6 +155,23 @@ def logical_content_hash(
     return sha256_bytes(canonical_json(payload))
 
 
+_LOGICAL_OPERATIONAL_FIELDS = {
+    "real_expedient": frozenset(("updated_at",)),
+    "real_expedient_version": frozenset(("created_at",)),
+}
+
+
+def logical_table_hashes(*, rows: Mapping[str, tuple[dict[str, Any], ...]]) -> dict[str, str]:
+    """Hash semantic rows only; exported physical rows remain complete."""
+    return {
+        table: sha256_bytes(rows_bytes(tuple(
+            {key: value for key, value in row.items() if key not in _LOGICAL_OPERATIONAL_FIELDS.get(table, frozenset())}
+            for row in values
+        )))
+        for table, values in rows.items()
+    }
+
+
 def package_id(release_number: int, logical_hash: str) -> str:
     if release_number < 1:
         raise ValueError("release number must be positive")
