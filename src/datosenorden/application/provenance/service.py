@@ -42,6 +42,22 @@ PROVENANCE_MANIFEST: tuple[ProvenanceManifestEntry, ...] = (
         reason="Explicit, verified official legislative matter observation.", confidence="HIGH",
     ),
     ProvenanceManifestEntry(
+        source_name="LeyChile", dataset_name="leychile-norm", dataset_version="1226950@2026-08-12",
+        provenance_class=ProvenanceClass.REAL, source_label="LeyChile / BCN",
+        dataset_identifier="leychile-norm@1226950:2026-08-12", record_scope="postgresql_dataset",
+        public_countable=True,
+        evidence_basis="Canonical LeyChile JSON acquired for explicit idNorma 1226950 and idVersion 2026-08-12.",
+        reason="Official current-law source; the bounded vertical slice is not an active connector.", confidence="HIGH",
+    ),
+    ProvenanceManifestEntry(
+        source_name="Biblioteca del Congreso Nacional de Chile", dataset_name="bcn-law-history", dataset_version="8521@2026-08-12",
+        provenance_class=ProvenanceClass.REAL, source_label="Biblioteca del Congreso Nacional de Chile",
+        dataset_identifier="bcn-law-history@8521", record_scope="postgresql_dataset",
+        public_countable=True,
+        evidence_basis="Official BCN Historia de la Ley 21.827 and bounded official section acquisition.",
+        reason="Official consolidated legislative history hosted by BCN; document origin remains in record metadata.", confidence="HIGH",
+    ),
+    ProvenanceManifestEntry(
         source_name="DIPRES",
         dataset_name="dipres-ejecucion-total-programa",
         dataset_version="2026-segundo-trimestre-pesos",

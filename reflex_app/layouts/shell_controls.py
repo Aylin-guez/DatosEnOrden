@@ -8,15 +8,17 @@ def scroll_top_control() -> rx.Component:
         rx.script(
             """
             (() => {
-              if (window.__deoScrollTopReady) return;
-              window.__deoScrollTopReady = true;
               const updateScrollTopButton = () => {
                 const button = document.getElementById('scroll-top-button');
                 if (!button) return;
                 button.classList.toggle('scroll-top-visible', window.scrollY > window.innerHeight * 0.9);
               };
-              window.addEventListener('scroll', updateScrollTopButton, { passive: true });
-              window.addEventListener('resize', updateScrollTopButton);
+              window.__deoUpdateScrollTop = updateScrollTopButton;
+              if (!window.__deoScrollTopReady) {
+                window.__deoScrollTopReady = true;
+                window.addEventListener('scroll', () => window.__deoUpdateScrollTop?.(), { passive: true });
+                window.addEventListener('resize', () => window.__deoUpdateScrollTop?.());
+              }
               setTimeout(updateScrollTopButton, 80);
             })();
             """

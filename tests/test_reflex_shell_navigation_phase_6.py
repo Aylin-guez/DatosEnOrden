@@ -73,6 +73,7 @@ EXPECTED_ROUTES = {
     "/studio": ("studio", "DatosEnOrden Studio"),
     "/support": ("support", "Apoyar DatosEnOrden"),
     "/search": ("search", "Explorar - DatosEnOrden Ciudadano"),
+    "/collections": ("collections", "Colección - DatosEnOrden Ciudadano"),
     "/investigation": ("investigation", "Expediente - DatosEnOrden"),
     "/dashboard": ("dashboard", "Vista ciudadana - DatosEnOrden"),
     "/laboratory": ("laboratory", "Laboratorio de Políticas Públicas - DatosEnOrden"),
@@ -204,8 +205,8 @@ def test_routes_paths_titles_metadata_and_no_laboratorio_routes() -> None:
     registered = _registered_pages()
 
     assert set(registered) == set(EXPECTED_ROUTES)
-    assert len(registered) == 21
-    assert len({metadata["route"] for _, metadata in registered.values()}) == 21
+    assert len(registered) == 22
+    assert len({metadata["route"] for _, metadata in registered.values()}) == 22
     assert not any("laboratorio" in route.lower() or "lab" == route.strip("/").lower() for route in registered)
 
     for route, (function_name, title) in EXPECTED_ROUTES.items():
@@ -326,6 +327,6 @@ print("APP_IMPORT=" + json.dumps({
     assert json.loads(payload_line.removeprefix("APP_IMPORT=")) == {
         "same_module": True,
         "app_count": 1,
-        "route_count": 21,
-        "unique_route_count": 21,
+        "route_count": 22,
+        "unique_route_count": 22,
     }

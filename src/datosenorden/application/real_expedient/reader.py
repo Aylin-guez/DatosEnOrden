@@ -71,4 +71,10 @@ def _citizen_context(expedient) -> CitizenProjectionContext:
 
     if expedient.specification.expedient_id == EXPEDIENT_ID:
         return golden_citizen_context()
+    from datosenorden.application.legislative_ingestion.escuelas_protegidas import (
+        EXPEDIENT_ID as ESCUELAS_EXPEDIENT_ID,
+        escuelas_citizen_context,
+    )
+    if expedient.specification.expedient_id == ESCUELAS_EXPEDIENT_ID:
+        return escuelas_citizen_context()
     return CitizenProjectionContext()

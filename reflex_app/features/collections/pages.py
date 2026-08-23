@@ -3,8 +3,20 @@ import reflex as rx
 from reflex_app.constants.routes import PAGE_SEARCH
 from reflex_app.features.collections.state import CollectionState
 from reflex_app.layouts.shell import shell
+from reflex_app.metadata.pages import PUBLIC_OG_IMAGE_URL, _page_meta
 
-@rx.page(route="/collections", title="Colección - DatosEnOrden Ciudadano", on_load=CollectionState.load_collection)
+@rx.page(
+    route="/collections",
+    title="Colección - DatosEnOrden Ciudadano",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/collections",
+        "colecciones, información pública, fuentes, expedientes",
+        "Colección - DatosEnOrden Ciudadano",
+        "Colecciones de información pública y expedientes conectados.",
+    ),
+    on_load=CollectionState.load_collection,
+)
 def collections() -> rx.Component:
     return shell(rx.vstack(
         rx.box(rx.text(CollectionState.title, class_name="title"), rx.text(CollectionState.description, class_name="subtitle"), rx.text(CollectionState.items.length(), " resultados reales", class_name="source-fact"), class_name="hero"),

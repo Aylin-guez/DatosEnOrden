@@ -48,6 +48,7 @@ class CitizenDocument:
 class CitizenQuestionAnswer:
     question: str
     answer: str
+    epistemic_class: str = "FACT"
 
 
 @dataclass(frozen=True)
@@ -134,7 +135,7 @@ def citizen_expedient_projection(
         result["sources"] = list(context.sources)
     if context.answers:
         result["questions"] = [
-            {"question": item.question, "answer": item.answer}
+            {"question": item.question, "answer": item.answer, "epistemic_class": item.epistemic_class}
             for item in context.answers
         ]
     if context.knowledge_cutoff is not None:

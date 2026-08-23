@@ -17,6 +17,9 @@ from datosenorden.maintenance.knowledge_engine import list_knowledge_documents
 from datosenorden.maintenance.citizen_reports import list_citizen_reports
 from datosenorden.maintenance.tracking import list_tracking_items
 from datosenorden.models import Entity
+from datosenorden.infrastructure.real_expedient.repository import PostgresExpedientRepository
+from datosenorden.application.real_expedient.citizen_projection import citizen_expedient_projection
+from datosenorden.application.real_expedient.reader import _citizen_context
 
 
 LEGISLATIVE_SOURCE_LABEL = "Datos Abiertos Legislativos"
@@ -110,6 +113,8 @@ def _collect_matches(session, query: str, *, limit: int) -> tuple[SearchWorkspac
         merged[f"report:{extra.entity_id}"] = extra
     for extra in _tracking_matches(query):
         merged[f"tracking:{extra.entity_id}"] = extra
+    for extra in _real_expedient_matches(session, query):
+        merged[f"expedient:{extra.entity_id}"] = extra
 
     return tuple(
         sorted(
@@ -117,6 +122,35 @@ def _collect_matches(session, query: str, *, limit: int) -> tuple[SearchWorkspac
             key=lambda item: (-item.score, item.entity_name.lower(), item.entity_id),
         )[:limit]
     )
+
+
+def _real_expedient_matches(session, query: str) -> tuple[SearchWorkspaceMatch, ...]:  # noqa: ANN001
+    normalized_query = _normalize(query)
+    if not normalized_query:
+        return ()
+    matches: list[SearchWorkspaceMatch] = []
+    try:
+        expedients = PostgresExpedientRepository(session).list_public()
+    except (AttributeError, TypeError):
+        # Lightweight read-only search fixtures do not model expedient tables.
+        return ()
+    for stored in expedients:
+        projection = citizen_expedient_projection(stored, _citizen_context(stored))
+        sections = projection.get("sections", {})
+        statements = [row.get("statement", "") for rows in sections.values() for row in rows] if isinstance(sections, dict) else []
+        questions = projection.get("questions", [])
+        answers = [f"{row.get('question', '')} {row.get('answer', '')}" for row in questions if isinstance(row, dict)]
+        documents = projection.get("documents", [])
+        document_text = [" ".join(str(row.get(key, "")) for key in ("title", "institution", "type", "stage")) for row in documents if isinstance(row, dict)]
+        haystack = _normalize(" ".join([str(projection.get("title", "")), str(projection.get("question", "")), str(projection.get("summary", "")), *statements, *answers, *document_text, *[str(item) for item in projection.get("sources", [])]]))
+        query_tokens = set(normalized_query.split())
+        haystack_tokens = set(haystack.split())
+        compact_match = normalized_query.replace(" ", "") in haystack.replace(" ", "")
+        contextual_match = len(query_tokens) > 1 and len(query_tokens.intersection(haystack_tokens)) >= 2
+        if normalized_query in haystack or compact_match or contextual_match:
+            identifier = stored.specification.expedient_id
+            matches.append(SearchWorkspaceMatch(identifier, str(projection["title"]), str(projection.get("type", "Expediente legislativo")), tuple(str(item) for item in projection.get("sources", [])), len(projection.get("facts", [])), 0, 0.95, "expediente legislativo", "Abrir expediente", f"/laboratory/expedient?id={identifier}", "REAL"))
+    return tuple(matches)
 
 
 def _merge_candidate(
