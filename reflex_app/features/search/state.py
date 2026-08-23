@@ -3,10 +3,11 @@ from __future__ import annotations
 import reflex as rx
 
 from datosenorden.application.public_deployment.sanitization import public_error
+from datosenorden.application.public_collections import public_collection_counts
+from datosenorden.application.public_explore import public_guided_categories, public_guided_questions
+from datosenorden.db.session import SessionLocal
 
 from datosenorden.application.search.service import (
-    build_guided_categories,
-    build_guided_questions,
     load_guided_options,
     run_workspace_search,
 )
@@ -30,6 +31,8 @@ class SearchState(rx.State):
     selected_guided_category_href: str = "/search"
     selected_guided_category_path: str = ""
     guided_option_rows: list[dict] = []
+    guided_question_active: bool = False
+    investigation_topic_rows: list[dict] = []
     search_error: str = ""
     search_error_code: str = ""
 
@@ -42,6 +45,7 @@ class SearchState(rx.State):
         self.search_error = ""
         try:
             self._load_guided_rows()
+            self._load_collection_counts()
             if self.guided_category_rows and not self.selected_guided_category_id:
                 self._select_category_row(self.guided_category_rows[0])
         except Exception as exc:  # noqa: BLE001
@@ -55,6 +59,7 @@ class SearchState(rx.State):
         self._clear_selected_category()
         try:
             self._load_guided_rows()
+            self._load_collection_counts()
             query_value = _router_query_value(self.router, "q")
             if query_value:
                 self.query = query_value
@@ -68,6 +73,7 @@ class SearchState(rx.State):
     def set_query(self, value: str) -> None:
         self.query = value
         self.guided_search_title = ""
+        self.guided_question_active = False
 
     def run_search(self) -> None:
         self.search_error = ""
@@ -85,7 +91,8 @@ class SearchState(rx.State):
         self.guided_search_title = f"Alternativas para explorar: {title}" if title else "Alternativas para explorar"
         return rx.redirect(_search_href(query))
 
-    def explore_guided_question(self, question_id: str, title: str, description: str, query: str) -> None:
+    def explore_guided_question(self, question_id: str, title: str, description: str, query: str):
+        self.guided_question_active = True
         self.selected_guided_category_id = question_id
         self.selected_guided_category_title = title
         self.selected_guided_category_description = description
@@ -98,6 +105,17 @@ class SearchState(rx.State):
         self.guided_option_rows = load_guided_options(question_id)
         if query:
             self.query = query
+            self.guided_search_title = f"Recorrido sugerido: {title}" if title else "Recorrido sugerido"
+            self.run_search()
+            return rx.call_script(
+                "setTimeout(() => document.getElementById('search-results')?.scrollIntoView({behavior: 'smooth', block: 'start'}), 0)"
+            )
+
+    def explore_another_question(self) -> None:
+        """Restore guided entry without discarding a manual query or its results."""
+        self.guided_question_active = False
+        self._clear_selected_category()
+        self.guided_search_title = ""
 
     def select_guided_category(self, category_id: str) -> None:
         self.selected_guided_category_id = category_id
@@ -118,8 +136,27 @@ class SearchState(rx.State):
         return rx.redirect(_investigation_href(target or name))
 
     def _load_guided_rows(self) -> None:
-        self.guided_question_rows = build_guided_questions()
-        self.guided_category_rows = build_guided_categories()
+        with SessionLocal() as session:
+            self.guided_question_rows = public_guided_questions(session)
+            self.guided_category_rows = public_guided_categories(session)
+
+    def _load_collection_counts(self) -> None:
+        from reflex_app.models.investigation import INVESTIGATION_TOPICS
+
+        with SessionLocal() as session:
+            counts = public_collection_counts(session)
+        rows: list[dict] = []
+        for topic in INVESTIGATION_TOPICS:
+            row = dict(topic)
+            key = str(row.get("collection_key", ""))
+            if key:
+                row["count"] = counts.get(key, 0)
+                row["count_text"] = f"{row['count']} incorporados" if row["count"] else "Sin información incorporada todavía"
+            else:
+                row["count"] = 0
+                row["count_text"] = "Sin información incorporada todavía"
+            rows.append(row)
+        self.investigation_topic_rows = rows
 
     def _clear_selected_category(self) -> None:
         self.selected_guided_category_id = ""

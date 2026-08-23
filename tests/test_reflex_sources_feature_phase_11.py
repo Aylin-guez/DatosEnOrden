@@ -42,6 +42,7 @@ EXPECTED_ROUTES = [
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/collections",
 ]
 
 
@@ -106,6 +107,7 @@ def test_sources_feature_owns_registered_pages_and_components() -> None:
         "ecosystem_source_card",
         "ecosystem_concept_card",
         "ecosystem_roadmap_card",
+        "public_source_card",
         "real_data_source_card",
     ):
         assert callable(getattr(sources_components, component_name))
@@ -117,8 +119,8 @@ def test_sources_feature_owns_registered_pages_and_components() -> None:
 def test_routes_paths_order_metadata_on_mount_and_no_laboratorio_are_preserved() -> None:
     route_rows = [(kwargs["route"], page_function.__name__) for page_function, kwargs in DECORATED_PAGES["reflex_app"]]
     assert {route for route, _ in route_rows} == set(EXPECTED_ROUTES)
-    assert len(route_rows) == 21
-    assert len({route for route, _ in route_rows}) == 21
+    assert len(route_rows) == 22
+    assert len({route for route, _ in route_rows}) == 22
 
     registered = _registered_pages()
     ecosystem_kwargs = registered["/ecosystem"][1]
@@ -144,11 +146,10 @@ def test_sources_pages_preserve_copy_links_styles_active_page_and_on_mount() -> 
     ecosystem_source = inspect.getsource(sources_pages.ecosystem)
 
     assert '"Fuentes"' in ecosystem_text
-    assert '"Resumen del mapa"' in ecosystem_source
-    assert '"Catalogo y cobertura"' in ecosystem_source
-    assert '"Catálogo de metadatos"' in ecosystem_source
-    assert '"Ir a Explorar"' in ecosystem_source
-    assert '"Ir a Explorar"' in ecosystem_source
+    assert '"Resumen ciudadano"' in ecosystem_source
+    assert '"Fuentes con datos incorporados"' in ecosystem_source
+    assert '"Fuentes en desarrollo y catálogo técnico"' in ecosystem_source
+    assert '"Mapa técnico de fuentes"' in ecosystem_source
     assert '"/sources"' in ecosystem_source
     assert '"/reports"' in ecosystem_source
     assert "on_mount=SourcesState.load_ecosystem" in ecosystem_source
@@ -318,8 +319,8 @@ print("SOURCES_FEATURE_IMPORT=" + json.dumps({
     payload_line = next(line for line in result.stdout.splitlines() if line.startswith("SOURCES_FEATURE_IMPORT="))
     assert json.loads(payload_line.removeprefix("SOURCES_FEATURE_IMPORT=")) == {
         "app_count": 1,
-        "route_count": 21,
-        "unique_route_count": 21,
+        "route_count": 22,
+        "unique_route_count": 22,
         "entrypoint_exports_app_only": True,
         "ecosystem_owner": "reflex_app.features.sources.pages",
         "sources_owner": "reflex_app.features.sources.pages",

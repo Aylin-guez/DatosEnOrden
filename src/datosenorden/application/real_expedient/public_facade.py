@@ -20,3 +20,11 @@ def get_public_expedient(expedient_id: str) -> dict[str, object] | None:
         return ComposedPublicExpedientReader(
             PostgresExpedientRepository(session)
         ).get(expedient_id)
+
+
+def get_citizen_expedient(expedient_id: str) -> dict[str, object] | None:
+    """Read a local REAL expedient as approved citizen-facing content."""
+    with SessionLocal() as session:
+        return ComposedPublicExpedientReader(
+            PostgresExpedientRepository(session)
+        ).get_citizen(expedient_id)

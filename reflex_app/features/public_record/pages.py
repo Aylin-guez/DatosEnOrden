@@ -37,6 +37,11 @@ def investigation() -> rx.Component:
             rx.box(
                 rx.vstack(
                     rx.box(
+                        rx.button(
+                            "← Volver",
+                            on_click=rx.call_script("if (window.history.length > 1) { window.history.back(); } else { window.location.assign('/search'); }"),
+                            class_name="button button-secondary",
+                        ),
                         rx.text(PublicRecordState.entity_name, class_name="title"),
                         rx.text(PublicRecordState.entity_summary, class_name="subtitle"),
                         rx.hstack(

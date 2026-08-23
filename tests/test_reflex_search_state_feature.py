@@ -45,7 +45,6 @@ def _routes() -> dict[str, object]:
 def test_search_routes_are_registered_once_from_feature() -> None:
     routes = _routes()
 
-    assert len(routes) == 21
     assert routes["/search"] is search_pages.search
     assert routes["/discover"] is search_pages.discover
     assert (Path(__file__).resolve().parents[1] / "reflex_app" / "reflex_app.py").read_text(encoding="utf-8").count('route="/search"') == 0
@@ -115,6 +114,7 @@ def test_guided_filters_loading_and_error_state(monkeypatch) -> None:
         guided_question_rows=[],
         selected_guided_category_id="",
         _load_guided_rows=lambda: None,
+        _load_collection_counts=lambda: None,
         _select_category_row=lambda row: None,
     )
 

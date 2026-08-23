@@ -41,6 +41,7 @@ EXPECTED_ROUTES = {
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/collections",
 }
 
 
@@ -100,7 +101,7 @@ def test_page_section_and_metadata_are_owned_by_boundary_modules() -> None:
     for name in ("page_section", "_section_icon", "_page_meta", "_public_url", "PUBLIC_OG_IMAGE_URL"):
         assert not hasattr(entrypoint, name)
 
-def test_page_section_preserves_icons_classes_subtitle_and_id() -> None:
+def test_page_section_uses_plain_heading_classes_subtitle_and_id() -> None:
     rendered = page_layout.page_section(
         "Buscar fuentes",
         page_layout.rx.text("Contenido"),
@@ -114,8 +115,8 @@ def test_page_section_preserves_icons_classes_subtitle_and_id() -> None:
 
     assert any("page-section custom-section" in prop for prop in rendered["props"])
     assert 'id:"section-id"' in rendered["props"]
-    assert '"?"' in contents
     assert '"Buscar fuentes"' in contents
+    assert not any(value in contents for value in ('"?"', '"*"', '"×"'))
     assert any('className:"section-subtitle"' == prop for prop in props)
 
 
@@ -240,7 +241,7 @@ def test_routes_appstate_and_laboratory_absence_are_preserved() -> None:
 
     routes = {kwargs["route"] for _, kwargs in DECORATED_PAGES[APP_NAME]}
     assert routes == EXPECTED_ROUTES
-    assert len(routes) == 21
+    assert len(routes) == 22
     assert not any("laboratorio" in route.lower() or route.strip("/").lower() == "lab" for route in routes)
 
     functions, _ = _module_source_names(ROOT / "reflex_app" / "reflex_app.py")

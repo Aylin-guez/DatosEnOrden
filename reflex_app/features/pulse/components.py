@@ -6,7 +6,6 @@ import reflex as rx
 def home_pulse_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.text("*", class_name="source-card-icon"),
             rx.text(row["status"], class_name="badge badge-teal"),
             rx.text(row["updated_at"], class_name="mini-pill mini-pill-purple"),
             spacing="2",

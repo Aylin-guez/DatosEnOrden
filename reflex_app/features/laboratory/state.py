@@ -3,6 +3,7 @@ from __future__ import annotations
 import reflex as rx
 
 from datosenorden.application.real_expedient.public_facade import (
+    get_citizen_expedient,
     get_public_expedient,
     list_public_expedient_catalog,
 )
@@ -48,6 +49,22 @@ class LaboratoryState(rx.State):
     load_status: str = "idle"
     error_message: str = ""
     public_error_code: str = ""
+    citizen_expedient: bool = False
+    citizen_question: str = ""
+    citizen_type: str = ""
+    citizen_facts: list[dict] = []
+    citizen_bank_stages: list[dict] = []
+    citizen_divergences: list[dict] = []
+    citizen_unknowns: list[dict] = []
+    citizen_limitations: list[dict] = []
+    citizen_chronology: list[dict] = []
+    citizen_actors: list[str] = []
+    citizen_documents: list[dict] = []
+    citizen_sources: list[str] = []
+    citizen_questions: list[dict] = []
+    citizen_cutoff_substantive: str = ""
+    citizen_cutoff_administrative: str = ""
+    citizen_cutoff_explanation: str = ""
 
     def load_catalog(self) -> None:
         self.load_status = "loading"
@@ -72,7 +89,12 @@ class LaboratoryState(rx.State):
                 self.load_status = "not_found"
                 return
             if payload.get("provenance_class") == "REAL":
-                self._load_real_expedient(payload)
+                citizen_payload = get_citizen_expedient(requested)
+                if not citizen_payload:
+                    self._clear_expedient()
+                    self.load_status = "not_found"
+                    return
+                self._load_real_expedient(citizen_payload)
                 self.load_status = "loaded"
                 return
             self.expedient_id = str(payload["id"])
@@ -126,6 +148,41 @@ class LaboratoryState(rx.State):
         self.reading_complete = completed == len(REQUIRED_SECTIONS)
 
     def _load_real_expedient(self, payload: dict[str, object]) -> None:
+        """Map the citizen projection into UI-only, human-readable state."""
+        if "facts" not in payload:
+            LaboratoryState._load_legacy_real_expedient(self, payload)
+            return
+        self.citizen_expedient = True
+        self.expedient_id = ""
+        self.expedient_title = str(payload.get("title", ""))
+        self.expedient_summary = str(payload.get("summary", ""))
+        self.expedient_status = str(payload.get("status", ""))
+        self.expedient_provenance_class = "REAL"
+        self.citizen_question = str(payload.get("question", ""))
+        self.citizen_type = str(payload.get("type", "Expediente"))
+        sections = payload.get("sections", {})
+        sections = sections if isinstance(sections, dict) else {}
+        self.citizen_facts = _citizen_statement_rows(payload.get("facts", []))
+        self.citizen_bank_stages = _citizen_statement_rows(sections.get("bank_secrecy", []))
+        self.citizen_divergences = _citizen_statement_rows(sections.get("mixed_commission", []))
+        self.citizen_unknowns = _citizen_statement_rows(payload.get("what_is_missing", []))
+        self.citizen_limitations = _citizen_statement_rows(payload.get("what_we_cannot_conclude", []))
+        labels = {"PROCEDURAL": "Procedimiento", "SUBSTANTIVE": "Cambio sustantivo", "ADMINISTRATIVE": "Actuación administrativa"}
+        self.citizen_chronology = [
+            {**row, "date": _citizen_date(str(row.get("date", ""))), "kind_label": labels.get(str(row.get("event_type", "")), "Actuación")}
+            for row in payload.get("chronology", []) if isinstance(row, dict)
+        ]
+        self.citizen_actors = [str(item) for item in payload.get("actors", [])]
+        self.citizen_documents = list(payload.get("documents", []))
+        self.citizen_sources = [str(item) for item in payload.get("sources", [])]
+        self.citizen_questions = list(payload.get("questions", []))
+        cutoff = payload.get("knowledge_cutoff", {})
+        cutoff = cutoff if isinstance(cutoff, dict) else {}
+        self.citizen_cutoff_substantive = _citizen_date(str(cutoff.get("substantive_through", "")))
+        self.citizen_cutoff_administrative = _citizen_date(str(cutoff.get("latest_administrative_record", "")))
+        self.citizen_cutoff_explanation = str(cutoff.get("explanation", ""))
+
+    def _load_legacy_real_expedient(self, payload: dict[str, object]) -> None:
         references = payload.get("references", {})
         statements = payload.get("statements", [])
         self.expedient_id = str(payload["id"])
@@ -219,6 +276,19 @@ class LaboratoryState(rx.State):
 
     def _clear_expedient(self) -> None:
         self.expedient_id = ""
+        self.citizen_expedient = False
+        self.citizen_question = ""
+        self.citizen_type = ""
+        self.citizen_facts = []
+        self.citizen_bank_stages = []
+        self.citizen_divergences = []
+        self.citizen_unknowns = []
+        self.citizen_limitations = []
+        self.citizen_chronology = []
+        self.citizen_actors = []
+        self.citizen_documents = []
+        self.citizen_sources = []
+        self.citizen_questions = []
         self.expedient_provenance_class = ""
         self.expedient_title = ""
         self.expedient_summary = ""
@@ -239,3 +309,30 @@ def _reference_ids(references: object, key: str) -> list[str]:
         return []
     values = references.get(key, [])
     return [str(value) for value in values] if isinstance(values, list) else []
+
+
+def _citizen_date(value: str) -> str:
+    """Present ISO dates as Spanish citizen-facing copy without changing data."""
+    months = ("", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+    try:
+        year, month, day = (int(part) for part in value[:10].split("-"))
+        return f"{day} de {months[month]} de {year}"
+    except (ValueError, IndexError):
+        return value
+
+
+def _citizen_statement_rows(items: object) -> list[dict]:
+    if not isinstance(items, list):
+        return []
+    rows: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        evidence = item.get("evidence", [])
+        support = []
+        if isinstance(evidence, list):
+            for source in evidence:
+                if isinstance(source, dict) and source.get("title"):
+                    support.append(" · ".join(str(source.get(key, "")) for key in ("title", "source", "document_date") if source.get(key)))
+        rows.append({**item, "support_text": " | ".join(support)})
+    return rows

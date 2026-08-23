@@ -5,6 +5,7 @@ import reflex as rx
 from reflex_app.constants.routes import PAGE_LABORATORY, PAGE_LABORATORY_EXPEDIENT
 from reflex_app.features.laboratory.components import (
     expedient_header,
+    citizen_expedient_view,
     expedition_catalog_card,
     laboratory_header,
     participation_gate,
@@ -95,9 +96,11 @@ def laboratory_expedient() -> rx.Component:
                     class_name="hero",
                 ),
                 rx.vstack(
-                    expedient_header(),
-                    reading_progress_panel(),
-                    section_tabs(),
+                    rx.cond(
+                        LaboratoryState.citizen_expedient,
+                        citizen_expedient_view(),
+                        rx.vstack(expedient_header(), reading_progress_panel(), section_tabs(), spacing="4", align="stretch"),
+                    ),
                     spacing="4",
                     align="stretch",
                     class_name="laboratory-expedient-shell",

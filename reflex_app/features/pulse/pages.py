@@ -81,10 +81,10 @@ def home() -> rx.Component:
             "Lecturas e investigaciones destacadas",
             rx.grid(
                 rx.box(
-                    rx.text("EXP-001", class_name="badge badge-teal"),
-                    rx.text("Caso hospitalario o infraestructura publica", class_name="card-title"),
-                    rx.text("Fixture local para demostrar entidades, documentos, cronologia, relaciones, fuentes, cobertura y preguntas abiertas.", class_name="muted small"),
-                    rx.button("Abrir expediente actualizado", on_click=rx.redirect("/investigation"), class_name="button button-secondary"),
+                    rx.text("Proyecto de ley", class_name="badge badge-teal"),
+                    rx.text("Tramitación del proyecto de Inteligencia Económica", class_name="card-title"),
+                    rx.text("¿Qué cambió durante la tramitación del proyecto de Inteligencia Económica y qué sabemos sobre la discusión del secreto bancario?", class_name="muted small"),
+                    rx.button("Abrir expediente", on_click=rx.redirect("/laboratory/expedient?id=EXP-REAL-LEGISLATIVE-15975-25"), class_name="button button-secondary"),
                     class_name="card public-demo-card",
                 ),
                 rx.box(
@@ -98,7 +98,7 @@ def home() -> rx.Component:
                 spacing="3",
                 class_name="responsive-grid",
             ),
-            subtitle="EXP-001 es un caso de prueba estable, no el centro del producto.",
+            subtitle="Lecturas públicas disponibles; los fixtures de compatibilidad no son el centro del producto.",
         ),
         page_section(
             "Como funciona",

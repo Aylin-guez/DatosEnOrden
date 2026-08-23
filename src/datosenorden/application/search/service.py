@@ -65,6 +65,9 @@ def format_workspace_matches(workspace: dict) -> list[dict]:
         {
             **dict(row),
             "source_hint": (
+                "Contenido DEMO (separado de datos incorporados)"
+                if str(row.get("classification", "REAL")) == "DEMO"
+                else
                 "Registro especifico"
                 if bool(row.get("is_record", False))
                 else "Registros publicos vinculados"
@@ -86,6 +89,7 @@ def format_workspace_matches(workspace: dict) -> list[dict]:
                 else "Fuentes contribuyentes no publicadas para este resultado."
             ),
             "action_label": action_label_for_match(row),
+            "classification": str(row.get("classification", "REAL")),
         }
         for row in workspace.get("matches", [])
     ]

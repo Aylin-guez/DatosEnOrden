@@ -583,7 +583,10 @@ def _connector_pulse_events() -> list[dict[str, Any]]:
                     "updated_at": row.get("date", ""),
                     "organization": row.get("source", connector.get("display_name", "")),
                     "source": row.get("source", connector.get("display_name", "")),
-                    "href": "/search?q=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO",
+                    # A pulse event already identifies its canonical subject.  Sending
+                    # a reader to a prefilled search would require a second action and
+                    # can never add context, so open the published investigation.
+                    "href": "/investigation?id=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO",
                 }
             )
     return events

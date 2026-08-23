@@ -7,6 +7,7 @@ from datosenorden.application.laboratory.service import get_expedient, load_expe
 
 from .ports import ExpedientRepository
 from .projection import public_expedient_projection
+from .citizen_projection import CitizenProjectionContext, citizen_expedient_projection
 
 
 class PublicExpedientUnavailableError(RuntimeError):
@@ -42,3 +43,32 @@ class ComposedPublicExpedientReader:
             ) from exc
         legacy = load_expedient_catalog()
         return persisted + [item for item in legacy if item.get("id") == LABORATORY_EXPEDIENT_ID]
+
+    def get_citizen(self, expedient_id: str) -> dict[str, object] | None:
+        """Return the reusable citizen projection when the local record exists.
+
+        The context resolver is deliberately outside Reflex: the UI receives only
+        human-readable, approved public content.
+        """
+        normalized = str(expedient_id or "").strip().upper()
+        try:
+            persisted = self._repository.get(normalized)
+        except SQLAlchemyError as exc:
+            raise PublicExpedientUnavailableError(
+                "public expedient repository unavailable"
+            ) from exc
+        if persisted is None:
+            return None
+        return citizen_expedient_projection(persisted, _citizen_context(persisted))
+
+
+def _citizen_context(expedient) -> CitizenProjectionContext:
+    """Select certified local context without letting a renderer know an ID."""
+    from datosenorden.application.legislative_ingestion.expedient import EXPEDIENT_ID
+    from datosenorden.application.legislative_ingestion.golden_expedient import (
+        golden_citizen_context,
+    )
+
+    if expedient.specification.expedient_id == EXPEDIENT_ID:
+        return golden_citizen_context()
+    return CitizenProjectionContext()

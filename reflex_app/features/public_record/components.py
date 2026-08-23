@@ -341,7 +341,6 @@ def comparison_panel() -> rx.Component:
 def source_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.text("*", class_name="source-card-icon"),
             rx.text(row["dataset"], class_name="badge"),
             rx.text(row["status"], class_name="mini-pill"),
             justify="between",

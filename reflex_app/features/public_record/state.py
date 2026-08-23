@@ -182,13 +182,6 @@ class PublicRecordState(rx.State):
             _debug_investigation("target resolved", received=target, resolved=resolved_entity_id, name=resolved_entity_name)
             data = _json_dict(get_investigation(resolved_entity_id))
             if not _investigation_response_has_data(data):
-                if had_valid_state:
-                    self.investigation_loading = False
-                    self.investigation_status = INVESTIGATION_STATUS_LOADED
-                    self.requested_investigation_target = ""
-                    self.investigation_status_message = "La respuesta local no trajo datos suficientes; se conserva el expediente cargado."
-                    _debug_investigation("preserved previous state", received=target, resolved=resolved_entity_id, reason="empty response")
-                    return
                 _clear_investigation_state(self)
                 self.requested_investigation_target = target
                 self.last_valid_investigation_target = target
@@ -210,12 +203,6 @@ class PublicRecordState(rx.State):
             except Exception:
                 state_graph = {}
         except Exception as exc:  # noqa: BLE001
-            if had_valid_state:
-                self.investigation_status = INVESTIGATION_STATUS_LOADED
-                self.requested_investigation_target = ""
-                self.investigation_status_message = "No se pudo refrescar el expediente ahora mismo; se conserva la vista ya cargada."
-                _debug_investigation("preserved previous state", received=target, reason=type(exc).__name__)
-                return
             _clear_investigation_state(self)
             self.requested_investigation_target = target
             self.last_valid_investigation_target = target

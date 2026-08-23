@@ -9,6 +9,7 @@ from reflex_app.features.sources.components import (
     ecosystem_concept_card,
     ecosystem_roadmap_card,
     ecosystem_source_card,
+    public_source_card,
     real_data_source_card,
 )
 from reflex_app.features.sources.state import SourcesState
@@ -42,19 +43,33 @@ def ecosystem() -> rx.Component:
             class_name="hero",
         ),
         page_section(
-            "Resumen del mapa",
+            "Resumen ciudadano",
             rx.hstack(
-                metric("Fuentes activas", SourcesState.ecosystem_active_count),
+                metric("Fuentes con datos incorporados", SourcesState.public_source_count),
+                metric("Conectores activos", SourcesState.connector_active_count),
                 metric("En desarrollo", SourcesState.ecosystem_prototype_count),
                 metric("Planificadas", SourcesState.ecosystem_planned_count),
-                metric("Conceptos", SourcesState.ecosystem_concept_count),
+                metric("Conceptos catalogados", SourcesState.ecosystem_concept_count),
                 spacing="3",
                 wrap="wrap",
             ),
-            subtitle="Cobertura y alcance del mapa de fuentes.",
+            subtitle="Primero se muestran las fuentes que hoy respaldan información incorporada. Los conectores y el catálogo técnico se muestran aparte.",
         ),
         page_section(
-            "Catalogo y cobertura",
+            "Fuentes con datos incorporados",
+            card_grid_or_empty(
+                SourcesState.public_sources,
+                public_source_card,
+                columns="2",
+                empty_title="Aún no hay fuentes con datos incorporados",
+                empty_body="Esta publicación no expone todavía datos públicos incorporados.",
+                action_label="Volver al inicio",
+                href="/",
+            ),
+            subtitle="Datos disponibles no equivalen necesariamente a un conector activo.",
+        ),
+        page_section(
+            "Fuentes en desarrollo y catálogo técnico",
             rx.text("Fuentes activas", class_name="section-subtitle"),
             card_grid_or_empty(
                 SourcesState.ecosystem_active_sources,
@@ -93,7 +108,7 @@ def ecosystem() -> rx.Component:
                 SourcesState.ecosystem_concepts,
                 ecosystem_concept_card,
                 columns="4",
-                empty_title="Todav?a no hay conceptos publicados",
+                empty_title="Todavía no hay conceptos publicados",
                 empty_body="Esta superficie necesita fuentes publicadas para mostrar cruces conceptuales ?tiles.",
                 action_label="Revisar el proyecto",
                 href="/project",
@@ -101,7 +116,7 @@ def ecosystem() -> rx.Component:
             subtitle="Conceptos visibles en cada fuente.",
         ),
         page_section(
-            "Vista tecnica secundaria",
+            "Vista técnica secundaria",
             rx.hstack(
                 metric("Listas", SourcesState.real_data_ready_count),
                 metric("Parciales", SourcesState.real_data_partial_count),
@@ -136,7 +151,7 @@ def ecosystem() -> rx.Component:
             subtitle="Lectura de cobertura y cruce entre fuentes.",
         ),
         page_section(
-            "Catálogo de metadatos",
+            "Mapa técnico de fuentes",
             card_grid_or_empty(
                 SourcesState.ecosystem_sources,
                 ecosystem_source_card,

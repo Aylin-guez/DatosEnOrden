@@ -669,12 +669,15 @@ style = {
     ".document-meta-reference": {"font_family": "Consolas, monospace", "font_size": "12px", "color": "#a1a1aa", "overflow_wrap": "anywhere"},
     ".official-document-layout": {
         "display": "grid",
-        "grid_template_columns": "minmax(0, 1.95fr) minmax(340px, 0.72fr)",
+        "grid_template_columns": "minmax(0, 1fr)",
         "gap": "28px",
         "align_items": "start",
         "padding": "22px 0",
     },
     ".document-main-column": {"min_width": "0"},
+    ".document-reading-guide": {"min_width": "0"},
+    ".document-fragments-full-width": {"padding": "10px 0 22px"},
+    ".document-fragments-full-width .fragment-nav-grid": {"grid_template_columns": "repeat(auto-fit, minmax(260px, 1fr))"},
     ".document-side-column": {"min_width": "0", "position": "sticky", "top": "88px"},
     ".official-document-viewer": {"display": "grid", "gap": "14px"},
     ".reading-context-bar": {
@@ -1196,10 +1199,21 @@ style.setdefault(".reading-document-workspace", {}).update({"grid_template_colum
 style.setdefault(".reading-document-side", {}).update({"position": "sticky"})
 
 style.update({
-    ".page-laboratory": {"max_width": "1180px"},
+    ".page-laboratory": {"width": "100%"},
+    ".page-laboratory .page": {"max_width": "1760px"},
+    ".page-laboratory .laboratory-catalog-card": {"min_height": "220px", "display": "grid", "align_content": "start", "gap": "10px"},
     ".laboratory-panel": {"display": "grid", "gap": "12px", "padding": "16px"},
     ".laboratory-tabs-list": {"display": "flex", "flex_wrap": "wrap", "gap": "6px"},
     ".laboratory-entity-card": {"display": "grid", "gap": "6px", "padding": "12px"},
     ".laboratory-progress-panel": {"display": "grid", "gap": "8px"},
     ".laboratory-progress": {"width": "100%"},
+    ".epistemic-fact": {"background": "rgba(45, 212, 191, 0.14)", "color": "#2dd4bf", "border_color": "rgba(45, 212, 191, 0.30)"},
+    ".epistemic-evidence": {"background": "rgba(96, 165, 250, 0.14)", "color": "#93c5fd", "border_color": "rgba(96, 165, 250, 0.30)"},
+    ".epistemic-unknown": {"background": "rgba(250, 204, 21, 0.12)", "color": "#fde68a", "border_color": "rgba(250, 204, 21, 0.28)"},
+    ".epistemic-limitation": {"background": "rgba(161, 161, 170, 0.14)", "color": "#e4e4e7", "border_color": "rgba(161, 161, 170, 0.28)"},
+    ".epistemic-question": {"background": "rgba(167, 139, 250, 0.14)", "color": "#c4b5fd", "border_color": "rgba(167, 139, 250, 0.30)"},
+    ".expedient-question-panel": {"margin_top": "1rem", "margin_bottom": "0.5rem", "padding": "0.9rem 1rem", "border": "1px solid rgba(167, 139, 250, 0.32)", "border_left": "3px solid #a78bfa", "border_radius": "0.75rem", "background": "rgba(167, 139, 250, 0.10)"},
+    ".expedient-question-label": {"font_size": "0.72rem", "font_weight": "700", "letter_spacing": "0.06em", "text_transform": "uppercase", "color": "#c4b5fd", "margin_bottom": "0.35rem"},
+    ".expedient-question-mark": {"display": "inline-flex", "align_items": "center", "justify_content": "center", "flex_shrink": "0", "width": "1.45rem", "height": "1.45rem", "border_radius": "999px", "background": "rgba(167, 139, 250, 0.22)", "color": "#ddd6fe", "font_weight": "800"},
+    ".expedient-question-text": {"font_size": "1.1rem", "line_height": "1.5", "font_weight": "650", "color": "#f5f3ff"},
 })

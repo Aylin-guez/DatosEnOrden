@@ -25,9 +25,7 @@ from reflex_app.constants.routes import (
 
 
 def page_section(title: str, *children, subtitle: str | None = None, class_name: str = "", element_id: str = "") -> rx.Component:
-    title_key = title.lower() if isinstance(title, str) else ""
-    section_icon = _section_icon(title_key)
-    body = [rx.hstack(rx.text(section_icon, class_name="section-icon"), rx.text(title, class_name="section-title"), spacing="2", align="center")]
+    body = [rx.text(title, class_name="section-title")]
     if subtitle is not None:
         body.append(rx.text(subtitle, class_name="section-subtitle"))
     body.extend(children)

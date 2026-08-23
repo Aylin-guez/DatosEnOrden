@@ -191,6 +191,11 @@ def official_document() -> rx.Component:
     return shell(
         rx.box(
             rx.box(
+                rx.button(
+                    "← Volver",
+                    on_click=rx.call_script("if (window.history.length > 1) { window.history.back(); } else { window.location.assign('/library'); }"),
+                    class_name="button button-secondary",
+                ),
                 rx.text("Lectura documentada", class_name="document-kicker"),
                 rx.text(DocumentReadingState.knowledge_title, class_name="document-title"),
                 rx.text(
@@ -228,13 +233,10 @@ def official_document() -> rx.Component:
                 ),
                 class_name="document-main-column",
             ),
-            rx.box(
-                document_fragment_panel(),
-                reading_guide_panel(),
-                class_name="document-side-column",
-            ),
+            rx.box(reading_guide_panel(), class_name="document-reading-guide"),
             class_name="official-document-layout",
         ),
+        rx.box(document_fragment_panel(), class_name="document-fragments-full-width"),
         rx.box(
             rx.text("Evidencia dentro del documento", class_name="section-title"),
             rx.text("Cada referencia conserva pagina, fragmento y extracto verificable del documento fuente.", class_name="section-subtitle"),

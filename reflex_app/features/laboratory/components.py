@@ -27,7 +27,6 @@ def section_status(status: str) -> rx.Component:
 def expedition_catalog_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.text(row["id"], class_name="badge badge-teal"),
             section_status(row["status"]),
             justify="between",
             align="center",
@@ -40,12 +39,18 @@ def expedition_catalog_card(row: dict) -> rx.Component:
             on_click=rx.redirect(f"/laboratory/expedient?id={row['id']}"),
             class_name="button",
         ),
+        rx.text("ID: ", row["id"], class_name="mono id-line"),
         class_name="card laboratory-catalog-card",
     )
 
 
 def expedient_header() -> rx.Component:
     return rx.box(
+        rx.button(
+            "← Volver",
+            on_click=rx.call_script("if (window.history.length > 1) { window.history.back(); } else { window.location.assign('/laboratory'); }"),
+            class_name="button button-secondary",
+        ),
         rx.hstack(
             rx.text(LaboratoryState.expedient_id, class_name="badge badge-teal"),
             rx.text(LaboratoryState.expedient_status, class_name="mini-pill"),
@@ -323,4 +328,107 @@ def empty_section_notice(title: str, message: str) -> rx.Component:
         rx.text(title, class_name="card-title"),
         rx.text(message, class_name="muted small"),
         class_name="card laboratory-empty-notice",
+    )
+
+
+def _citizen_statement(row: dict) -> rx.Component:
+    return rx.box(
+        _epistemic_badge(row),
+        rx.text(row["statement"], class_name="story-summary"),
+        rx.cond(row["support_text"] != "", rx.text(row["support_text"], class_name="source-fact")),
+        class_name="card laboratory-entity-card",
+    )
+
+
+def _citizen_document(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text("Evidencia documental", class_name="badge epistemic-evidence"),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["institution"], " · ", row["type"], " · ", row["stage"], class_name="source-fact"),
+        rx.cond(row["date"] != "", rx.text(row["date"], class_name="muted small")),
+        rx.cond(row["official_url"] != "", rx.link("Ver documento oficial", href=row["official_url"], is_external=True, target="_blank", rel="noopener noreferrer", class_name="button button-secondary")),
+        class_name="card laboratory-entity-card",
+    )
+
+
+def citizen_expedient_view() -> rx.Component:
+    """Narrative UI for any CitizenExpedientProjection; it knows no expedient ID."""
+    return rx.vstack(
+        rx.box(
+            rx.button(
+                "← Volver",
+                on_click=rx.call_script("if (window.history.length > 1) { window.history.back(); } else { window.location.assign('/laboratory'); }"),
+                class_name="button button-secondary",
+            ),
+            rx.text(LaboratoryState.citizen_type, class_name="badge badge-teal"),
+            rx.text(LaboratoryState.expedient_title, class_name="title"),
+            rx.box(
+                rx.text("Pregunta que organiza este expediente", class_name="expedient-question-label"),
+                rx.hstack(
+                    rx.text("?", class_name="expedient-question-mark"),
+                    rx.text(LaboratoryState.citizen_question, class_name="expedient-question-text"),
+                    spacing="3",
+                    align="start",
+                ),
+                class_name="expedient-question-panel",
+            ),
+            rx.text(LaboratoryState.expedient_summary, class_name="subtitle"),
+            rx.cond(
+                LaboratoryState.citizen_cutoff_substantive != "",
+                rx.box(
+                    rx.text("Información sustantiva verificada hasta: ", LaboratoryState.citizen_cutoff_substantive, class_name="source-fact"),
+                    rx.cond(LaboratoryState.citizen_cutoff_administrative != "", rx.text("Última actuación administrativa incorporada: ", LaboratoryState.citizen_cutoff_administrative, class_name="source-fact")),
+                    rx.text(LaboratoryState.citizen_cutoff_explanation, class_name="muted small"),
+                    class_name="card laboratory-progress-panel",
+                ),
+            ),
+            class_name="hero laboratory-expedient-header",
+        ),
+        citizen_section("Qué pasó", rx.text(LaboratoryState.expedient_summary, class_name="story-summary")),
+        rx.cond(LaboratoryState.citizen_facts, citizen_section("Qué sabemos", rx.vstack(rx.foreach(LaboratoryState.citizen_facts, _citizen_statement), spacing="3"))),
+        rx.cond(
+            LaboratoryState.citizen_bank_stages,
+            citizen_section("Qué pasó con el secreto bancario", rx.vstack(
+                rx.text("Propuesta original → primer trámite → Cámara revisora → retorno al Senado → Comisión Mixta", class_name="source-fact"),
+                rx.foreach(LaboratoryState.citizen_bank_stages, _citizen_statement),
+                rx.box("No puede afirmarse con la evidencia incorporada que el Senado haya rechazado la regla bancaria identificada en el texto de Cámara.", class_name="card laboratory-empty-notice"), spacing="3")),
+        ),
+        rx.cond(
+            LaboratoryState.citizen_divergences,
+            citizen_section("Por qué terminó en Comisión Mixta", rx.vstack(
+                rx.text("El Senado aceptó la mayor parte de las modificaciones de Cámara, pero rechazó cuatro.", class_name="story-summary"),
+                rx.foreach(LaboratoryState.citizen_divergences, _citizen_statement), spacing="3")),
+        ),
+        rx.cond(LaboratoryState.citizen_unknowns, citizen_section("Qué todavía no sabemos", rx.vstack(rx.text("No está acreditado con las fuentes incorporadas.", class_name="muted"), rx.foreach(LaboratoryState.citizen_unknowns, _citizen_statement), spacing="3"))),
+        rx.cond(LaboratoryState.citizen_limitations, citizen_section("Qué no podemos concluir", rx.vstack(rx.foreach(LaboratoryState.citizen_limitations, _citizen_statement), spacing="3"))),
+        rx.cond(LaboratoryState.citizen_chronology, citizen_section("Cronología", rx.vstack(rx.foreach(LaboratoryState.citizen_chronology, lambda row: rx.box(rx.text(row["date"], " · ", row["kind_label"], class_name="source-fact"), rx.text(row["text"], class_name="story-summary"), class_name="card laboratory-entity-card")), spacing="2"))),
+        rx.cond(LaboratoryState.citizen_actors, citizen_section("Actores", rx.flex(rx.foreach(LaboratoryState.citizen_actors, lambda item: rx.text(item, class_name="badge badge-blue")), wrap="wrap", spacing="2"))),
+        rx.cond(LaboratoryState.citizen_documents, citizen_section("Documentos", rx.grid(rx.foreach(LaboratoryState.citizen_documents, _citizen_document), columns="2", spacing="3", class_name="responsive-grid"))),
+        rx.cond(LaboratoryState.citizen_sources, citizen_section("Fuentes", rx.flex(rx.foreach(LaboratoryState.citizen_sources, lambda item: rx.text(item, class_name="badge badge-purple")), wrap="wrap", spacing="2"))),
+        rx.cond(LaboratoryState.citizen_questions, citizen_section("Preguntas ciudadanas", rx.vstack(rx.foreach(LaboratoryState.citizen_questions, lambda row: rx.box(rx.text("Pregunta", class_name="badge epistemic-question"), rx.text(row["question"], class_name="card-title"), rx.text(row["answer"], class_name="story-summary"), class_name="card laboratory-entity-card")), spacing="3"))),
+        spacing="4", align="stretch", class_name="laboratory-expedient-shell",
+    )
+
+
+def citizen_section(title: str, content: rx.Component) -> rx.Component:
+    return rx.box(rx.text(title, class_name="section-title"), content, class_name="laboratory-panel")
+
+
+def _epistemic_badge(row: dict) -> rx.Component:
+    return rx.cond(
+        row["section"] == "limitations",
+        rx.text("Límite de la evidencia", class_name="badge epistemic-limitation"),
+        rx.cond(
+        row["epistemic_class"] == "FACT",
+        rx.text("Hecho verificado", class_name="badge epistemic-fact"),
+        rx.cond(
+            row["epistemic_class"] == "OPEN_QUESTION",
+            rx.text("Pregunta abierta", class_name="badge epistemic-question"),
+            rx.cond(
+                row["epistemic_class"] == "UNKNOWN",
+                rx.text("Conocimiento pendiente", class_name="badge epistemic-unknown"),
+                rx.text("Límite de la evidencia", class_name="badge epistemic-limitation"),
+            ),
+        ),
+        ),
     )

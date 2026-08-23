@@ -13,6 +13,7 @@ from reflex_app.features.reports import pages as reports_pages
 from reflex_app.features.dashboard import pages as dashboard_pages
 from reflex_app.features.public_record import pages as public_record_pages
 from reflex_app.features.laboratory import pages as laboratory_pages
+from reflex_app.features.collections import pages as collection_pages
 
 PAGE_MODULES = (
     not_found_page,
@@ -27,6 +28,7 @@ PAGE_MODULES = (
     dashboard_pages,
     public_record_pages,
     laboratory_pages,
+    collection_pages,
 )
 
 

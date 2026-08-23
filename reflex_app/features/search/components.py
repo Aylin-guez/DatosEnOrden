@@ -6,7 +6,6 @@ from reflex_app.components.common.indicators import search_chip
 from reflex_app.features.search.state import SearchState
 from reflex_app.helpers.public_values import _clean
 from reflex_app.layouts.page import page_section
-from reflex_app.models.investigation import INVESTIGATION_TOPICS
 
 
 def _human_label(value: object) -> str:
@@ -38,6 +37,8 @@ def investigation_topic_card(row: dict) -> rx.Component:
     return rx.box(
         rx.text(row["label"], class_name="card-title"),
         rx.text(row["example"], class_name="muted small"),
+        rx.text(row.get("count_text", "Sin información incorporada todavía"), class_name="source-fact"),
+        rx.cond(row.get("collection_href", "") != "", rx.link("Explorar colección", href=row["collection_href"], class_name="button button-secondary")),
         class_name="card topic-card",
     )
 
@@ -46,7 +47,7 @@ def what_to_investigate_panel() -> rx.Component:
     return page_section(
         "Que puedes investigar",
         rx.grid(
-            rx.foreach(INVESTIGATION_TOPICS, investigation_topic_card),
+            rx.foreach(SearchState.investigation_topic_rows, investigation_topic_card),
             columns="5",
             spacing="3",
             class_name="responsive-grid topic-grid",
@@ -239,13 +240,16 @@ def search_empty_state() -> rx.Component:
 def workspace_match_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.text("*", class_name="source-card-icon"),
             rx.text(row.get("entity_type_label", _human_label(row.get("entity_type", ""))), class_name=_entity_badge_class(str(row.get("entity_type", "")))),
             rx.text(row["source_hint"], class_name="muted small"),
             justify="between",
             align="center",
         ),
         rx.text(row["entity_name"], class_name="card-title"),
+        rx.cond(
+            row.get("classification", "REAL") == "DEMO",
+            rx.text("DEMO", class_name="badge badge-amber"),
+        ),
         rx.cond(
             row.get("is_record", False),
             rx.text("Registro especifico", class_name="badge badge-amber"),

@@ -187,7 +187,7 @@ def topic_pdf_document_viewer(active_fragment_id: str) -> rx.Component:
     return rx.box(
         rx.hstack(
             rx.text("Documento principal", class_name="document-label"),
-            rx.link("Abrir PDF en pestaña nueva", href=DocumentReadingState.knowledge_document_pdf_page_href, class_name="document-inline-link"),
+            rx.link("Abrir PDF en pestaña nueva", href=DocumentReadingState.knowledge_document_pdf_page_href, is_external=True, target="_blank", rel="noopener noreferrer", class_name="document-inline-link"),
             justify="between",
             align="center",
             wrap="wrap",
@@ -619,7 +619,7 @@ def official_document_pdf_viewer(page: int, fragment_id: str, highlight: str) ->
         rx.box(
             rx.hstack(
                 rx.text("Documento principal", class_name="document-label"),
-                rx.link("Abrir PDF en pestaña nueva", href=DocumentReadingState.knowledge_document_pdf_page_href, class_name="document-inline-link"),
+                rx.link("Abrir PDF en pestaña nueva", href=DocumentReadingState.knowledge_document_pdf_page_href, is_external=True, target="_blank", rel="noopener noreferrer", class_name="document-inline-link"),
                 justify="between",
                 align="center",
                 wrap="wrap",

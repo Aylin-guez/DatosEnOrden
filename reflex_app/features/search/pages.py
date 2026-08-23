@@ -56,10 +56,40 @@ def _search_view(on_mount) -> rx.Component:  # noqa: ANN001
             rx.text("La busqueda consulta conocimiento local ya disponible. No crea expedientes persistentes ni ejecuta generacion pesada.", class_name="source-fact"),
             class_name="hero",
         ),
-        guided_discovery_panel(),
-        what_to_investigate_panel(),
         rx.cond(
-            SearchState.results,
+            SearchState.guided_question_active,
+            rx.vstack(
+                _search_results(),
+                page_section(
+                    "Explorar otra pregunta",
+                    rx.button(
+                        "← Explorar otra pregunta",
+                        on_click=SearchState.explore_another_question,
+                        class_name="button button-secondary",
+                    ),
+                    guided_discovery_panel(),
+                    subtitle="Puedes volver a una pregunta guiada sin perder una búsqueda manual ya escrita.",
+                ),
+                spacing="4",
+                align="stretch",
+            ),
+            rx.vstack(
+                guided_discovery_panel(),
+                what_to_investigate_panel(),
+                _search_results(),
+                spacing="4",
+                align="stretch",
+            ),
+        ),
+        on_mount=on_mount,
+        active_page=PAGE_SEARCH,
+    )
+
+
+def _search_results() -> rx.Component:
+    return rx.cond(
+        SearchState.results,
+        rx.box(
             page_section(
                 rx.cond(SearchState.guided_search_title != "", SearchState.guided_search_title, "Resultados agrupados por cobertura"),
                 rx.grid(
@@ -70,10 +100,9 @@ def _search_view(on_mount) -> rx.Component:  # noqa: ANN001
                 ),
                 subtitle="Cada resultado explica que es, por que coincide, que fuentes contribuyen y que accion corresponde.",
             ),
-            rx.cond(SearchState.query != "", search_empty_state()),
+            id="search-results",
         ),
-        on_mount=on_mount,
-        active_page=PAGE_SEARCH,
+        rx.cond(SearchState.query != "", search_empty_state()),
     )
 
 

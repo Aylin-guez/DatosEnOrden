@@ -88,7 +88,6 @@ def next_step_card(title: str, body: str, label: str, href: str) -> rx.Component
 def tracking_event_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.text("*", class_name="source-card-icon"),
             rx.text(row["date"], class_name="badge badge-teal"),
             rx.text(row["status"], class_name="mini-pill mini-pill-purple"),
             justify="between",
@@ -97,6 +96,10 @@ def tracking_event_card(row: dict) -> rx.Component:
         rx.text(row["title"], class_name="card-title"),
         rx.text(row["description"], class_name="muted small"),
         rx.text(f"Fuente: {row['source']}", class_name="source-fact"),
-        rx.text(rx.cond(row.get("origin", "") == "demo_manual", "Origen: demo manual", "Origen: timeline derivada"), class_name="mini-pill evidence-trust"),
+        rx.cond(
+            row.get("origin", "") == "demo_manual",
+            rx.text("Origen: demo manual", class_name="mini-pill evidence-trust"),
+            rx.text("Origen: timeline derivada", class_name="mini-pill evidence-trust"),
+        ),
         class_name="card tracking-event-card",
     )

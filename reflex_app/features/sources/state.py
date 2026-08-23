@@ -3,6 +3,8 @@ from __future__ import annotations
 import reflex as rx
 
 from datosenorden.application.public_deployment.sanitization import public_error
+from datosenorden.application.public_sources import public_source_catalog
+from datosenorden.db.session import SessionLocal
 
 from datosenorden.web.app_services import get_data_ecosystem, get_real_data_readiness
 from reflex_app.serialization.json_safe import _json_dict, _json_list
@@ -24,6 +26,9 @@ class SourcesState(rx.State):
     real_data_partial_count: int = 0
     real_data_demo_count: int = 0
     real_data_without_loader_count: int = 0
+    public_sources: list[dict] = []
+    public_source_count: int = 0
+    connector_active_count: int = 0
     sources_error: str = ""
     sources_error_code: str = ""
 
@@ -31,6 +36,11 @@ class SourcesState(rx.State):
         self.sources_error = ""
         try:
             ecosystem = get_data_ecosystem()
+            with SessionLocal() as session:
+                public_catalog = public_source_catalog(session, list(ecosystem.get("sources", [])))
+            self.public_sources = _json_list(public_catalog.get("sources", []))
+            self.public_source_count = int(public_catalog.get("source_count", 0) or 0)
+            self.connector_active_count = int(public_catalog.get("connector_active_count", 0) or 0)
             sources = [
                 {
                     **dict(row),

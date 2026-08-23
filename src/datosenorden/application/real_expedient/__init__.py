@@ -1,5 +1,14 @@
 """Public-product contracts for persisted REAL expedients."""
 
+from .citizen_projection import (
+    CitizenDocument,
+    CitizenEvidence,
+    CitizenKnowledgeCutoff,
+    CitizenProjectionContext,
+    CitizenQuestionAnswer,
+    CitizenTimelineEvent,
+    citizen_expedient_projection,
+)
 from .models import (
     EpistemicClass,
     ExpedientReferences,
@@ -16,6 +25,12 @@ from .service import ExpedientConflictError, ExpedientProvisioningService, Exped
 
 __all__ = (
     "ComposedPublicExpedientReader",
+    "CitizenDocument",
+    "CitizenEvidence",
+    "CitizenKnowledgeCutoff",
+    "CitizenProjectionContext",
+    "CitizenQuestionAnswer",
+    "CitizenTimelineEvent",
     "EpistemicClass",
     "ExpedientConflictError",
     "ExpedientProvisioningService",
@@ -28,5 +43,6 @@ __all__ = (
     "ReferenceEligibility",
     "ReferenceKind",
     "StoredExpedient",
+    "citizen_expedient_projection",
     "public_expedient_projection",
 )

@@ -34,6 +34,7 @@ class SearchWorkspaceMatch:
     result_type: str = "entidad"
     action_label: str = "Abrir expediente"
     action_href: str = ""
+    classification: str = "REAL"
 
 
 def search_workspace(query: str, limit: int = 12) -> dict[str, object]:
@@ -60,6 +61,7 @@ def search_workspace(query: str, limit: int = 12) -> dict[str, object]:
                 "source_label": _source_label(item),
                 "action_label": item.action_label,
                 "action_href": item.action_href or f"/investigation?id={item.entity_id}",
+                "classification": item.classification,
             }
             for item in matches
         ]
@@ -198,8 +200,9 @@ def _document_matches(query: str) -> tuple[SearchWorkspaceMatch, ...]:
                     relationship_count=1,
                     score=0.66,
                     result_type="documento",
-                    action_label="Ver documento",
-                    action_href="/library",
+                action_label="Ver documento",
+                action_href="/library",
+                classification="DEMO",
                 )
             )
     return tuple(matches)
@@ -221,8 +224,9 @@ def _report_matches(query: str) -> tuple[SearchWorkspaceMatch, ...]:
                     relationship_count=1,
                     score=0.64,
                     result_type="reporte",
-                    action_label="Ver reporte",
-                    action_href="/reports",
+                action_label="Ver reporte",
+                action_href="/reports",
+                classification="DEMO",
                 )
             )
     return tuple(matches)
@@ -244,8 +248,9 @@ def _tracking_matches(query: str) -> tuple[SearchWorkspaceMatch, ...]:
                     relationship_count=1,
                     score=0.62,
                     result_type="seguimiento",
-                    action_label="Ver seguimiento",
-                    action_href="/tracking",
+                action_label="Ver seguimiento",
+                action_href="/tracking",
+                classification="DEMO",
                 )
             )
     return tuple(matches)

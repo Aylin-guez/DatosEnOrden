@@ -56,6 +56,28 @@ def ecosystem_source_card(row: dict) -> rx.Component:
     )
 
 
+def public_source_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text(row["name"], class_name="card-title"),
+            rx.text(row["coverage_status"], class_name="badge badge-teal"),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["description"], class_name="muted"),
+        rx.hstack(
+            rx.text(f"Registros incorporados: {row['record_count']}", class_name="mini-pill"),
+            rx.text(f"Relaciones: {row['relationship_count']}", class_name="mini-pill mini-pill-purple"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        rx.text(row["coverage_detail"], class_name="source-fact"),
+        rx.text(row["connector_status"], class_name="source-fact"),
+        rx.text(row["limitation"], class_name="muted small"),
+        class_name="card ecosystem-card real-data-card",
+    )
+
+
 def ecosystem_concept_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
