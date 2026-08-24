@@ -46,7 +46,7 @@ def acquire_norm(*, norm_id: str, version: str, staging_dir: Path, transport: ht
     try:
         payload = response.json()
         metadata = payload["metadatos"]
-        if str(metadata["id_norma"]) != norm_id or str(metadata["fecha_version"]) != version:
+        if str(metadata["id_norma"]) != norm_id or not _metadata_proves_version(metadata, version):
             raise KeyError("identity")
         html = payload["html"]
         if not isinstance(html, list) or not html:
@@ -63,3 +63,23 @@ def acquire_norm(*, norm_id: str, version: str, staging_dir: Path, transport: ht
             partial = Path(handle.name)
         partial.replace(target)
     return LeyChileArtifact(norm_id, version, url, datetime.now(UTC), digest, target, payload)
+
+
+def _metadata_proves_version(metadata: dict[str, object], version: str) -> bool:
+    """Validate the version identity exposed by LeyChile metadata.
+
+    LeyChile's ``fecha_version`` can be the original publication date even when
+    the returned text is its ``Última Versión``.  The version's effective start
+    is instead exposed in ``vigencia``/``vigencias``.  Accept only an explicit
+    matching effective version; never infer identity from a successful request.
+    """
+    if str(metadata.get("fecha_version", "")) == version:
+        return True
+    current = metadata.get("vigencia")
+    if isinstance(current, dict) and str(current.get("inicio_vigencia", "")) == version:
+        return True
+    versions = metadata.get("vigencias")
+    return isinstance(versions, list) and any(
+        isinstance(item, dict) and str(item.get("desde", "")) == version
+        for item in versions
+    )

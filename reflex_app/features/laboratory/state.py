@@ -62,6 +62,8 @@ class LaboratoryState(rx.State):
     citizen_documents: list[dict] = []
     citizen_sources: list[str] = []
     citizen_questions: list[dict] = []
+    citizen_topics: list[str] = []
+    citizen_missing_knowledge: list[str] = []
     citizen_cutoff_substantive: str = ""
     citizen_cutoff_administrative: str = ""
     citizen_cutoff_explanation: str = ""
@@ -176,6 +178,8 @@ class LaboratoryState(rx.State):
         self.citizen_documents = list(payload.get("documents", []))
         self.citizen_sources = [str(item) for item in payload.get("sources", [])]
         self.citizen_questions = list(payload.get("questions", []))
+        self.citizen_topics = [str(item) for item in payload.get("topics", [])]
+        self.citizen_missing_knowledge = [str(item) for item in payload.get("missing_knowledge", [])]
         cutoff = payload.get("knowledge_cutoff", {})
         cutoff = cutoff if isinstance(cutoff, dict) else {}
         self.citizen_cutoff_substantive = _citizen_date(str(cutoff.get("substantive_through", "")))
@@ -289,6 +293,8 @@ class LaboratoryState(rx.State):
         self.citizen_documents = []
         self.citizen_sources = []
         self.citizen_questions = []
+        self.citizen_topics = []
+        self.citizen_missing_knowledge = []
         self.expedient_provenance_class = ""
         self.expedient_title = ""
         self.expedient_summary = ""

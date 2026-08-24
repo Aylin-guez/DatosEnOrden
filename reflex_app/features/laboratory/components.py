@@ -385,6 +385,8 @@ def citizen_expedient_view() -> rx.Component:
             class_name="hero laboratory-expedient-header",
         ),
         citizen_section("Qué pasó", rx.text(LaboratoryState.expedient_summary, class_name="story-summary")),
+        rx.cond(LaboratoryState.citizen_topics, citizen_section("Materias del proyecto", rx.flex(rx.foreach(LaboratoryState.citizen_topics, lambda item: rx.text(item, class_name="badge badge-blue")), wrap="wrap", spacing="2"))),
+        rx.cond(LaboratoryState.citizen_missing_knowledge, citizen_section("Qué falta incorporar", rx.vstack(rx.text("Estas piezas no están incorporadas al corpus actual; no permiten inferir su resultado jurídico.", class_name="muted"), rx.foreach(LaboratoryState.citizen_missing_knowledge, lambda item: rx.text(item, class_name="source-fact")), spacing="2"))),
         rx.cond(LaboratoryState.citizen_facts, citizen_section("Qué sabemos", rx.vstack(rx.foreach(LaboratoryState.citizen_facts, _citizen_statement), spacing="3"))),
         rx.cond(
             LaboratoryState.citizen_bank_stages,

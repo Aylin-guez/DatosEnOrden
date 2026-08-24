@@ -78,6 +78,26 @@ modificándose durante su tramitación?”
 The security topics are deferred pending the exact bill record, complete text,
 legislative status, controls and primary documentary evidence.
 
+### Bulletin 18.258-07 acquisition closure
+
+| Field | Certified corpus status |
+| --- | --- |
+| Bulletin | 18.258-07 |
+| Status | `BLOCKED_PRIMARY_PROJECT_TEXT` |
+| Current law | Law 18.415 acquired from LeyChile (`idNorma=29824`, effective current version `1990-01-24`) |
+| Original project | `NOT_ACQUIRED` |
+| Comparative | `NOT_ACQUIRED` |
+| Chamber primary document | Direct public message resource returned HTTP 403; no bypass attempted |
+| BCN | No primary or full reproduction located |
+| Senate | Public project reference located; no primary text acquired |
+| BCN minute | `SUMMARY_ONLY` |
+| Materialization gate | `FAIL` |
+
+The citizen expedient is intentionally not materialized. The current DEO corpus
+does not permit us to certify the bill's primary text and its comparative with
+sufficient provenance. This does not assert that those documents do not exist;
+only that they are not acquired in the DEO corpus.
+
 ## LeyChile minimum vertical-slice feasibility
 
 **PASS, subject to a narrow contract.** LeyChile supplies stable canonical URLs

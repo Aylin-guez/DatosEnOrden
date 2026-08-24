@@ -77,4 +77,10 @@ def _citizen_context(expedient) -> CitizenProjectionContext:
     )
     if expedient.specification.expedient_id == ESCUELAS_EXPEDIENT_ID:
         return escuelas_citizen_context()
+    from datosenorden.application.legislative_ingestion.reconstruccion_nacional import (
+        EXPEDIENT_ID as RECONSTRUCCION_EXPEDIENT_ID,
+        reconstruccion_citizen_context,
+    )
+    if expedient.specification.expedient_id == RECONSTRUCCION_EXPEDIENT_ID:
+        return reconstruccion_citizen_context()
     return CitizenProjectionContext()

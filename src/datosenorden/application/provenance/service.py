@@ -28,6 +28,19 @@ from datosenorden.models import (
 
 PROVENANCE_MANIFEST: tuple[ProvenanceManifestEntry, ...] = (
     ProvenanceManifestEntry(
+        source_name="Senado de la República de Chile",
+        dataset_name="reconstruccion-nacional",
+        dataset_version="18216-05",
+        provenance_class=ProvenanceClass.REAL,
+        source_label="Senado de la República de Chile",
+        dataset_identifier="reconstruccion-nacional@18216-05",
+        record_scope="postgresql_dataset",
+        public_countable=True,
+        evidence_basis="Explicit, bounded official Senate and DIPRES resources for bulletin 18.216-05, each recorded with its artifact hash.",
+        reason="Official legislative processing corpus; it is not a claim that the project is current law.",
+        confidence="HIGH",
+    ),
+    ProvenanceManifestEntry(
         source_name="Senado de Chile", dataset_name="senado-legislative-matter", dataset_version="15975-25",
         provenance_class=ProvenanceClass.REAL, source_label="Senado de Chile",
         dataset_identifier="senado-legislative-matter@15975-25", record_scope="postgresql_dataset",

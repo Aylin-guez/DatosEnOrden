@@ -67,6 +67,8 @@ class CitizenProjectionContext:
     documents: tuple[CitizenDocument, ...] = ()
     sources: tuple[str, ...] = ()
     answers: tuple[CitizenQuestionAnswer, ...] = ()
+    topics: tuple[str, ...] = ()
+    missing_knowledge: tuple[str, ...] = ()
     knowledge_cutoff: CitizenKnowledgeCutoff | None = None
 
 
@@ -138,6 +140,14 @@ def citizen_expedient_projection(
             {"question": item.question, "answer": item.answer, "epistemic_class": item.epistemic_class}
             for item in context.answers
         ]
+    topics = context.topics or _topics_from_answers(context.answers)
+    if topics:
+        result["topics"] = list(topics)
+    missing_knowledge = context.missing_knowledge or tuple(
+        row["statement"] for row in limitations
+    )
+    if missing_knowledge:
+        result["missing_knowledge"] = list(missing_knowledge)
     if context.knowledge_cutoff is not None:
         result["knowledge_cutoff"] = {
             "substantive_through": context.knowledge_cutoff.substantive_through,
@@ -179,3 +189,13 @@ def _document(item: CitizenDocument) -> dict[str, object]:
         "official_url": item.official_url,
         "date": item.date,
     }
+
+
+def _topics_from_answers(answers: tuple[CitizenQuestionAnswer, ...]) -> tuple[str, ...]:
+    """Expose explicitly enumerated matters already present in citizen answers."""
+    for item in answers:
+        if "principales materias" in item.question.lower():
+            text = item.answer.split("acreditan", 1)[-1].split("entre otras", 1)[0]
+            values = tuple(value.strip().capitalize() for value in text.split(",") if value.strip())
+            return values
+    return ()

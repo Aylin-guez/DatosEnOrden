@@ -147,7 +147,16 @@ def _real_expedient_matches(session, query: str) -> tuple[SearchWorkspaceMatch, 
         haystack_tokens = set(haystack.split())
         compact_match = normalized_query.replace(" ", "") in haystack.replace(" ", "")
         contextual_match = len(query_tokens) > 1 and len(query_tokens.intersection(haystack_tokens)) >= 2
-        if normalized_query in haystack or compact_match or contextual_match:
+        # Public Spanish queries frequently vary only by a derivational ending
+        # (for example, ``tributación`` / ``tributarias``).  Match a conservative
+        # six-character root against indexed human-readable content; this is not
+        # per-expedient metadata and remains stricter than arbitrary synonyms.
+        root_match = (
+            len(query_tokens) == 1
+            and len(normalized_query) >= 7
+            and any(token.startswith(normalized_query[:6]) for token in haystack_tokens)
+        )
+        if normalized_query in haystack or compact_match or contextual_match or root_match:
             identifier = stored.specification.expedient_id
             matches.append(SearchWorkspaceMatch(identifier, str(projection["title"]), str(projection.get("type", "Expediente legislativo")), tuple(str(item) for item in projection.get("sources", [])), len(projection.get("facts", [])), 0, 0.95, "expediente legislativo", "Abrir expediente", f"/laboratory/expedient?id={identifier}", "REAL"))
     return tuple(matches)
