@@ -142,7 +142,15 @@ def _real_expedient_matches(session, query: str) -> tuple[SearchWorkspaceMatch, 
         answers = [f"{row.get('question', '')} {row.get('answer', '')}" for row in questions if isinstance(row, dict)]
         documents = projection.get("documents", [])
         document_text = [" ".join(str(row.get(key, "")) for key in ("title", "institution", "type", "stage")) for row in documents if isinstance(row, dict)]
-        haystack = _normalize(" ".join([str(projection.get("title", "")), str(projection.get("question", "")), str(projection.get("summary", "")), *statements, *answers, *document_text, *[str(item) for item in projection.get("sources", [])]]))
+        entity_metadata = []
+        for reference_id in stored.specification.references.entity_ids:
+            try:
+                entity = session.get(Entity, UUID(str(reference_id)))
+            except ValueError:
+                entity = None
+            if entity is not None:
+                entity_metadata.extend((str(entity.name), str(entity.external_id or "")))
+        haystack = _normalize(" ".join([str(projection.get("title", "")), str(projection.get("question", "")), str(projection.get("summary", "")), *statements, *answers, *document_text, *entity_metadata, *[str(item) for item in projection.get("sources", [])]]))
         query_tokens = set(normalized_query.split())
         haystack_tokens = set(haystack.split())
         compact_match = normalized_query.replace(" ", "") in haystack.replace(" ", "")

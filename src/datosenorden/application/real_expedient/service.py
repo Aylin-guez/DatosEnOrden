@@ -33,9 +33,15 @@ class ExpedientProvisioningService:
         existing = self._repository.get(specification.expedient_id)
         if existing is not None:
             if existing.content_fingerprint != fingerprint:
-                raise ExpedientConflictError(
-                    "expedient id already exists with incompatible content"
-                )
+                # Older immutable versions may retain a fingerprint produced
+                # before deterministic reference ordering was introduced.  Do
+                # not rewrite history, but recognize an exact recomputation of
+                # the persisted specification as idempotent.  A substantive
+                # difference still raises the same conflict.
+                if content_fingerprint(existing.specification) != fingerprint:
+                    raise ExpedientConflictError(
+                        "expedient id already exists with incompatible content"
+                    )
             return ProvisioningResult(existing, created=False)
         return ProvisioningResult(self._repository.insert(specification, fingerprint), created=True)
 

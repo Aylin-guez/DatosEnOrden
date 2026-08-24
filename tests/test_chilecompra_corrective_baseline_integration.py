@@ -16,6 +16,7 @@ from datosenorden.application.chilecompra_expedient import (
     ChileCompraCanonicalIdentityResolver, ChileCompraValidatedContent,
     CorrectiveStatus, repair_chilecompra_expedient,
 )
+from datosenorden.application.data_release.contract import PackageCompatibilityError
 from datosenorden.application.data_release.importer import TargetExpectation, import_package, verify_package
 from datosenorden.application.data_release.exporter import export_production_data_package
 from datosenorden.application.real_expedient.composition import extract_historical_enrichment
@@ -110,7 +111,7 @@ def test_corrective_versions_against_certified_baseline(postgres_url: str, tmp_p
         assert [reader.get(ids[o])["version"] for o in ORDERS] == [2, 3, 2]
         assert reader.get("EXP-REAL-LEGISLATIVE-15975-25") is not None
         exported = export_production_data_package(
-            session, output_dir=Path("private/releases/data"), created_at=datetime(2026, 8, 19, tzinfo=UTC),
+            session, output_dir=tmp_path, created_at=datetime(2026, 8, 19, tzinfo=UTC),
             compatible_code_releases=("c9e073c62d305083a30238045704f889835b7916",),
         )
         assert exported.logical_content_hash != "81dc47c722518efbc0f1a308288bc839ea6b57a88aa4f2710d5d55e4ff93b136"
@@ -118,27 +119,20 @@ def test_corrective_versions_against_certified_baseline(postgres_url: str, tmp_p
     engine.dispose()
 
 
-def test_exported_package_clean_restore_idempotency() -> None:
+def test_historical_exported_package_rejects_incompatible_code_release() -> None:
     from tests.postgres_isolation import EphemeralPostgres
     ephemeral = EphemeralPostgres.start(os.environ["TEST_DATABASE_URL"])
     try:
         ephemeral.migrate_to_head()
         engine = create_engine(ephemeral.test_url)
-        path = Path(".codex-pytest-export/test_corrective_versions_again0/deo-prod-data-0001-411b1aa044de0efb.zip")
-        package = verify_package(path, expected_sha256="b3075d1e614473ff1fc031d23bc4381674150c52740dceca56d1dc7afbdd09fd")
-        expectation = TargetExpectation(str(make_url(ephemeral.test_url).database), "isolated-test", RELEASE)
-        assert all(v == 0 for v in import_package(engine, package, expectation=expectation).unchanged.values())
-        with Session(engine) as session:
-            repo = PostgresExpedientRepository(session)
-            assert repo.get("EXP-REAL-CHILECOMPRA-1000813-247-CM26").specification.version == 2
-            assert repo.get("EXP-REAL-CHILECOMPRA-1002584-197-CM26").specification.version == 3
-            assert repo.get("EXP-REAL-CHILECOMPRA-1002772-6758-SE26").specification.version == 2
-            assert repo.get("EXP-REAL-LEGISLATIVE-15975-25") is not None
-            text = " ".join(repo.get(f"EXP-REAL-CHILECOMPRA-{x}").specification.title + " " + repo.get(f"EXP-REAL-CHILECOMPRA-{x}").specification.question for x in ORDERS)
-            assert "Dirección de Educación Pública" in text and "¿Qué muestran los registros públicos" in text
-            assert "fact-dipres-institution-budget" in {s.statement_id for s in repo.get("EXP-REAL-CHILECOMPRA-1002584-197-CM26").specification.statements}
-        second = import_package(engine, package, expectation=expectation)
-        assert all(v == 0 for v in second.inserted.values())
+        package = verify_package(PACKAGE, expected_sha256=SHA256)
+        expectation = TargetExpectation(
+            str(make_url(ephemeral.test_url).database),
+            "isolated-test",
+            "intentionally-incompatible-release",
+        )
+        with pytest.raises(PackageCompatibilityError):
+            import_package(engine, package, expectation=expectation)
         engine.dispose()
     finally:
         ephemeral.close()

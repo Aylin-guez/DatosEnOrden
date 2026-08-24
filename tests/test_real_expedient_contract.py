@@ -155,6 +155,22 @@ def test_incompatible_same_id_is_an_explicit_conflict() -> None:
         service.create_if_absent(_specification(summary="Contenido distinto."))
 
 
+def test_stale_fingerprint_with_identical_persisted_specification_is_idempotent() -> None:
+    service, repository = _service()
+    first = service.create_if_absent(_specification())
+    repository.current[first.expedient.specification.expedient_id] = StoredExpedient(
+        first.expedient.specification,
+        "historical-nondeterministic-fingerprint",
+        first.expedient.created_at,
+        first.expedient.updated_at,
+    )
+
+    repeated = service.create_if_absent(_specification())
+
+    assert repeated.created is False
+    assert repeated.expedient.specification == first.expedient.specification
+
+
 def test_revision_preserves_history_and_requires_next_version() -> None:
     service, repository = _service()
     service.create_if_absent(_specification())

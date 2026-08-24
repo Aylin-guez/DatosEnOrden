@@ -63,6 +63,14 @@ PROVENANCE_MANIFEST: tuple[ProvenanceManifestEntry, ...] = (
         reason="Official current-law source; the bounded vertical slice is not an active connector.", confidence="HIGH",
     ),
     ProvenanceManifestEntry(
+        source_name="LeyChile", dataset_name="cybersecurity-law", dataset_version="1202434@2025-03-01",
+        provenance_class=ProvenanceClass.REAL, source_label="LeyChile / BCN",
+        dataset_identifier="cybersecurity-law@1202434:2025-03-01", record_scope="postgresql_dataset",
+        public_countable=True,
+        evidence_basis="Bounded official LeyChile current-law acquisition for Law 21.663, supplemented by official Senate and Tribunal Constitucional documents recorded with their hashes.",
+        reason="Official current-law and legislative-history corpus for Law 21.663; it is not an active connector.", confidence="HIGH",
+    ),
+    ProvenanceManifestEntry(
         source_name="Biblioteca del Congreso Nacional de Chile", dataset_name="bcn-law-history", dataset_version="8521@2026-08-12",
         provenance_class=ProvenanceClass.REAL, source_label="Biblioteca del Congreso Nacional de Chile",
         dataset_identifier="bcn-law-history@8521", record_scope="postgresql_dataset",
