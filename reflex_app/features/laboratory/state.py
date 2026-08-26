@@ -9,6 +9,13 @@ from datosenorden.application.real_expedient.public_facade import (
 )
 from datosenorden.application.public_deployment.sanitization import public_error
 from reflex_app.helpers.routing import _router_query_value
+from reflex_app.models.public_money import (
+    PublicMoneyActionRow,
+    PublicMoneyInstrumentRow,
+    PublicMoneyObservationRow,
+    PublicMoneyProceedingRow,
+    PublicMoneySnapshotRow,
+)
 
 
 REQUIRED_SECTIONS = ("summary", "problem", "evidence", "claims", "hypotheses", "indicators", "sources", "relationships")
@@ -68,6 +75,16 @@ class LaboratoryState(rx.State):
     citizen_cutoff_substantive: str = ""
     citizen_cutoff_administrative: str = ""
     citizen_cutoff_explanation: str = ""
+    citizen_public_money_ready: bool = False
+    citizen_public_money_title: str = ""
+    citizen_public_money_universe: PublicMoneyObservationRow = {"metric_label": "", "display_amount": "", "as_of_date": "", "authority": "", "universe": "", "note": ""}
+    citizen_public_money_notice: str = ""
+    citizen_public_money_instruments: list[PublicMoneyInstrumentRow] = []
+    citizen_public_money_snapshots: list[PublicMoneySnapshotRow] = []
+    citizen_public_money_actions: list[PublicMoneyActionRow] = []
+    citizen_public_money_oversight: list[PublicMoneyProceedingRow] = []
+    citizen_public_money_proceedings: list[PublicMoneyProceedingRow] = []
+    citizen_public_money_limitations: list[str] = []
 
     def load_catalog(self) -> None:
         self.load_status = "loading"
@@ -187,6 +204,7 @@ class LaboratoryState(rx.State):
         self.citizen_cutoff_substantive = _citizen_date(str(cutoff.get("substantive_through", "")))
         self.citizen_cutoff_administrative = _citizen_date(str(cutoff.get("latest_administrative_record", "")))
         self.citizen_cutoff_explanation = str(cutoff.get("explanation", ""))
+        LaboratoryState._load_public_money_summary(self, payload.get("public_money_summary"))
 
     def _load_legacy_real_expedient(self, payload: dict[str, object]) -> None:
         references = payload.get("references", {})
@@ -298,6 +316,7 @@ class LaboratoryState(rx.State):
         self.citizen_questions = []
         self.citizen_topics = []
         self.citizen_missing_knowledge = []
+        LaboratoryState._clear_public_money_summary(self)
         self.expedient_provenance_class = ""
         self.expedient_title = ""
         self.expedient_summary = ""
@@ -311,6 +330,34 @@ class LaboratoryState(rx.State):
         self.visited_sections = []
         self.reading_progress = 0
         self.reading_complete = False
+
+    def _load_public_money_summary(self, value: object) -> None:
+        if not isinstance(value, dict) or not isinstance(value.get("universe"), dict):
+            LaboratoryState._clear_public_money_summary(self)
+            return
+        universe = _public_money_observation_row(value["universe"])
+        self.citizen_public_money_ready = bool(universe["display_amount"])
+        self.citizen_public_money_title = str(value.get("title", ""))
+        self.citizen_public_money_universe = universe
+        self.citizen_public_money_notice = str(value.get("comparability_notice", ""))
+        self.citizen_public_money_instruments = _public_money_instrument_rows(value.get("instruments"))
+        self.citizen_public_money_snapshots = _public_money_snapshot_rows(value.get("snapshots"))
+        self.citizen_public_money_actions = _public_money_action_rows(value.get("subsequent_actions"))
+        self.citizen_public_money_oversight = _public_money_proceeding_rows(value.get("oversight"))
+        self.citizen_public_money_proceedings = _public_money_proceeding_rows(value.get("proceedings"))
+        self.citizen_public_money_limitations = [str(item) for item in value.get("limitations", [])]
+
+    def _clear_public_money_summary(self) -> None:
+        self.citizen_public_money_ready = False
+        self.citizen_public_money_title = ""
+        self.citizen_public_money_universe = {"metric_label": "", "display_amount": "", "as_of_date": "", "authority": "", "universe": "", "note": ""}
+        self.citizen_public_money_notice = ""
+        self.citizen_public_money_instruments = []
+        self.citizen_public_money_snapshots = []
+        self.citizen_public_money_actions = []
+        self.citizen_public_money_oversight = []
+        self.citizen_public_money_proceedings = []
+        self.citizen_public_money_limitations = []
 
 
 def _reference_ids(references: object, key: str) -> list[str]:
@@ -345,3 +392,68 @@ def _citizen_statement_rows(items: object) -> list[dict]:
                     support.append(" · ".join(str(source.get(key, "")) for key in ("title", "source", "document_date") if source.get(key)))
         rows.append({**item, "support_text": " | ".join(support)})
     return rows
+
+
+def _public_money_observation_row(value: object) -> PublicMoneyObservationRow:
+    row = value if isinstance(value, dict) else {}
+    return {
+        "metric_label": str(row.get("metric_label", "")),
+        "display_amount": str(row.get("display_amount", "")),
+        "as_of_date": str(row.get("as_of_date", "")),
+        "authority": str(row.get("authority", "")),
+        "universe": str(row.get("universe", "")),
+        "note": str(row.get("note", "")),
+    }
+
+
+def _public_money_instrument_rows(value: object) -> list[PublicMoneyInstrumentRow]:
+    if not isinstance(value, list):
+        return []
+    return [
+        {
+            "identifier": str(row.get("identifier", "")),
+            "title": str(row.get("title", "")),
+            "purpose": str(row.get("purpose", "")),
+            "observations": [_public_money_observation_row(item) for item in row.get("observations", [])],
+        }
+        for row in value if isinstance(row, dict)
+    ]
+
+
+def _public_money_snapshot_rows(value: object) -> list[PublicMoneySnapshotRow]:
+    if not isinstance(value, list):
+        return []
+    return [
+        {
+            "title": str(row.get("title", "")),
+            "as_of_date": str(row.get("as_of_date", "")),
+            "cutoff_label": _citizen_date(str(row.get("as_of_date", ""))),
+            "authority": str(row.get("authority", "")),
+            "universe": str(row.get("universe", "")),
+            "note": str(row.get("note", "")),
+            "observations": [_public_money_observation_row(item) for item in row.get("observations", [])],
+        }
+        for row in value if isinstance(row, dict)
+    ]
+
+
+def _public_money_action_rows(value: object) -> list[PublicMoneyActionRow]:
+    if not isinstance(value, list):
+        return []
+    return [
+        {
+            "title": str(row.get("title", "")),
+            "note": str(row.get("note", "")),
+            "observations": [_public_money_observation_row(item) for item in row.get("observations", [])],
+        }
+        for row in value if isinstance(row, dict)
+    ]
+
+
+def _public_money_proceeding_rows(value: object) -> list[PublicMoneyProceedingRow]:
+    if not isinstance(value, list):
+        return []
+    return [
+        {"title": str(row.get("title", "")), "text": str(row.get("text", "")), "kind": str(row.get("kind", ""))}
+        for row in value if isinstance(row, dict)
+    ]

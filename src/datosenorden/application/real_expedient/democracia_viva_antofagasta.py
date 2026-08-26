@@ -12,6 +12,16 @@ from hashlib import sha256
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from datosenorden.application.public_money import (
+    MoneyEpistemicStatus,
+    MoneyMetric,
+    PublicMoneyAction,
+    PublicMoneyInstrument,
+    PublicMoneyObservation,
+    PublicMoneyProceeding,
+    PublicMoneySnapshot,
+    PublicMoneySummary,
+)
 from datosenorden.application.provenance.models import ProvenanceClass
 from datosenorden.application.real_expedient.citizen_projection import (
     CitizenDocument,
@@ -148,4 +158,54 @@ def democracia_viva_citizen_context() -> CitizenProjectionContext:
         missing_knowledge=("No se adquirieron las rendiciones individuales originales.", "No hay evidencia de recuperación efectiva.", "No hay sentencia penal de fondo certificada."),
         knowledge_cutoff=CitizenKnowledgeCutoff("2025-05-30", "2025-05-30", "Corpus oficial incorporado con convenios, informe CGR, actos administrativos y comunicaciones procesales."),
         official_title="Arista SEREMI MINVU Antofagasta – Fundación Democracia Viva",
+        public_money_summary=_democracia_viva_public_money_summary(),
+    )
+
+
+def _democracia_viva_public_money_summary() -> PublicMoneySummary:
+    """Build case data here; the DTO and renderer are expedition-neutral."""
+    universe = "Tres convenios SEREMI MINVU Antofagasta–Fundación Democracia Viva"
+    transferred = PublicMoneyObservation(
+        MoneyMetric.TRANSFERRED, 426_000_000, "CLP", universe,
+        "Contraloría General de la República", "2023-06-30", evidence_ids=("cgr-465",),
+    )
+    agreements = (
+        ("RE 504/2022", "Convenio RE N°504/2022", "Habitabilidad primaria — campamento Ecuachilepe", 200_000_000, "2022-10-03", "re-504"),
+        ("RE 576/2022", "Convenio RE N°576/2022", "Habitabilidad primaria — campamento Irarrázabal Etapa I", 170_000_000, "2022-10-27", "re-576"),
+        ("RE 641/2022", "Convenio RE N°641/2022", "Diagnósticos socio-territoriales, planes de intervención y acciones sociales/comunitarias", 56_000_000, "2022-11-29", "re-641"),
+    )
+    instruments = tuple(
+        PublicMoneyInstrument(
+            identifier, title, purpose,
+            (PublicMoneyObservation(MoneyMetric.AGREED, amount, "CLP", title, "SEREMI MINVU Antofagasta", act_date, evidence_ids=(evidence_id,)),),
+            (evidence_id,),
+        )
+        for identifier, title, purpose, amount, act_date, evidence_id in agreements
+    )
+    cgr_snapshot = PublicMoneySnapshot(
+        "Corte CGR", "2023-06-30", "Tabla CGR para los tres convenios",
+        "Contraloría General de la República",
+        (
+            transferred,
+            PublicMoneyObservation(MoneyMetric.RENDERED, 116_963_639, "CLP", "Tabla CGR para los tres convenios", "Contraloría General de la República", "2023-06-30", evidence_ids=("cgr-465",)),
+            PublicMoneyObservation(MoneyMetric.APPROVED, 12_146_280, "CLP", "Tabla CGR para los tres convenios", "Contraloría General de la República", "2023-06-30", evidence_ids=("cgr-465",)),
+            PublicMoneyObservation(MoneyMetric.UNRENDERED, 309_036_361, "CLP", "Tabla CGR para los tres convenios", "Contraloría General de la República", "2023-06-30", evidence_ids=("cgr-465",)),
+        ),
+        ("cgr-465",),
+        "Rendido no equivale necesariamente a aprobado y por rendir no equivale a dinero robado.",
+    )
+    actions = PublicMoneyAction(
+        "Actuaciones posteriores",
+        (
+            PublicMoneyObservation(MoneyMetric.RESTITUTION_ORDERED, 391_768_516, "CLP", "Restitución agregada ordenada por MINVU", "MINVU", "2023-07-14", evidence_ids=("minvu-termination",)),
+            PublicMoneyObservation(MoneyMetric.RECOVERED, None, "CLP", "Recuperación efectiva", "Corpus oficial incorporado", epistemic_status=MoneyEpistemicStatus.UNKNOWN, evidence_ids=("dijur-1302", "minvu-termination")),
+        ),
+        ("minvu-termination", "dijur-1302"),
+        "La restitución ordenada no forma parte matemática del corte CGR ni acredita recuperación efectiva.",
+    )
+    return PublicMoneySummary(
+        "Dinero público", transferred, instruments, (cgr_snapshot,), (actions,),
+        (PublicMoneyProceeding("Fiscalización de Contraloría", "La CGR registró deficiencias de fundamentación, control y monitoreo. Es fiscalización administrativa, no una sentencia penal.", "ADMINISTRATIVE", ("cgr-465",)),),
+        (PublicMoneyProceeding("Proceso penal", "Fiscalía informó formalizaciones en la arista. Esta etapa no equivale a condena.", "CRIMINAL_PROCEEDING", ("fiscalia-formalization",)),),
+        ("Las cifras corresponden a momentos y estados distintos y no deben sumarse entre sí.", "No se acreditó en el corpus cuánto dinero fue efectivamente recuperado."),
     )

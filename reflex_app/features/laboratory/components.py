@@ -3,6 +3,13 @@ from __future__ import annotations
 import reflex as rx
 
 from reflex_app.features.laboratory.state import LaboratoryState, REQUIRED_SECTIONS
+from reflex_app.models.public_money import (
+    PublicMoneyActionRow,
+    PublicMoneyInstrumentRow,
+    PublicMoneyObservationRow,
+    PublicMoneyProceedingRow,
+    PublicMoneySnapshotRow,
+)
 
 
 def laboratory_header() -> rx.Component:
@@ -351,6 +358,80 @@ def _citizen_document(row: dict) -> rx.Component:
     )
 
 
+def _public_money_observation(row: PublicMoneyObservationRow) -> rx.Component:
+    return rx.box(
+        rx.text(row["metric_label"], class_name="source-fact"),
+        rx.text(row["display_amount"], class_name="card-title"),
+        rx.cond(row["as_of_date"] != "", rx.text("Corte: ", row["as_of_date"], class_name="muted small")),
+        rx.text("Fuente: ", row["authority"], class_name="muted small"),
+        rx.cond(row["note"] != "", rx.text(row["note"], class_name="muted small")),
+        class_name="card public-money-observation",
+    )
+
+
+def _public_money_instrument(row: PublicMoneyInstrumentRow) -> rx.Component:
+    return rx.box(
+        rx.text(row["identifier"], class_name="badge badge-teal"),
+        rx.text(row["title"], class_name="card-title"),
+        rx.cond(row["purpose"] != "", rx.text(row["purpose"], class_name="muted small")),
+        rx.foreach(row["observations"], _public_money_observation),
+        class_name="card public-money-instrument",
+    )
+
+
+def _public_money_snapshot(row: PublicMoneySnapshotRow) -> rx.Component:
+    return rx.box(
+        rx.text(row["title"], class_name="badge badge-purple"),
+        rx.text("Corte informado por ", row["authority"], " al ", row["cutoff_label"], ".", class_name="card-title"),
+        rx.text(row["universe"], class_name="muted small"),
+        rx.grid(rx.foreach(row["observations"], _public_money_observation), columns="2", spacing="3", class_name="responsive-grid"),
+        rx.cond(row["note"] != "", rx.text(row["note"], class_name="muted small")),
+        class_name="card public-money-snapshot",
+    )
+
+
+def _public_money_action(row: PublicMoneyActionRow) -> rx.Component:
+    return rx.box(
+        rx.text(row["title"], class_name="badge badge-amber"),
+        rx.grid(rx.foreach(row["observations"], _public_money_observation), columns="2", spacing="3", class_name="responsive-grid"),
+        rx.cond(row["note"] != "", rx.text(row["note"], class_name="muted small")),
+        class_name="card public-money-action",
+    )
+
+
+def _public_money_proceeding(row: PublicMoneyProceedingRow) -> rx.Component:
+    return rx.box(
+        rx.text(row["kind"], class_name="badge badge-blue"),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["text"], class_name="muted small"),
+        class_name="card public-money-proceeding",
+    )
+
+
+def public_money_summary() -> rx.Component:
+    """Generic renderer for a projection; it has no expedient-specific branch."""
+    return citizen_section(
+        LaboratoryState.citizen_public_money_title,
+        rx.vstack(
+            rx.box(
+                rx.text(LaboratoryState.citizen_public_money_universe["display_amount"], class_name="public-money-total"),
+                rx.text(LaboratoryState.citizen_public_money_universe["metric_label"], class_name="card-title"),
+                rx.text(LaboratoryState.citizen_public_money_universe["universe"], class_name="muted small"),
+                class_name="card public-money-universe",
+            ),
+            rx.text(LaboratoryState.citizen_public_money_notice, class_name="muted small public-money-notice"),
+            rx.cond(LaboratoryState.citizen_public_money_instruments, rx.box(rx.text("Convenios e instrumentos", class_name="context-title"), rx.grid(rx.foreach(LaboratoryState.citizen_public_money_instruments, _public_money_instrument), columns="3", spacing="3", class_name="responsive-grid"))),
+            rx.foreach(LaboratoryState.citizen_public_money_snapshots, _public_money_snapshot),
+            rx.cond(LaboratoryState.citizen_public_money_actions, rx.box(rx.text("Actuaciones posteriores", class_name="context-title"), rx.vstack(rx.foreach(LaboratoryState.citizen_public_money_actions, _public_money_action), spacing="3"))),
+            rx.cond(LaboratoryState.citizen_public_money_oversight, rx.box(rx.text("Fiscalización", class_name="context-title"), rx.vstack(rx.foreach(LaboratoryState.citizen_public_money_oversight, _public_money_proceeding), spacing="3"))),
+            rx.cond(LaboratoryState.citizen_public_money_proceedings, rx.box(rx.text("Proceso", class_name="context-title"), rx.vstack(rx.foreach(LaboratoryState.citizen_public_money_proceedings, _public_money_proceeding), spacing="3"))),
+            rx.cond(LaboratoryState.citizen_public_money_limitations, rx.box(rx.text("Límites de esta lectura", class_name="context-title"), rx.foreach(LaboratoryState.citizen_public_money_limitations, lambda item: rx.text(item, class_name="muted small")))),
+            spacing="3",
+            align="stretch",
+        ),
+    )
+
+
 def citizen_expedient_view() -> rx.Component:
     """Narrative UI for any CitizenExpedientProjection; it knows no expedient ID."""
     return rx.vstack(
@@ -393,6 +474,7 @@ def citizen_expedient_view() -> rx.Component:
             class_name="hero laboratory-expedient-header",
         ),
         citizen_section("Qué pasó", rx.text(LaboratoryState.expedient_summary, class_name="story-summary")),
+        rx.cond(LaboratoryState.citizen_public_money_ready, public_money_summary()),
         rx.cond(LaboratoryState.citizen_topics, citizen_section("Materias del proyecto", rx.flex(rx.foreach(LaboratoryState.citizen_topics, lambda item: rx.text(item, class_name="badge badge-blue")), wrap="wrap", spacing="2"))),
         rx.cond(LaboratoryState.citizen_missing_knowledge, citizen_section("Qué falta incorporar", rx.vstack(rx.text("Estas piezas no están incorporadas al corpus actual; no permiten inferir su resultado jurídico.", class_name="muted"), rx.foreach(LaboratoryState.citizen_missing_knowledge, lambda item: rx.text(item, class_name="source-fact")), spacing="2"))),
         rx.cond(LaboratoryState.citizen_facts, citizen_section("Qué sabemos", rx.vstack(rx.foreach(LaboratoryState.citizen_facts, _citizen_statement), spacing="3"))),

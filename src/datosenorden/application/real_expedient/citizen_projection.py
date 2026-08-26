@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from datosenorden.application.public_money import PublicMoneySummary, public_money_projection
+
 from .models import EpistemicClass, ExpedientStatus, StoredExpedient
 
 
@@ -71,6 +73,7 @@ class CitizenProjectionContext:
     missing_knowledge: tuple[str, ...] = ()
     knowledge_cutoff: CitizenKnowledgeCutoff | None = None
     official_title: str | None = None
+    public_money_summary: PublicMoneySummary | None = None
 
 
 def citizen_expedient_projection(
@@ -157,6 +160,11 @@ def citizen_expedient_projection(
             "latest_administrative_record": context.knowledge_cutoff.latest_administrative_record,
             "explanation": context.knowledge_cutoff.explanation,
         }
+    if context.public_money_summary is not None:
+        result["public_money_summary"] = public_money_projection(
+            context.public_money_summary,
+            {identifier: _evidence(item) for identifier, item in evidence_by_id.items()},
+        )
     return result
 
 

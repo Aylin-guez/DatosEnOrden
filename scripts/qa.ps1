@@ -278,15 +278,33 @@ function Test-GeneratedEventUrl {
     catch { return $false }
 }
 
-function Start-QAProcess([ValidateSet("backend", "frontend")] [string]$Kind) {
-    $port = if ($Kind -eq "backend") { $Config.BackendPort } else { $Config.FrontendPort }
-    $existing = Get-ListenerPid $port
-    if ($existing) { Fail-QA "El puerto $port está ocupado por un proceso no adoptado. Ejecuta status y resuelve su ownership." }
+function Set-QARuntimeEnvironment {
     $env:API_URL = $ApiUrl
     $env:REFLEX_API_URL = $ApiUrl
     $env:DATABASE_URL = $DatabaseUrl
     $env:PYTHONUTF8 = "1"
     $env:PYTHONIOENCODING = "utf-8"
+}
+
+function Invoke-QAFrontendGeneration {
+    Set-QARuntimeEnvironment
+    New-Item -ItemType Directory -Force -Path $LogsRoot | Out-Null
+    $compileLog = Join-Path $LogsRoot "compile.log"
+    & (Join-Path $ProjectRoot ".venv\Scripts\reflex.exe") compile --no-rich *> $compileLog
+    if ($LASTEXITCODE -ne 0) {
+        Fail-QA "La compilación Reflex QA falló. Revisa $compileLog"
+    }
+    $routePath = Join-Path $ProjectRoot ".web\app\routes\[laboratory].[expedient]._index.jsx"
+    if (-not (Test-Path -LiteralPath $routePath)) {
+        Fail-QA "La compilación QA no generó la ruta laboratory/expedient esperada."
+    }
+}
+
+function Start-QAProcess([ValidateSet("backend", "frontend")] [string]$Kind) {
+    $port = if ($Kind -eq "backend") { $Config.BackendPort } else { $Config.FrontendPort }
+    $existing = Get-ListenerPid $port
+    if ($existing) { Fail-QA "El puerto $port está ocupado por un proceso no adoptado. Ejecuta status y resuelve su ownership." }
+    Set-QARuntimeEnvironment
     $reflexArgs = if ($Kind -eq "backend") {
         @("run", "--backend-only", "--backend-port", "$port", "--backend-host", $Config.DatabaseHost, "--loglevel", "warning")
     } else {
@@ -365,6 +383,7 @@ function Invoke-QAStart {
     }
     Start-QAPostgres $cluster
     Test-QADatabase
+    Invoke-QAFrontendGeneration
     $backendPid = Start-QAProcess "backend"
     $frontendPid = Start-QAProcess "frontend"
     if (-not (Test-GeneratedEventUrl)) { Fail-QA "La configuración Reflex generada no apunta al backend QA esperado ($EventUrl)." }

@@ -27,6 +27,16 @@ def test_launcher_sets_reflex_qa_environment_and_checks_generated_event_url() ->
     assert "$backend -and $frontend -and (Test-GeneratedEventUrl)" in SCRIPT
 
 
+def test_launcher_generates_frontend_from_current_worktree_before_starting_processes() -> None:
+    assert "function Invoke-QAFrontendGeneration" in SCRIPT
+    generation_block = SCRIPT.split("function Invoke-QAFrontendGeneration", 1)[1].split("function Start-QAProcess", 1)[0]
+    assert "Set-QARuntimeEnvironment" in generation_block
+    assert "reflex.exe\") compile --no-rich" in generation_block
+    assert "compile.log" in generation_block
+    start_block = SCRIPT.split("function Invoke-QAStart", 1)[1].split("function Invoke-QAStop", 1)[0]
+    assert start_block.index("Invoke-QAFrontendGeneration") < start_block.index('Start-QAProcess "backend"')
+
+
 def test_launcher_starts_the_certified_cluster_without_pg_ctl_restricted_token() -> None:
     postgres_block = SCRIPT.split("function Start-QAPostgres", 1)[1].split("function Test-Http", 1)[0]
     assert "Get-PostgresPath" in SCRIPT
