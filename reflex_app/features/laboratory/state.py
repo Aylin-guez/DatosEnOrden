@@ -16,6 +16,7 @@ from reflex_app.models.public_money import (
     PublicMoneyProceedingRow,
     PublicMoneySnapshotRow,
 )
+from reflex_app.models.citizen_expedient import CitizenPublicSectionRow, CitizenStatementRow
 
 
 REQUIRED_SECTIONS = ("summary", "problem", "evidence", "claims", "hypotheses", "indicators", "sources", "relationships")
@@ -60,11 +61,11 @@ class LaboratoryState(rx.State):
     citizen_question: str = ""
     citizen_type: str = ""
     citizen_official_title: str = ""
-    citizen_facts: list[dict] = []
-    citizen_bank_stages: list[dict] = []
-    citizen_divergences: list[dict] = []
-    citizen_unknowns: list[dict] = []
-    citizen_limitations: list[dict] = []
+    citizen_facts: list[CitizenStatementRow] = []
+    citizen_bank_stages: list[CitizenStatementRow] = []
+    citizen_divergences: list[CitizenStatementRow] = []
+    citizen_unknowns: list[CitizenStatementRow] = []
+    citizen_limitations: list[CitizenStatementRow] = []
     citizen_chronology: list[dict] = []
     citizen_actors: list[str] = []
     citizen_documents: list[dict] = []
@@ -72,6 +73,7 @@ class LaboratoryState(rx.State):
     citizen_questions: list[dict] = []
     citizen_topics: list[str] = []
     citizen_missing_knowledge: list[str] = []
+    citizen_public_sections: list[CitizenPublicSectionRow] = []
     citizen_cutoff_substantive: str = ""
     citizen_cutoff_administrative: str = ""
     citizen_cutoff_explanation: str = ""
@@ -199,6 +201,7 @@ class LaboratoryState(rx.State):
         self.citizen_questions = list(payload.get("questions", []))
         self.citizen_topics = [str(item) for item in payload.get("topics", [])]
         self.citizen_missing_knowledge = [str(item) for item in payload.get("missing_knowledge", [])]
+        self.citizen_public_sections = _citizen_public_section_rows(payload.get("public_sections", []))
         cutoff = payload.get("knowledge_cutoff", {})
         cutoff = cutoff if isinstance(cutoff, dict) else {}
         self.citizen_cutoff_substantive = _citizen_date(str(cutoff.get("substantive_through", "")))
@@ -316,6 +319,7 @@ class LaboratoryState(rx.State):
         self.citizen_questions = []
         self.citizen_topics = []
         self.citizen_missing_knowledge = []
+        self.citizen_public_sections = []
         LaboratoryState._clear_public_money_summary(self)
         self.expedient_provenance_class = ""
         self.expedient_title = ""
@@ -377,10 +381,10 @@ def _citizen_date(value: str) -> str:
         return value
 
 
-def _citizen_statement_rows(items: object) -> list[dict]:
+def _citizen_statement_rows(items: object) -> list[CitizenStatementRow]:
     if not isinstance(items, list):
         return []
-    rows: list[dict] = []
+    rows: list[CitizenStatementRow] = []
     for item in items:
         if not isinstance(item, dict):
             continue
@@ -392,6 +396,19 @@ def _citizen_statement_rows(items: object) -> list[dict]:
                     support.append(" · ".join(str(source.get(key, "")) for key in ("title", "source", "document_date") if source.get(key)))
         rows.append({**item, "support_text": " | ".join(support)})
     return rows
+
+
+def _citizen_public_section_rows(value: object) -> list[CitizenPublicSectionRow]:
+    if not isinstance(value, list):
+        return []
+    return [
+        {
+            "title": str(row.get("title", "")),
+            "items": _citizen_statement_rows(row.get("items", [])),
+        }
+        for row in value
+        if isinstance(row, dict) and row.get("title")
+    ]
 
 
 def _public_money_observation_row(value: object) -> PublicMoneyObservationRow:

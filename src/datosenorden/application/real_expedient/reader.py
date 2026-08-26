@@ -101,4 +101,10 @@ def _citizen_context(expedient) -> CitizenProjectionContext:
     )
     if expedient.specification.expedient_id == DEMOCRACIA_VIVA_EXPEDIENT_ID:
         return democracia_viva_citizen_context()
+    from datosenorden.application.real_expedient.control_preventivo_identidad import (
+        EXPEDIENT_ID as CONTROL_IDENTIDAD_EXPEDIENT_ID,
+        control_preventivo_identidad_citizen_context,
+    )
+    if expedient.specification.expedient_id == CONTROL_IDENTIDAD_EXPEDIENT_ID:
+        return control_preventivo_identidad_citizen_context()
     return CitizenProjectionContext()

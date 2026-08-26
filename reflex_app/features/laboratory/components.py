@@ -10,6 +10,7 @@ from reflex_app.models.public_money import (
     PublicMoneyProceedingRow,
     PublicMoneySnapshotRow,
 )
+from reflex_app.models.citizen_expedient import CitizenPublicSectionRow, CitizenStatementRow
 
 
 def laboratory_header() -> rx.Component:
@@ -338,7 +339,7 @@ def empty_section_notice(title: str, message: str) -> rx.Component:
     )
 
 
-def _citizen_statement(row: dict) -> rx.Component:
+def _citizen_statement(row: CitizenStatementRow) -> rx.Component:
     return rx.box(
         _epistemic_badge(row),
         rx.text(row["statement"], class_name="story-summary"),
@@ -478,6 +479,7 @@ def citizen_expedient_view() -> rx.Component:
         rx.cond(LaboratoryState.citizen_topics, citizen_section("Materias del proyecto", rx.flex(rx.foreach(LaboratoryState.citizen_topics, lambda item: rx.text(item, class_name="badge badge-blue")), wrap="wrap", spacing="2"))),
         rx.cond(LaboratoryState.citizen_missing_knowledge, citizen_section("Qué falta incorporar", rx.vstack(rx.text("Estas piezas no están incorporadas al corpus actual; no permiten inferir su resultado jurídico.", class_name="muted"), rx.foreach(LaboratoryState.citizen_missing_knowledge, lambda item: rx.text(item, class_name="source-fact")), spacing="2"))),
         rx.cond(LaboratoryState.citizen_facts, citizen_section("Qué sabemos", rx.vstack(rx.foreach(LaboratoryState.citizen_facts, _citizen_statement), spacing="3"))),
+        rx.foreach(LaboratoryState.citizen_public_sections, _citizen_public_section),
         rx.cond(
             LaboratoryState.citizen_bank_stages,
             citizen_section("Qué pasó con el secreto bancario", rx.vstack(
@@ -504,6 +506,14 @@ def citizen_expedient_view() -> rx.Component:
 
 def citizen_section(title: str, content: rx.Component) -> rx.Component:
     return rx.box(rx.text(title, class_name="section-title"), content, class_name="laboratory-panel")
+
+
+def _citizen_public_section(section: CitizenPublicSectionRow) -> rx.Component:
+    """Render context-approved sections without coupling the UI to an expedient."""
+    return citizen_section(
+        section["title"],
+        rx.vstack(rx.foreach(section["items"], _citizen_statement), spacing="3"),
+    )
 
 
 def _epistemic_badge(row: dict) -> rx.Component:

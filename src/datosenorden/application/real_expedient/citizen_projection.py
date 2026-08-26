@@ -74,6 +74,7 @@ class CitizenProjectionContext:
     knowledge_cutoff: CitizenKnowledgeCutoff | None = None
     official_title: str | None = None
     public_money_summary: PublicMoneySummary | None = None
+    section_titles: dict[str, str] | None = None
 
 
 def citizen_expedient_projection(
@@ -129,6 +130,14 @@ def citizen_expedient_projection(
         "open_questions": open_questions,
         "sections": {name: values for name, values in sections.items() if values},
     }
+    if context.section_titles:
+        public_sections = [
+            {"title": title, "items": sections[name]}
+            for name, title in context.section_titles.items()
+            if name in sections and sections[name]
+        ]
+        if public_sections:
+            result["public_sections"] = public_sections
     if context.expedient_type:
         result["type"] = context.expedient_type
     if context.official_title:
