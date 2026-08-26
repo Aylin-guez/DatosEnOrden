@@ -28,6 +28,27 @@ from datosenorden.models import (
 
 PROVENANCE_MANIFEST: tuple[ProvenanceManifestEntry, ...] = (
     ProvenanceManifestEntry(
+        source_name="MINVU",
+        dataset_name="democracia-viva-antofagasta",
+        dataset_version="2026-08-26",
+        provenance_class=ProvenanceClass.REAL,
+        source_label="MINVU / Contraloría / Fiscalía / Poder Judicial",
+        dataset_identifier="democracia-viva-antofagasta@2026-08-26",
+        record_scope="postgresql_dataset",
+        public_countable=True,
+        evidence_basis="Bounded official corpus for the SEREMI MINVU Antofagasta and Fundación Democracia Viva arista: three official agreements, administrative acts, CGR audit and follow-up, Fiscalía and Poder Judicial public notices. Scanned PDFs retain original SHA-256 and verified page locators; OCR is extraction only.",
+        reason="Operator-loaded, reproducible official public-money traceability slice; it does not turn fiscalization or criminal procedure into a finding of guilt.",
+        confidence="HIGH",
+    ),
+    ProvenanceManifestEntry(
+        source_name="LeyChile", dataset_name="data-protection-law", dataset_version="1209272@2026-12-01",
+        provenance_class=ProvenanceClass.REAL, source_label="LeyChile / BCN",
+        dataset_identifier="data-protection-law@1209272:2026-12-01", record_scope="postgresql_dataset",
+        public_countable=True,
+        evidence_basis="Bounded official LeyChile acquisitions for Law 21.719 with deferred entry into force and current Law 19.628, supplemented by official BCN legislative history.",
+        reason="Official statutory and legislative-history corpus; it is not an active connector.", confidence="HIGH",
+    ),
+    ProvenanceManifestEntry(
         source_name="Senado de la República de Chile",
         dataset_name="reconstruccion-nacional",
         dataset_version="18216-05",

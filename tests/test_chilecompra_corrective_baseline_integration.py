@@ -4,6 +4,8 @@ from datetime import date
 from datetime import UTC, datetime
 from decimal import Decimal
 import os
+import shutil
+import uuid
 from pathlib import Path
 
 import pytest
@@ -42,6 +44,18 @@ def postgres_url() -> str:
     return os.environ["TEST_DATABASE_URL"]
 
 
+@pytest.fixture
+def portable_tmp_path() -> Path:
+    root = Path(__file__).resolve().parents[1] / "data" / "tmp" / "chilecompra_contract_tests"
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / uuid.uuid4().hex
+    path.mkdir()
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
+
+
 def _content(session: Session, order_id: str):
     record = session.scalar(select(SourceRecord).where(SourceRecord.external_id == order_id))
     assert record is not None
@@ -65,7 +79,7 @@ def _content(session: Session, order_id: str):
     )
 
 
-def test_corrective_versions_against_certified_baseline(postgres_url: str, tmp_path: Path) -> None:
+def test_corrective_versions_against_certified_baseline(postgres_url: str, portable_tmp_path: Path) -> None:
     package = verify_package(PACKAGE, expected_sha256=SHA256)
     engine = create_engine(postgres_url)
     expectation = TargetExpectation(str(make_url(postgres_url).database), "isolated-test", RELEASE)
@@ -111,7 +125,7 @@ def test_corrective_versions_against_certified_baseline(postgres_url: str, tmp_p
         assert [reader.get(ids[o])["version"] for o in ORDERS] == [2, 3, 2]
         assert reader.get("EXP-REAL-LEGISLATIVE-15975-25") is not None
         exported = export_production_data_package(
-            session, output_dir=tmp_path, created_at=datetime(2026, 8, 19, tzinfo=UTC),
+            session, output_dir=portable_tmp_path, created_at=datetime(2026, 8, 19, tzinfo=UTC),
             compatible_code_releases=("c9e073c62d305083a30238045704f889835b7916",),
         )
         assert exported.logical_content_hash != "81dc47c722518efbc0f1a308288bc839ea6b57a88aa4f2710d5d55e4ff93b136"

@@ -89,4 +89,16 @@ def _citizen_context(expedient) -> CitizenProjectionContext:
     )
     if expedient.specification.expedient_id == CYBERSECURITY_EXPEDIENT_ID:
         return cybersecurity_citizen_context()
+    from datosenorden.application.legislative_ingestion.data_protection_21719 import (
+        EXPEDIENT_ID as DATA_PROTECTION_EXPEDIENT_ID,
+        data_protection_citizen_context,
+    )
+    if expedient.specification.expedient_id == DATA_PROTECTION_EXPEDIENT_ID:
+        return data_protection_citizen_context()
+    from datosenorden.application.real_expedient.democracia_viva_antofagasta import (
+        EXPEDIENT_ID as DEMOCRACIA_VIVA_EXPEDIENT_ID,
+        democracia_viva_citizen_context,
+    )
+    if expedient.specification.expedient_id == DEMOCRACIA_VIVA_EXPEDIENT_ID:
+        return democracia_viva_citizen_context()
     return CitizenProjectionContext()

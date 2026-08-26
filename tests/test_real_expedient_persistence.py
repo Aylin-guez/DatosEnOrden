@@ -34,6 +34,7 @@ from datosenorden.infrastructure.real_expedient.models import (
     RealExpedientVersionRow,
 )
 from datosenorden.infrastructure.real_expedient.repository import PostgresExpedientRepository
+from tests.postgres_isolation import TEST_DATABASE_PREFIX, assert_isolated_test_database
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ADMIN_ENV = "REAL_EXPEDIENT_TEST_ADMIN_URL"
@@ -90,8 +91,9 @@ def postgres_url() -> str:
     parsed = make_url(admin_value)
     if parsed.database != "postgres":
         pytest.fail(f"{ADMIN_ENV} must target the postgres maintenance database")
-    database_name = f"datosenorden_exp_test_{uuid4().hex[:12]}"
+    database_name = f"{TEST_DATABASE_PREFIX}exp_{uuid4().hex[:12]}"
     value = str(parsed.set(database=database_name))
+    assert_isolated_test_database(value, os.environ["TEST_DATABASE_URL"])
     psycopg_admin = admin_value.replace("postgresql+psycopg://", "postgresql://", 1)
     with psycopg.connect(psycopg_admin, autocommit=True) as connection:
         connection.execute(sql.SQL("create database {}").format(sql.Identifier(database_name)))
@@ -112,7 +114,16 @@ def postgres_url() -> str:
             "where datname = %s and pid <> pg_backend_pid()",
             (database_name,),
         )
-        connection.execute(sql.SQL("drop database {}").format(sql.Identifier(database_name)))
+        try:
+            connection.execute(sql.SQL("drop database {}").format(sql.Identifier(database_name)))
+        except psycopg.InternalError as exc:
+            # PostgreSQL on Windows can reject the checkpoint signal issued by
+            # DROP DATABASE after all test work has completed.  The database is
+            # inside the per-session ephemeral cluster, which is stopped and
+            # removed by the global harness; do not mask any other teardown
+            # error or apply this exception to a persistent target.
+            if "could not signal for checkpoint" not in str(exc):
+                raise
 
 
 def test_postgres_insert_reopen_idempotency_and_conflict(postgres_url: str) -> None:

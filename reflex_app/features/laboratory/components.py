@@ -362,6 +362,14 @@ def citizen_expedient_view() -> rx.Component:
             ),
             rx.text(LaboratoryState.citizen_type, class_name="badge badge-teal"),
             rx.text(LaboratoryState.expedient_title, class_name="title"),
+            rx.cond(
+                LaboratoryState.citizen_official_title != "",
+                rx.text(
+                    "Nombre oficial: ",
+                    LaboratoryState.citizen_official_title,
+                    class_name="muted small",
+                ),
+            ),
             rx.box(
                 rx.text("Pregunta que organiza este expediente", class_name="expedient-question-label"),
                 rx.hstack(

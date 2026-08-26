@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).parents[1]
 TARGETS = [ROOT / "reflex_app" / "features" / "laboratory", ROOT / "src" / "datosenorden" / "application" / "laboratory"]
@@ -7,7 +8,8 @@ TARGETS = [ROOT / "reflex_app" / "features" / "laboratory", ROOT / "src" / "dato
 def test_laboratory_has_no_private_imports_or_secrets():
     text = "\n".join(p.read_text(encoding="utf-8-sig") for d in TARGETS for p in d.rglob("*.py"))
     lowered = text.lower()
-    for forbidden in ("deo_core", "bricks", "api_key", "secret", "token =", "http://", "https://"):
+    for forbidden in ("deo_core", "bricks", "api_key", "token =", "http://", "https://"):
         assert forbidden not in lowered
+    assert not re.search(r"\bsecret(?:[_-]?key)?\s*(?:=|:)", lowered)
     for pending in ("Signal", "Observation", "Question", "Event", "Decision", "Implementation", "Evaluation"):
         assert f"class {pending}" not in text

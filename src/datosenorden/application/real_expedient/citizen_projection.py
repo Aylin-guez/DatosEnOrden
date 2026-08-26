@@ -70,6 +70,7 @@ class CitizenProjectionContext:
     topics: tuple[str, ...] = ()
     missing_knowledge: tuple[str, ...] = ()
     knowledge_cutoff: CitizenKnowledgeCutoff | None = None
+    official_title: str | None = None
 
 
 def citizen_expedient_projection(
@@ -127,6 +128,8 @@ def citizen_expedient_projection(
     }
     if context.expedient_type:
         result["type"] = context.expedient_type
+    if context.official_title:
+        result["official_title"] = context.official_title
     if timeline:
         result["chronology"] = timeline
     if context.actors:

@@ -52,6 +52,7 @@ class LaboratoryState(rx.State):
     citizen_expedient: bool = False
     citizen_question: str = ""
     citizen_type: str = ""
+    citizen_official_title: str = ""
     citizen_facts: list[dict] = []
     citizen_bank_stages: list[dict] = []
     citizen_divergences: list[dict] = []
@@ -162,6 +163,7 @@ class LaboratoryState(rx.State):
         self.expedient_provenance_class = "REAL"
         self.citizen_question = str(payload.get("question", ""))
         self.citizen_type = str(payload.get("type", "Expediente"))
+        self.citizen_official_title = str(payload.get("official_title", ""))
         sections = payload.get("sections", {})
         sections = sections if isinstance(sections, dict) else {}
         self.citizen_facts = _citizen_statement_rows(payload.get("facts", []))
@@ -283,6 +285,7 @@ class LaboratoryState(rx.State):
         self.citizen_expedient = False
         self.citizen_question = ""
         self.citizen_type = ""
+        self.citizen_official_title = ""
         self.citizen_facts = []
         self.citizen_bank_stages = []
         self.citizen_divergences = []
