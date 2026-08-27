@@ -36,11 +36,20 @@ BROKEN_TEXT_MARKERS = (
 )
 
 
+def _contains_mojibake(value: str) -> bool:
+    return any(marker in value for marker in BROKEN_TEXT_MARKERS)
+
+
 def test_public_text_files_do_not_contain_mojibake_markers() -> None:
     for path in PUBLIC_TEXT_FILES:
         text = path.read_text(encoding="utf-8")
-        for marker in BROKEN_TEXT_MARKERS:
-            assert marker not in text, f"{path} contains broken text marker {marker!r}"
+        assert not _contains_mojibake(text), f"{path} contains broken public text"
+
+
+def test_valid_unicode_is_not_mojibake_and_known_mojibake_is_detected() -> None:
+    valid_spanish = "Información pública: ¿cómo funciona? ¡Sí! Ñandú, CLP y ‘fuente oficial’."
+    assert not _contains_mojibake(valid_spanish)
+    assert _contains_mojibake("InformaciÃ³n pÃºblica")
 
 
 def test_public_connector_text_keeps_spanish_accents() -> None:

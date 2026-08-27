@@ -8,6 +8,7 @@ from reflex_app.metadata.pages import PUBLIC_OG_IMAGE_URL, _page_meta
 @rx.page(
     route="/collections",
     title="Colección - DatosEnOrden Ciudadano",
+    description="Colecciones de información pública y expedientes conectados.",
     image=PUBLIC_OG_IMAGE_URL,
     meta=_page_meta(
         "/collections",

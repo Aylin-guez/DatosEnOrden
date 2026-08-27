@@ -54,6 +54,7 @@ EXPECTED_ROUTES = {
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/collections",
 }
 
 
@@ -314,6 +315,6 @@ print("APP_IMPORT=" + json.dumps({
     assert json.loads(payload_line.removeprefix("APP_IMPORT=")) == {
         "same_module": True,
         "app_count": 1,
-        "route_count": 21,
-        "unique_route_count": 21,
+        "route_count": 22,
+        "unique_route_count": 22,
     }

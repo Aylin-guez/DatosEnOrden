@@ -174,8 +174,8 @@ def test_helpers_are_owned_by_leaf_modules_without_entrypoint_reexports() -> Non
         assert not hasattr(entrypoint, name)
 
     routes = [kwargs["route"] for _, kwargs in DECORATED_PAGES["reflex_app"]]
-    assert len(routes) == 21
-    assert len(set(routes)) == 21
+    assert len(routes) == 22
+    assert len(set(routes)) == 22
 
 def test_public_value_helpers_preserve_current_outputs() -> None:
     assert _clean(None) == "Sin dato"

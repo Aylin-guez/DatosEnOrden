@@ -51,6 +51,7 @@ EXPECTED_ROUTES = [
     "/investigation",
     "/laboratory",
     "/laboratory/expedient",
+    "/collections",
 ]
 EXPECTED_MODULES = [
     "reflex_app.app.not_found",
@@ -65,6 +66,7 @@ EXPECTED_MODULES = [
     "reflex_app.features.dashboard.pages",
     "reflex_app.features.public_record.pages",
     "reflex_app.features.laboratory.pages",
+    "reflex_app.features.collections.pages",
 ]
 EXPECTED_MOUNT_HANDLERS = {
     "/": PulseState.load_home,
@@ -131,7 +133,7 @@ def test_explicit_registry_keeps_the_exact_21_route_order_without_duplicates() -
 
     routes = _registered_routes()
     assert {kwargs["route"] for _, kwargs in routes} == set(EXPECTED_ROUTES)
-    assert len({kwargs["route"] for _, kwargs in routes}) == 21
+    assert len({kwargs["route"] for _, kwargs in routes}) == 22
     assert _route_order_in_clean_process() == EXPECTED_ROUTES
 
 

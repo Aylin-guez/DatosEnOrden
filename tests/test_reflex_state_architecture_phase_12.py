@@ -40,6 +40,7 @@ EXPECTED_ROUTES = [
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/collections",
 ]
 EXPECTED_ENTRYPOINT_PAGE_FUNCTIONS: set[str] = set()
 EXPECTED_FIELD_NAMES = {
@@ -70,6 +71,7 @@ PAGE_OWNERS = {
     "investigation": "reflex_app.features.public_record.pages",
     "laboratory": "reflex_app.features.laboratory.pages",
     "laboratory_expedient": "reflex_app.features.laboratory.pages",
+    "collections": "reflex_app.features.collections.pages",
 }
 
 
@@ -151,12 +153,12 @@ def test_laboratory_architecture_exists_with_public_routes() -> None:
     assert {"/laboratory", "/laboratory/expedient"} <= routes
 
 
-def test_routes_remain_exactly_the_current_21() -> None:
+def test_routes_remain_exactly_the_current_registry() -> None:
     registered = _registered_pages()
 
     assert {route for route, _, _ in registered} == set(EXPECTED_ROUTES)
-    assert len(registered) == 21
-    assert len({route for route, _, _ in registered}) == 21
+    assert len(registered) == 22
+    assert len({route for route, _, _ in registered}) == 22
 
 
 def test_all_registered_pages_have_feature_or_app_owners_outside_entrypoint() -> None:

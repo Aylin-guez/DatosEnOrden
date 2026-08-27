@@ -42,6 +42,7 @@ EXPECTED_ROUTES = [
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/collections",
 ]
 FIELD_OWNERS = {
     SourcesState: {
@@ -153,7 +154,7 @@ def _imports_for(path: Path) -> list[str]:
 def test_routes_and_on_mount_handlers_are_preserved_with_feature_state_owners() -> None:
     registered = _registered_pages()
     assert set(registered) == set(EXPECTED_ROUTES)
-    assert len(registered) == 21
+    assert len(registered) == 22
 
     expected_handlers = {
         "/ecosystem": SourcesState.load_ecosystem.fn,
@@ -183,6 +184,7 @@ def test_extracted_state_defaults_and_events_match_domain_contracts() -> None:
             "run_search",
             "explore_discovery_case",
             "explore_guided_question",
+            "explore_another_question",
             "select_guided_category",
             "select_result",
             "setvar",

@@ -108,14 +108,16 @@ def test_extracted_model_values_keep_current_shape_and_values() -> None:
 
     assert len(INVESTIGATION_TOPICS) == 11
     assert INVESTIGATION_TOPICS[0] == {
-        "label": "Organismos publicos",
-        "example": "SERVICIO DE SALUD ARAUCO HOSPITAL DE ARAUCO",
+        "label": "Organismos públicos",
+        "example": "Organismos con información incorporada",
+        "collection_href": "/collections?category=organisms",
+        "collection_key": "organisms",
     }
     assert INVESTIGATION_TOPICS[-1] == {
         "label": "Sanciones y procedimientos",
         "example": "Procedimientos y resoluciones administrativas de prueba",
     }
-    assert all(set(row) == {"label", "example"} for row in INVESTIGATION_TOPICS)
+    assert all({"label", "example"} <= set(row) <= {"label", "example", "collection_href", "collection_key"} for row in INVESTIGATION_TOPICS)
 
 
 def test_typed_dict_models_expose_expected_annotations() -> None:
@@ -127,6 +129,8 @@ def test_typed_dict_models_expose_expected_annotations() -> None:
     assert get_type_hints(InvestigationTopic) == {
         "label": str,
         "example": str,
+        "collection_href": str,
+        "collection_key": str,
     }
 
 
@@ -142,8 +146,8 @@ def test_models_are_owned_by_model_modules_without_entrypoint_reexports() -> Non
     assert not hasattr(entrypoint, "SOURCE_COVERAGE_TEMPLATE")
 
     routes = [kwargs["route"] for _, kwargs in DECORATED_PAGES["reflex_app"]]
-    assert len(routes) == 21
-    assert len(set(routes)) == 21
+    assert len(routes) == 22
+    assert len(set(routes)) == 22
 
 def test_reflex_app_no_longer_defines_extracted_models_directly() -> None:
     tree = ast.parse((ROOT / "reflex_app" / "reflex_app.py").read_text(encoding="utf-8"))

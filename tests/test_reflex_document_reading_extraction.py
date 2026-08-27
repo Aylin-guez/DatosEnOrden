@@ -74,7 +74,7 @@ def test_document_reading_state_is_single_source_in_feature_state() -> None:
 def test_document_reading_routes_lifecycle_and_metadata_are_preserved() -> None:
     registered = _registered_pages()
 
-    assert len(registered) == 21
+    assert len(registered) == 22
     assert registered["/topic"][0] is document_reading_pages.topic
     assert registered["/knowledge"][0] is document_reading_pages.knowledge
     assert registered["/official-document"][0] is document_reading_pages.official_document

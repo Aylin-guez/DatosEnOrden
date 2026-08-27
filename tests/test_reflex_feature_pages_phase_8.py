@@ -41,6 +41,7 @@ EXPECTED_ROUTES = [
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/collections",
 ]
 
 
@@ -100,8 +101,8 @@ def test_feature_pages_are_the_registered_institutional_owners() -> None:
 def test_routes_paths_order_metadata_and_no_laboratorio_are_preserved() -> None:
     route_rows = [(kwargs["route"], page_function.__name__) for page_function, kwargs in DECORATED_PAGES["reflex_app"]]
     assert {route for route, _ in route_rows} == set(EXPECTED_ROUTES)
-    assert len(route_rows) == 21
-    assert len({route for route, _ in route_rows}) == 21
+    assert len(route_rows) == 22
+    assert len({route for route, _ in route_rows}) == 22
 
     registered = _registered_pages()
     assert registered["/project"][1]["title"] == "Estado del proyecto - DatosEnOrden"
@@ -244,8 +245,8 @@ print("FEATURE_IMPORT=" + json.dumps({
     payload_line = next(line for line in result.stdout.splitlines() if line.startswith("FEATURE_IMPORT="))
     assert json.loads(payload_line.removeprefix("FEATURE_IMPORT=")) == {
         "app_count": 1,
-        "route_count": 21,
-        "unique_route_count": 21,
+        "route_count": 22,
+        "unique_route_count": 22,
         "entrypoint_exports_app_only": True,
         "project_owner": "reflex_app.features.institutional.pages",
         "studio_owner": "reflex_app.features.institutional.pages",

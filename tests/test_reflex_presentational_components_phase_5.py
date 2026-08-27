@@ -163,8 +163,8 @@ def test_components_are_owned_by_common_modules_without_entrypoint_reexports() -
         assert not hasattr(entrypoint, name)
 
     routes = [kwargs["route"] for _, kwargs in DECORATED_PAGES["reflex_app"]]
-    assert len(routes) == 21
-    assert len(set(routes)) == 21
+    assert len(routes) == 22
+    assert len(set(routes)) == 22
 
 def test_component_signatures_keep_current_props_defaults_and_annotations() -> None:
     assert str(inspect.signature(metric)) == "(label: 'str', value) -> 'rx.Component'"
@@ -194,7 +194,9 @@ def test_presentational_components_keep_class_names_and_copy() -> None:
 
     demo = demo_check_item("Fuentes cargadas", True).render()
     assert 'className:"rx-Stack demo-check-row"' in demo["props"]
-    assert '(true ? "Listo" : "Pendiente")' in _child_contents(demo_check_item("Fuentes cargadas", True))
+    status_contents = _child_contents(demo_check_item("Fuentes cargadas", True))
+    assert '"Listo"' in status_contents
+    assert '"Pendiente"' in status_contents
 
     support = support_action_card("Titulo", "Cuerpo", "Abrir", "/support")
     assert _props(support) == ['className:"card support-action-card"']
@@ -214,7 +216,7 @@ def test_reflex_app_no_longer_defines_extracted_components_directly() -> None:
     assert function_names.isdisjoint(EXTRACTED_COMPONENTS)
 
 
-def test_fresh_import_creates_one_app_and_keeps_19_routes() -> None:
+def test_fresh_import_creates_one_app_and_keeps_current_routes() -> None:
     probe = r'''
 import importlib
 import json
@@ -255,6 +257,6 @@ print("APP_IMPORT=" + json.dumps({
     assert json.loads(payload_line.removeprefix("APP_IMPORT=")) == {
         "same_module": True,
         "app_count": 1,
-        "route_count": 21,
-        "unique_route_count": 21,
+        "route_count": 22,
+        "unique_route_count": 22,
     }

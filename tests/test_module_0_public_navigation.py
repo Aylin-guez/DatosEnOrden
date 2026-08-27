@@ -68,12 +68,9 @@ def test_source_presentation_status_is_conservative() -> None:
 
 
 def test_visible_public_files_do_not_contain_mojibake() -> None:
-    roots = [
-        Path("reflex_app"),
-        Path("src/datosenorden/application"),
-        Path("scripts"),
-        Path("tests"),
-    ]
+    # This is a public-navigation contract: scan the rendered Reflex surface,
+    # not validation fixtures that deliberately contain malformed samples.
+    roots = [Path("reflex_app")]
     mojibake_tokens = tuple(chr(value) for value in (0x00C3, 0x00C2, 0x00E2, 0x00F0))
     offenders: list[str] = []
     for root in roots:

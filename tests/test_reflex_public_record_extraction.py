@@ -55,7 +55,7 @@ def test_public_record_state_is_single_source_for_investigation_fields() -> None
 def test_investigation_route_is_registered_from_public_record_feature() -> None:
     registered = _registered_pages()
 
-    assert len(registered) == 21
+    assert len(registered) == 22
     assert registered["/investigation"][0] is public_record_pages.investigation
     assert registered["/investigation"][1]["on_load"].fn is PublicRecordState.load_investigation.fn
     assert registered["/investigation"][1]["title"] == "Expediente - DatosEnOrden"

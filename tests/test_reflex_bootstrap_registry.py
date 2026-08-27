@@ -25,9 +25,10 @@ def test_registry_is_explicit_and_routes_are_not_duplicated() -> None:
         "reflex_app.features.dashboard.pages",
         "reflex_app.features.public_record.pages",
         "reflex_app.features.laboratory.pages",
+        "reflex_app.features.collections.pages",
     ]
     routes = [kwargs["route"] for _, kwargs in DECORATED_PAGES["reflex_app"]]
-    assert len(routes) == len(set(routes)) == 21
+    assert len(routes) == len(set(routes)) == 22
     assert {"/laboratory", "/laboratory/expedient"} <= set(routes)
 
 
