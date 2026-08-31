@@ -6,20 +6,20 @@ Este informe revisa el proyecto Gubi como referencia conceptual y visual para la
 
 Rutas revisadas:
 
-- `E:\Gubi`
-- `I:\Gubi`
-- `E:\Gubi\PROJECT_VISION.md`
-- `E:\Gubi\Codex\SISTEMA_VIVO_CORE_V1.md`
-- `E:\Gubi\docs\system_language\SYSTEM_LANGUAGE_README.md`
-- `E:\Gubi\docs\system_language\SYSTEM_GOVERNANCE.md`
-- `E:\Gubi\docs\JOURNEY_SIDEBAR_V2.md`
-- `E:\Gubi\docs\FLOW_CLARITY_V1.md`
-- `E:\Gubi\docs\UI_POLISH_V1.md`
-- `E:\Gubi\ui\SCREEN_BEHAVIOR.md`
-- `E:\Gubi\ui\MVP_NAVIGATION_RULES.md`
-- `E:\Gubi\mvp\MVP_SCREENS.md`
-- `E:\Gubi\sistema-vivo-mvp`
-- `E:\Gubi\sistema-vivo-studio`
+- `<GUBI_REPO>`
+- `<GUBI_REPO_ALTERNATE>`
+- `<GUBI_REPO>/PROJECT_VISION.md`
+- `<GUBI_REPO>/Codex/SISTEMA_VIVO_CORE_V1.md`
+- `<GUBI_REPO>/docs/system_language/SYSTEM_LANGUAGE_README.md`
+- `<GUBI_REPO>/docs/system_language/SYSTEM_GOVERNANCE.md`
+- `<GUBI_REPO>/docs/JOURNEY_SIDEBAR_V2.md`
+- `<GUBI_REPO>/docs/FLOW_CLARITY_V1.md`
+- `<GUBI_REPO>/docs/UI_POLISH_V1.md`
+- `<GUBI_REPO>/ui/SCREEN_BEHAVIOR.md`
+- `<GUBI_REPO>/ui/MVP_NAVIGATION_RULES.md`
+- `<GUBI_REPO>/mvp/MVP_SCREENS.md`
+- `<GUBI_REPO>/sistema-vivo-mvp`
+- `<GUBI_REPO>/sistema-vivo-studio`
 - `reflex_app/reflex_app.py`, especialmente `home`, `topic`, `topic_source_panel` y `topic_reading_flow`.
 
 ## Hallazgos principales

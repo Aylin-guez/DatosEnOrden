@@ -12,7 +12,7 @@ DatosEnOrden debe crecer como plataforma reutilizable sin copiar proyectos compl
 
 ## Proyectos revisados
 
-### I:\Proyectos\entity_relationship_dashboard
+### `<PROJECTS_ROOT>/entity_relationship_dashboard`
 
 Sirve:
 - Modelo mental de entidades, eventos, transacciones y relaciones agregadas.
@@ -26,7 +26,7 @@ No conviene reutilizar:
 Motor interno posible:
 - Agregador de relaciones explicables para expedientes y reportes ciudadanos.
 
-### I:\Proyectos\excel-consolidation-tool
+### `<PROJECTS_ROOT>/excel-consolidation-tool`
 
 Sirve:
 - Flujo simple input -> procesamiento -> reporte consolidado.
@@ -39,7 +39,7 @@ No conviene reutilizar:
 Motor interno posible:
 - Exportador tabular opcional para auditorias locales, no prioridad para UI publica.
 
-### I:\Proyectos\messy_data_reconstruction
+### `<PROJECTS_ROOT>/messy_data_reconstruction`
 
 Sirve:
 - Normalizacion y reconciliacion de fuentes heterogeneas.
@@ -52,7 +52,7 @@ No conviene reutilizar:
 Motor interno posible:
 - Utilidades futuras de reconciliacion: normalizacion de nombres, conteos de match y explicacion de cobertura.
 
-### I:\Proyectos\ocr_document_intelligence_pipeline
+### `<PROJECTS_ROOT>/ocr_document_intelligence_pipeline`
 
 Sirve:
 - Separar extraccion, clasificacion y resumen.
@@ -65,7 +65,7 @@ No conviene reutilizar:
 Motor interno posible:
 - Estrategia documental barata: metadata, URL oficial, hash opcional, resumen/extracto y fuente.
 
-### I:\Proyectos\pdf_intelligence_pipeline
+### `<PROJECTS_ROOT>/pdf_intelligence_pipeline`
 
 Sirve:
 - Busqueda por texto completo, pagina, archivo y excerpt.
@@ -78,7 +78,7 @@ No conviene reutilizar:
 Motor interno posible:
 - Indice futuro de extractos oficiales por metadata, no por PDF completo.
 
-### I:\Proyectos\report-cross-reference-automation-sample
+### `<PROJECTS_ROOT>/report-cross-reference-automation-sample`
 
 Sirve:
 - Cruce entre hallazgos narrativos y documentos fuente mediante patrones buscables.
@@ -91,7 +91,7 @@ No conviene reutilizar:
 Motor interno posible:
 - Motor neutral de anclas de evidencia: secciones de reporte conectadas a fuente, pagina/extracto y estado de revision.
 
-### I:\Proyectos\Traceflow
+### `<PROJECTS_ROOT>/Traceflow`
 
 Sirve:
 - Esencia conceptual: historial de cambios, estados, documentos, solicitudes, eventos y seguimiento.
@@ -129,7 +129,7 @@ Mapeo reusable especifico:
 - Exportacion: extender `tracking_to_dict()` con `overview` JSON-safe reutilizable por Reflex o API futura.
 - Vistas de avance: calcular total de hitos, hitos documentados, hitos abiertos, porcentaje de avance y cobertura documental.
 
-### I:\SecondLifeEngine
+### `<SECOND_LIFE_ENGINE_REPO>`
 
 Sirve:
 - Estructura de producto/reportes por dataclasses, loaders y renderers.
@@ -143,7 +143,7 @@ No conviene reutilizar:
 Motor interno posible:
 - Motor de reportes ciudadanos: dataclasses locales + export HTML liviano.
 
-### I:\portfolio-generate
+### `<PORTFOLIO_GENERATOR_REPO>`
 
 Sirve:
 - Generacion estatica de paginas HTML y showcases navegables.
