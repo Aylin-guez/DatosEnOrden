@@ -56,9 +56,12 @@ elif [[ -L "$previous" ]]; then
 fi
 
 if [[ "$old_current" == "$target" ]]; then
-    systemctl is-active --quiet "$SERVICE" || fail "Release is current but service is not active."
+    if ! systemctl is-active --quiet "$SERVICE"; then
+        systemctl reset-failed "$SERVICE" >/dev/null 2>&1 || true
+        systemctl restart "$SERVICE" || fail "Release is current but service recovery failed."
+    fi
     bash "$target/scripts/post_deploy_smoke.sh" "$release_id" || fail "Current release failed post-activation smoke."
-    echo "Release $release_id is already active; no rebuild or symlink change performed."
+    echo "Release $release_id is already active and healthy; no rebuild or symlink change performed."
     exit 0
 fi
 
@@ -68,10 +71,12 @@ restore_old_current() {
         ln -s "$old_current" "$rollback_new" || return 1
         mv -Tf "$rollback_new" "$current" || return 1
         old_release_id="$(basename "$old_current")"
+        systemctl reset-failed "$SERVICE" >/dev/null 2>&1 || true
         if ! systemctl restart "$SERVICE" \
             || ! systemctl is-active --quiet "$SERVICE" \
             || ! bash "$old_current/scripts/post_deploy_smoke.sh" "$old_release_id"; then
             systemctl stop "$SERVICE" >/dev/null 2>&1 || true
+            return 1
         fi
     else
         [[ -L "$current" ]] && rm -f -- "$current"
@@ -95,8 +100,10 @@ elif ! bash "$target/scripts/post_deploy_smoke.sh" "$release_id"; then
 fi
 
 if [[ -n "$activation_failure" ]]; then
-    restore_old_current || true
-    fail "Activation failed and was rolled back: $activation_failure"
+    if restore_old_current; then
+        fail "Activation failed and was rolled back: $activation_failure"
+    fi
+    fail "Activation failed and rollback health restoration failed: $activation_failure"
 fi
 
 if [[ -n "$old_current" ]]; then

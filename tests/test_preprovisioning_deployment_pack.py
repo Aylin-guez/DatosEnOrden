@@ -44,6 +44,9 @@ def test_production_reflex_runtime_uses_prepared_backend_only_contract() -> None
     assert "REFLEX_CHECK_LATEST_VERSION=false" in service
     assert "Environment=HOME=/var/lib/datosenorden" in service
     assert "StateDirectory=datosenorden" in service
+    assert "KillMode=control-group" in service
+    assert "KillSignal=SIGINT" in service
+    assert "TimeoutStopSec=30" in service
 
 
 def test_preprovisioning_pack_keeps_services_and_database_private() -> None:
@@ -66,7 +69,7 @@ def test_preprovisioning_pack_keeps_services_and_database_private() -> None:
     assert "private_ports" in smoke
     assert "MIN_MEMORY_KIB" in smoke
     assert "MIN_DISK_KIB" in smoke
-    assert 'READINESS_TIMEOUT_SECONDS="${READINESS_TIMEOUT_SECONDS:-45}"' in smoke
+    assert 'READINESS_TIMEOUT_SECONDS="${READINESS_TIMEOUT_SECONDS:-90}"' in smoke
     assert 'READINESS_INTERVAL_SECONDS="${READINESS_INTERVAL_SECONDS:-1}"' in smoke
     assert 'PER_ATTEMPT_TIMEOUT_SECONDS="${PER_ATTEMPT_TIMEOUT_SECONDS:-3}"' in smoke
     assert "wait_for_backend_readiness" in smoke

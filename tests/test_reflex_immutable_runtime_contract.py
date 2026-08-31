@@ -15,8 +15,9 @@ def test_prepare_exports_the_artifacts_required_by_backend_only_runtime() -> Non
     assert '"$target/.web/backend/stateful_pages.json"' in prepare
     assert '"$target/.web/build/client/index.html"' in prepare
     assert "DATOSENORDEN_ENV=local" not in prepare
-    assert '. "$ENV_FILE"' in prepare
-    assert 'runuser -u "$APP_USER" --preserve-environment' in prepare
+    assert '. "$env_file"' in prepare
+    assert 'runuser -u "$APP_USER" -- env -i' in prepare
+    assert 'BUN_INSTALL="$app_home/.bun"' in prepare
     assert 'install -d -o root -g "$APP_USER" -m 0755 "$APP_ROOT/releases"' in prepare
     assert prepare.index("reflex export") < prepare.index('chmod -R go-w "$target"')
 
@@ -31,6 +32,9 @@ def test_runtime_reads_the_immutable_export_and_writes_state_outside_release() -
     assert "Environment=HOME=/var/lib/datosenorden" in service
     assert "StateDirectory=datosenorden" in service
     assert "--backend-only" in service
+    assert "KillMode=control-group" in service
+    assert "KillSignal=SIGINT" in service
+    assert "TimeoutStopSec=30" in service
     assert "root * /opt/datosenorden/current/.web/build/client" in caddy
     assert caddy.index("handle @reflex_backend") < caddy.index("root * /opt/datosenorden/current/.web/build/client")
 

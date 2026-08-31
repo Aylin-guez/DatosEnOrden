@@ -5,7 +5,7 @@ APP_ROOT="${APP_ROOT:-/opt/datosenorden}"
 SERVICE="${SERVICE:-datosenorden}"
 MIN_MEMORY_KIB="${MIN_MEMORY_KIB:-1500000}"
 MIN_DISK_KIB="${MIN_DISK_KIB:-5000000}"
-READINESS_TIMEOUT_SECONDS="${READINESS_TIMEOUT_SECONDS:-45}"
+READINESS_TIMEOUT_SECONDS="${READINESS_TIMEOUT_SECONDS:-90}"
 READINESS_INTERVAL_SECONDS="${READINESS_INTERVAL_SECONDS:-1}"
 PER_ATTEMPT_TIMEOUT_SECONDS="${PER_ATTEMPT_TIMEOUT_SECONDS:-3}"
 READINESS_URL="${READINESS_URL:-http://127.0.0.1:3000/api/_health}"
@@ -19,23 +19,30 @@ done
 
 wait_for_backend_readiness() {
     local deadline=$((SECONDS + READINESS_TIMEOUT_SECONDS))
-    local attempts=0 status=""
+    local attempts=0 status="" curl_exit=0 last_result="not_attempted"
     while true; do
         if ! systemctl is-active --quiet "$SERVICE"; then
             echo "FAIL backend_service_inactive_during_readiness attempts=$attempts"
             return 1
         fi
         attempts=$((attempts + 1))
-        if status="$(curl --fail --silent --show-error \
+        set +e
+        status="$(curl --fail --silent --show-error \
             --connect-timeout "$PER_ATTEMPT_TIMEOUT_SECONDS" \
             --max-time "$PER_ATTEMPT_TIMEOUT_SECONDS" \
-            --output /dev/null --write-out '%{http_code}' "$READINESS_URL")" \
-            && [[ "$status" =~ ^2[0-9]{2}$ ]]; then
+            --output /dev/null --write-out '%{http_code}' "$READINESS_URL")"
+        curl_exit=$?
+        set -e
+        if (( curl_exit == 0 )) && [[ "$status" =~ ^2[0-9]{2}$ ]]; then
             echo "PASS backend_readiness attempts=$attempts status=$status"
             return 0
         fi
+        last_result="curl_exit_${curl_exit}_http_${status:-000}"
         if (( SECONDS >= deadline )); then
-            echo "FAIL backend_readiness_timeout attempts=$attempts timeout_seconds=$READINESS_TIMEOUT_SECONDS last_status=${status:-connection_error}"
+            echo "FAIL backend_readiness_timeout attempts=$attempts timeout_seconds=$READINESS_TIMEOUT_SECONDS last_result=$last_result"
+            systemctl show "$SERVICE" -p ActiveState -p SubState -p Result -p MainPID --no-pager || true
+            ss -ltnp | grep -E ':(3000|5432)[[:space:]]' || true
+            journalctl -u "$SERVICE" -n 40 --no-pager || true
             return 1
         fi
         sleep "$READINESS_INTERVAL_SECONDS"

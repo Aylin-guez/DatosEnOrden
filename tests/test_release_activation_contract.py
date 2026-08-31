@@ -12,6 +12,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 R1 = "1" * 40
 R2 = "2" * 40
+R3 = "3" * 40
 
 
 def _bash_executable() -> Path:
@@ -51,6 +52,8 @@ def _base_environment(tmp_path: Path) -> tuple[dict[str, str], Path, Path]:
     env_file.write_text("DATOSENORDEN_ENV=production\n", encoding="utf-8")
     fake_bin = tmp_path / "fake-bin"
     fake_bin.mkdir()
+    app_home = tmp_path / "app-home"
+    app_home.mkdir()
     bash_env = tmp_path / "bash-env.sh"
     bash_env.write_text(
         'export PATH="$DEO_FAKE_BIN:/usr/bin:/bin"\n',
@@ -68,14 +71,19 @@ def _base_environment(tmp_path: Path) -> tuple[dict[str, str], Path, Path]:
             "SYSTEMD_ANALYZE_LOG": _msys(tmp_path / "systemd-analyze.log"),
             "SMOKE_LOG": _msys(tmp_path / "smoke.log"),
             "PREPARE_CWD_LOG": _msys(tmp_path / "prepare-cwd.log"),
+            "DEO_APP_HOME": _msys(app_home),
         }
     )
-    _write_command(fake_bin, "id", '[[ "${1:-}" == "-u" ]] && echo 0\n')
+    _write_command(
+        fake_bin,
+        "id",
+        'case "${1:-}" in -u) echo 0 ;; -gn) echo datosenorden ;; *) exit 1 ;; esac\n',
+    )
     _write_command(
         fake_bin,
         "getent",
         '[[ "${1:-}" == "passwd" && "${2:-}" == "datosenorden" ]]\n'
-        'printf "datosenorden:x:1:1::/tmp:/bin/bash\\n"\n',
+        'printf "datosenorden:x:1:1::%s:/bin/bash\\n" "$DEO_APP_HOME"\n',
     )
     return environment, app_root, fake_bin
 
@@ -125,8 +133,8 @@ def _install_prepare_fakes(fake_bin: Path, log: Path) -> None:
         '[[ "${1:-}" == "--" ]] && shift\n'
         'if [[ "${1:-}" == "env" ]]; then\n'
         '  shift\n'
+        '  [[ "${1:-}" == "-i" ]] && shift\n'
         '  while [[ "${1:-}" == *=* ]]; do shift; done\n'
-        '  exec "$@"\n'
         'fi\n'
         'if [[ "${1:-}" == "bash" ]]; then exec "$@"; fi\n'
         "while (($#)); do\n"
@@ -249,6 +257,10 @@ def test_prepare_is_single_use_and_never_activates(tmp_path: Path) -> None:
     assert " -m venv " in f" {prepare_calls} "
     assert "pip install" in prepare_calls
     assert "reflex export --no-zip --env prod --no-ssr" in prepare_calls
+    assert "--preserve-environment" not in prepare_calls
+    assert "env -i HOME=" in prepare_calls
+    assert "USER=datosenorden" in prepare_calls
+    assert "BUN_INSTALL=" in prepare_calls
     assert (tmp_path / "prepare-cwd.log").read_text(encoding="utf-8").strip() == _msys(target)
 
     second = _run("scripts/deploy_release_ubuntu.sh", args, environment, tmp_path)
@@ -262,6 +274,18 @@ def test_prepare_immutability_gate_excludes_symlinks_but_checks_files_and_direct
     deploy = (ROOT / "scripts" / "deploy_release_ubuntu.sh").read_text(encoding="utf-8")
 
     assert 'find "$target" -xdev \\( -type f -o -type d \\) -perm /022' in deploy
+
+
+def test_prepare_uses_service_identity_for_bun_without_post_build_cache_chown() -> None:
+    deploy = (ROOT / "scripts" / "deploy_release_ubuntu.sh").read_text(encoding="utf-8")
+
+    assert 'runuser -u "$APP_USER" -- env -i' in deploy
+    assert 'HOME="$app_home"' in deploy
+    assert 'BUN_INSTALL="$app_home/.bun"' in deploy
+    assert 'XDG_CACHE_HOME="$app_home/.cache"' in deploy
+    assert '--preserve-environment' not in deploy
+    assert 'chown -R "$APP_USER:$APP_USER" "$app_home/.bun"' not in deploy
+    assert 'find "$app_home/.bun" -xdev ! -user "$APP_USER"' in deploy
 
 
 def test_prepare_compile_failure_never_writes_ready_marker(tmp_path: Path) -> None:
@@ -474,6 +498,42 @@ def test_failed_update_restores_old_current_and_previous(tmp_path: Path) -> None
     assert "rolled back" in failed.stderr
     assert (app_root / "current").resolve() == first_release.resolve()
     assert not (app_root / "previous").exists()
+    assert (app_root / ".service-active").exists()
+
+
+def test_already_current_inactive_release_is_recovered_without_pointer_change(tmp_path: Path) -> None:
+    environment, app_root, fake_bin = _base_environment(tmp_path)
+    _install_activation_fakes(fake_bin)
+    release = _prepared_release(app_root, R1)
+    first = _run("scripts/activate_release_ubuntu.sh", _activation_args(R1), environment, tmp_path)
+    assert first.returncode == 0, first.stderr
+    (app_root / ".service-active").unlink()
+
+    recovered = _run("scripts/activate_release_ubuntu.sh", _activation_args(R1), environment, tmp_path)
+
+    assert recovered.returncode == 0, recovered.stderr
+    assert (app_root / "current").resolve() == release.resolve()
+    assert not (app_root / "previous").exists()
+    systemctl_log = (tmp_path / "systemctl.log").read_text(encoding="utf-8")
+    assert "reset-failed datosenorden" in systemctl_log
+    assert "restart datosenorden" in systemctl_log
+
+
+def test_failed_update_preserves_preexisting_previous_pointer(tmp_path: Path) -> None:
+    environment, app_root, fake_bin = _base_environment(tmp_path)
+    _install_activation_fakes(fake_bin)
+    first_release = _prepared_release(app_root, R1)
+    second_release = _prepared_release(app_root, R2)
+    _prepared_release(app_root, R3)
+    assert _run("scripts/activate_release_ubuntu.sh", _activation_args(R1), environment, tmp_path).returncode == 0
+    assert _run("scripts/activate_release_ubuntu.sh", _activation_args(R2), environment, tmp_path).returncode == 0
+    environment["FAIL_SMOKE_RELEASE"] = R3
+
+    failed = _run("scripts/activate_release_ubuntu.sh", _activation_args(R3), environment, tmp_path)
+
+    assert failed.returncode != 0
+    assert (app_root / "current").resolve() == second_release.resolve()
+    assert (app_root / "previous").resolve() == first_release.resolve()
     assert (app_root / ".service-active").exists()
 
 

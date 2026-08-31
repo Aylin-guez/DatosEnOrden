@@ -20,8 +20,20 @@ done
 [[ -f "$ENV_FILE" ]] || { echo "Missing external environment file: $ENV_FILE" >&2; exit 1; }
 app_home="$(getent passwd "$APP_USER" | awk -F: '{print $6}')"
 [[ -n "$app_home" && -d "$app_home" && -x "$app_home" ]] || { echo "Runtime user home is unavailable: $APP_USER" >&2; exit 1; }
+app_group="$(id -gn "$APP_USER")"
 [[ "$(sha256sum "$artifact" | awk '{print $1}')" == "${expected_sha,,}" ]] || { echo "ARTIFACT_INTEGRITY_FAILURE" >&2; exit 1; }
 target="$APP_ROOT/releases/$release_id"
+safe_path="$target/.venv/bin:$app_home/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+run_as_app() {
+    runuser -u "$APP_USER" -- env -i \
+        HOME="$app_home" \
+        USER="$APP_USER" \
+        LOGNAME="$APP_USER" \
+        BUN_INSTALL="$app_home/.bun" \
+        XDG_CACHE_HOME="$app_home/.cache" \
+        PATH="$safe_path" \
+        "$@"
+}
 [[ ! -e "$target" ]] || { echo "Release already exists: $target" >&2; exit 1; }
 if ! entries="$(tar -tf "$artifact")"; then
     echo "Unable to inspect artifact archive." >&2
@@ -33,24 +45,33 @@ if printf '%s\n' "$entries" | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
 fi
 install -d -o root -g "$APP_USER" -m 0755 "$APP_ROOT/releases"
 install -d -o "$APP_USER" -g "$APP_USER" -m 0755 "$target"
+install -d -o "$APP_USER" -g "$app_group" -m 0750 "$app_home/.bun"
+install -d -o "$APP_USER" -g "$app_group" -m 0750 "$app_home/.bun/install"
+install -d -o "$APP_USER" -g "$app_group" -m 0750 "$app_home/.bun/install/cache"
+if find "$app_home/.bun" -xdev ! -user "$APP_USER" -print -quit | grep -q .; then
+    echo "Bun runtime tree contains entries not owned by $APP_USER; remediate the cache before preparing." >&2
+    exit 1
+fi
 tar -xf "$artifact" -C "$target" --no-same-owner --no-same-permissions
 chown -R "$APP_USER:$APP_USER" "$target"
-runuser -u "$APP_USER" -- python3 -m venv "$target/.venv"
-runuser -u "$APP_USER" -- "$target/.venv/bin/python" -m pip install --upgrade pip
-runuser -u "$APP_USER" -- "$target/.venv/bin/python" -m pip install "$target"
-runuser -u "$APP_USER" -- "$target/.venv/bin/python" -m pip check
-set -a
-. "$ENV_FILE"
-set +a
-runuser -u "$APP_USER" --preserve-environment -- env HOME="$app_home" bash -c '
+run_as_app python3 -m venv "$target/.venv"
+run_as_app "$target/.venv/bin/python" -m pip install --upgrade pip
+run_as_app "$target/.venv/bin/python" -m pip install "$target"
+run_as_app "$target/.venv/bin/python" -m pip check
+run_as_app bash -c '
     set -euo pipefail
-    target="$1"; python="$2"
+    env_file="$1"; target="$2"; python="$3"; app_home="$4"; app_user="$5"; safe_path="$6"
+    set -a
+    . "$env_file"
+    set +a
+    export HOME="$app_home" USER="$app_user" LOGNAME="$app_user"
+    export BUN_INSTALL="$app_home/.bun" XDG_CACHE_HOME="$app_home/.cache" PATH="$safe_path"
     cd "$target"
     export REFLEX_WEB_WORKDIR="$target/.web"
     export REFLEX_STATES_WORKDIR="$target/.states"
     export REFLEX_CHECK_LATEST_VERSION=false
     exec "$python" -m reflex export --no-zip --env prod --no-ssr
-' -- "$target" "$target/.venv/bin/python"
+' -- "$ENV_FILE" "$target" "$target/.venv/bin/python" "$app_home" "$APP_USER" "$safe_path"
 [[ -s "$target/.web/backend/stateful_pages.json" ]] || { echo "Prepared Reflex backend marker is missing." >&2; exit 1; }
 [[ -f "$target/.web/build/client/index.html" ]] || { echo "Prepared Reflex frontend artifact is missing." >&2; exit 1; }
 pending_marker="$target/.deo-release-ready.pending"

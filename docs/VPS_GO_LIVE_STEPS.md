@@ -68,7 +68,10 @@ not deploy from a mutable clone, and it does not contain credentials.
 
    It verifies the archive, extracts into a previously absent release
    directory, creates the venv, installs dependencies, performs `pip check`
-   and Reflex dry compile, then writes `.deo-release-ready`. Only after all
+   and Reflex production export, then writes `.deo-release-ready`. Python,
+   Reflex and Bun preparation run as `datosenorden` with a clean environment,
+   `HOME=/home/datosenorden` and `BUN_INSTALL=/home/datosenorden/.bun`; root
+   never writes package-cache contents there. Only after all
    checks pass does it remove runtime-user/group write permissions. A second
    prepare for the same release is intentionally rejected.
 6. **MANUAL/GATE**: create a mode-0600 password file outside the release, then
@@ -142,11 +145,13 @@ not deploy from a mutable clone, and it does not contain credentials.
     `systemd-analyze verify /etc/systemd/system/datosenorden.service` only
     after `current` resolves to the newly activated release, followed by the
     post-deploy smoke. The smoke polls `http://127.0.0.1:3000/api/_health` for a 2xx
-    response with a bounded 45-second readiness budget, one-second interval
+    response with a bounded 90-second cold-start readiness budget, one-second interval
     and three-second per-attempt timeout; it fails early if the service stops.
     Once ready, it runs the remaining privacy, release, PostgreSQL and
-    resource gates. It performs no pip, build, Alembic or data import. A
-    failed post-activation systemd verification follows the same fail-closed
+    resource gates. It performs no pip, build, Alembic or data import. The
+    systemd unit owns the complete Reflex/Gunicorn cgroup, requests the
+    Reflex-supported SIGINT graceful stop, and bounds its final fallback to 30
+    seconds. A failed post-activation systemd verification follows the same fail-closed
     rollback path as a failed restart or smoke. First activation leaves
     `previous` absent. On an update, the full verification applies to the new
     `current` release (not the resolvable old release); successful activation
