@@ -27,9 +27,9 @@ from datosenorden.application.real_expedient.reader import ComposedPublicExpedie
 from datosenorden.application.real_expedient.service import ExpedientConflictError, ExpedientProvisioningService
 from datosenorden.infrastructure.real_expedient.repository import PostgresExpedientRepository
 from datosenorden.models import SourceRecord
+from tests.qa_artifacts import certified_data_package_path
 
 
-PACKAGE = Path("private/releases/data/deo-prod-data-0001-81dc47c722518efb.zip")
 SHA256 = "4de868d6baa5de5be63a3ef2b858c50f5a5c311df8eadf80c6ffda17262cc3b0"
 RELEASE = "0b805fa00dc2ab75a3f20e19f4a8e01f9352a04b"
 ORDERS = {
@@ -80,7 +80,7 @@ def _content(session: Session, order_id: str):
 
 
 def test_corrective_versions_against_certified_baseline(postgres_url: str, portable_tmp_path: Path) -> None:
-    package = verify_package(PACKAGE, expected_sha256=SHA256)
+    package = verify_package(certified_data_package_path(), expected_sha256=SHA256)
     engine = create_engine(postgres_url)
     expectation = TargetExpectation(str(make_url(postgres_url).database), "isolated-test", RELEASE)
     assert import_package(engine, package, expectation=expectation).inserted == package.manifest["row_counts"]
@@ -123,6 +123,12 @@ def test_corrective_versions_against_certified_baseline(postgres_url: str, porta
             repair_chilecompra_expedient(_content(session, "1000813-247-CM26"), expected_current_version=0, service=service, identity_resolver=resolver)
         reader = ComposedPublicExpedientReader(repository)
         assert [reader.get(ids[o])["version"] for o in ORDERS] == [2, 3, 2]
+        citizen_orders = {order: reader.get_citizen(ids[order]) for order in ORDERS}
+        assert all(item is not None for item in citizen_orders.values())
+        assert [len(citizen_orders[order]["documents"]) for order in ORDERS] == [1, 2, 1]
+        assert citizen_orders["1000813-247-CM26"]["sources"] == ["ChileCompra API Mercado Publico"]
+        assert citizen_orders["1002584-197-CM26"]["sources"] == ["ChileCompra API Mercado Publico", "DIPRES"]
+        assert citizen_orders["1002772-6758-SE26"]["documents"][0]["official_url"].startswith("https://www.mercadopublico.cl/")
         assert reader.get("EXP-REAL-LEGISLATIVE-15975-25") is not None
         exported = export_production_data_package(
             session, output_dir=portable_tmp_path, created_at=datetime(2026, 8, 19, tzinfo=UTC),
@@ -139,7 +145,7 @@ def test_historical_exported_package_rejects_incompatible_code_release() -> None
     try:
         ephemeral.migrate_to_head()
         engine = create_engine(ephemeral.test_url)
-        package = verify_package(PACKAGE, expected_sha256=SHA256)
+        package = verify_package(certified_data_package_path(), expected_sha256=SHA256)
         expectation = TargetExpectation(
             str(make_url(ephemeral.test_url).database),
             "isolated-test",

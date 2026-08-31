@@ -104,6 +104,11 @@ class LaboratoryState(rx.State):
         self.error_message = ""
         requested = _router_query_value(self.router, "id") or "EXP-001"
         self.requested_expedient_id = requested
+        # A route change can reuse this Reflex state instance.  Clear the
+        # previous projection before resolving the requested identity so a
+        # DEMO expedient can never retain a REAL citizen projection (or vice
+        # versa) while the new payload is loading.
+        self._clear_expedient()
         try:
             payload = get_public_expedient(requested)
             if not payload:
@@ -123,6 +128,7 @@ class LaboratoryState(rx.State):
             self.expedient_title = str(payload["title"])
             self.expedient_summary = str(payload["summary"])
             self.expedient_status = str(payload["status"])
+            self.expedient_provenance_class = str(payload.get("provenance_class") or "DEMO")
             self.expedient_scope = str(payload["scope"])
             self.expedient_territory = str(payload["territory"])
             self.expedient_period = str(payload["period"])

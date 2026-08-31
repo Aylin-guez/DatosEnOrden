@@ -5,6 +5,7 @@ import reflex as rx
 from reflex_app.constants.routes import PAGE_SEARCH
 from reflex_app.features.search.components import (
     guided_discovery_panel,
+    guided_journey_panel,
     search_empty_state,
     what_to_investigate_panel,
     workspace_match_card,
@@ -36,22 +37,26 @@ def _search_view(on_mount) -> rx.Component:  # noqa: ANN001
     return shell(
         rx.box(
             rx.text("Explorar", class_name="title"),
+            rx.link("← Volver al Inicio", href="/", class_name="button button-secondary"),
             rx.text(
                 "Empieza por una entidad, politica, norma, proyecto, contrato, presupuesto, evento, documento o pregunta comprensible.",
                 class_name="subtitle",
             ),
-            rx.hstack(
-                rx.input(
-                    placeholder="Busca informacion publica conectada",
-                    value=SearchState.query,
-                    on_change=SearchState.set_query,
-                    class_name="input search-input",
-                    aria_label="Buscar en conocimiento publico disponible",
+            rx.form(
+                rx.hstack(
+                    rx.input(
+                        placeholder="Busca informacion publica conectada",
+                        value=SearchState.query,
+                        on_change=SearchState.set_query,
+                        class_name="input search-input",
+                        aria_label="Buscar en conocimiento publico disponible",
+                    ),
+                    rx.button("Buscar", type="submit", class_name="button search-button"),
+                    spacing="2",
+                    wrap="wrap",
+                    class_name="search-bar",
                 ),
-                rx.button("Buscar", on_click=SearchState.submit_main_search, class_name="button search-button"),
-                spacing="2",
-                wrap="wrap",
-                class_name="search-bar",
+                on_submit=SearchState.submit_main_search,
             ),
             rx.text("La busqueda consulta conocimiento local ya disponible. No crea expedientes persistentes ni ejecuta generacion pesada.", class_name="source-fact"),
             class_name="hero",
@@ -59,26 +64,29 @@ def _search_view(on_mount) -> rx.Component:  # noqa: ANN001
         rx.cond(
             SearchState.guided_question_active,
             rx.vstack(
-                _search_results(),
+                guided_journey_panel(),
                 page_section(
                     "Explorar otra pregunta",
                     rx.button(
                         "← Explorar otra pregunta",
-                        on_click=SearchState.explore_another_question,
+                        on_click=SearchState.return_to_explore,
                         class_name="button button-secondary",
                     ),
-                    guided_discovery_panel(),
-                    subtitle="Puedes volver a una pregunta guiada sin perder una búsqueda manual ya escrita.",
+                    rx.text("Vuelve a la vista de exploración para revisar otras preguntas guiadas.", class_name="muted small"),
+                    subtitle="",
                 ),
                 spacing="4",
                 align="stretch",
             ),
-            rx.vstack(
-                guided_discovery_panel(),
-                what_to_investigate_panel(),
-                _search_results(),
-                spacing="4",
-                align="stretch",
+            rx.cond(
+                SearchState.manual_result_active,
+                manual_result_view(),
+                rx.vstack(
+                    guided_discovery_panel(),
+                    what_to_investigate_panel(),
+                    spacing="4",
+                    align="stretch",
+                ),
             ),
         ),
         on_mount=on_mount,
@@ -96,13 +104,27 @@ def _search_results() -> rx.Component:
                     rx.foreach(SearchState.results, workspace_match_card),
                     columns="3",
                     spacing="3",
-                    class_name="responsive-grid",
+                    class_name="responsive-grid search-results-grid",
                 ),
                 subtitle="Cada resultado explica que es, por que coincide, que fuentes contribuyen y que accion corresponde.",
             ),
             id="search-results",
         ),
         rx.cond(SearchState.query != "", search_empty_state()),
+    )
+
+
+def manual_result_view() -> rx.Component:
+    return rx.vstack(
+        page_section(
+            "Resultados para",
+            rx.button("← Volver a Explorar", on_click=SearchState.return_to_explore, class_name="button button-secondary"),
+            rx.text(SearchState.query, class_name="title"),
+            _search_results(),
+            subtitle="Los resultados provienen de la información pública incorporada actualmente.",
+        ),
+        spacing="4",
+        align="stretch",
     )
 
 

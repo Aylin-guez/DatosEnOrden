@@ -38,6 +38,7 @@ class SearchWorkspaceMatch:
     action_label: str = "Abrir expediente"
     action_href: str = ""
     classification: str = "REAL"
+    guidance_eligible: bool = False
 
 
 def search_workspace(query: str, limit: int = 12) -> dict[str, object]:
@@ -65,6 +66,7 @@ def search_workspace(query: str, limit: int = 12) -> dict[str, object]:
                 "action_label": item.action_label,
                 "action_href": item.action_href or f"/investigation?id={item.entity_id}",
                 "classification": item.classification,
+                "guidance_eligible": item.guidance_eligible,
             }
             for item in matches
         ]
@@ -150,10 +152,30 @@ def _real_expedient_matches(session, query: str) -> tuple[SearchWorkspaceMatch, 
                 entity = None
             if entity is not None:
                 entity_metadata.extend((str(entity.name), str(entity.external_id or "")))
-        haystack = _normalize(" ".join([str(projection.get("title", "")), str(projection.get("question", "")), str(projection.get("summary", "")), *statements, *answers, *document_text, *entity_metadata, *[str(item) for item in projection.get("sources", [])]]))
-        query_tokens = set(normalized_query.split())
+        exact_entity_reference_match = normalized_query in {_normalize(item) for item in entity_metadata if _normalize(item)}
+        haystack = _normalize(" ".join([
+            str(projection.get("title", "")),
+            str(projection.get("official_title", "")),
+            str(projection.get("question", "")),
+            str(projection.get("summary", "")),
+            *statements,
+            *answers,
+            *document_text,
+            *[str(item) for item in projection.get("actors", [])],
+            *[str(item) for item in projection.get("topics", [])],
+            *entity_metadata,
+            *[str(item) for item in projection.get("sources", [])],
+        ]))
+        query_tokens = {token for token in normalized_query.split() if len(token) >= 3}
         haystack_tokens = set(haystack.split())
-        compact_match = normalized_query.replace(" ", "") in haystack.replace(" ", "")
+        title = _normalize(str(projection.get("title", "")))
+        question = _normalize(str(projection.get("question", "")))
+        identifier = _normalize(stored.specification.expedient_id)
+        exact_identifier_match = normalized_query == identifier
+        exact_title_match = normalized_query == title
+        exact_phrase_match = normalized_query in title or normalized_query in question
+        exact_token_match = normalized_query in haystack_tokens
+        compact_match = len(query_tokens) > 1 and normalized_query.replace(" ", "") in haystack.replace(" ", "")
         contextual_match = len(query_tokens) > 1 and len(query_tokens.intersection(haystack_tokens)) >= 2
         # Public Spanish queries frequently vary only by a derivational ending
         # (for example, ``tributación`` / ``tributarias``).  Match a conservative
@@ -164,10 +186,51 @@ def _real_expedient_matches(session, query: str) -> tuple[SearchWorkspaceMatch, 
             and len(normalized_query) >= 7
             and any(token.startswith(normalized_query[:6]) for token in haystack_tokens)
         )
-        if normalized_query in haystack or compact_match or contextual_match or root_match:
+        # A short query must match a full indexed token.  In particular, ``ANCI``
+        # must not match incidental substrings such as ``financiación``.  Longer
+        # queries retain the conservative derivational-root behavior above.
+        full_text_match = len(normalized_query) > 6 and normalized_query in haystack
+        if exact_identifier_match or exact_title_match or exact_phrase_match or exact_token_match or full_text_match or compact_match or contextual_match or root_match:
             identifier = stored.specification.expedient_id
-            matches.append(SearchWorkspaceMatch(identifier, str(projection["title"]), str(projection.get("type", "Expediente legislativo")), tuple(str(item) for item in projection.get("sources", [])), len(projection.get("facts", [])), 0, 0.95, "expediente legislativo", "Abrir expediente", f"/laboratory/expedient?id={identifier}", "REAL"))
+            score = _real_expedient_match_score(
+                exact_identifier_match=exact_identifier_match,
+                exact_title_match=exact_title_match,
+                exact_phrase_match=exact_phrase_match,
+                exact_token_match=exact_token_match,
+                full_text_match=full_text_match,
+                compact_match=compact_match,
+                contextual_match=contextual_match,
+                root_match=root_match,
+            )
+            matches.append(SearchWorkspaceMatch(identifier, str(projection["title"]), str(projection.get("type", "Expediente público")), tuple(str(item) for item in projection.get("sources", [])), len(projection.get("facts", [])), 0, score, "expediente público", "Abrir expediente", f"/laboratory/expedient?id={identifier}", "REAL", exact_identifier_match or exact_title_match or exact_entity_reference_match))
     return tuple(matches)
+
+
+def _real_expedient_match_score(
+    *,
+    exact_identifier_match: bool,
+    exact_title_match: bool,
+    exact_phrase_match: bool,
+    exact_token_match: bool,
+    full_text_match: bool,
+    compact_match: bool,
+    contextual_match: bool,
+    root_match: bool,
+) -> float:
+    """Rank direct citizen readings ahead of broader contextual matches."""
+    if exact_identifier_match or exact_title_match:
+        return 1.10
+    if exact_phrase_match:
+        return 1.05
+    if exact_token_match:
+        return 1.00
+    if full_text_match or compact_match:
+        return 0.98
+    if contextual_match:
+        return 0.96
+    if root_match:
+        return 0.94
+    raise ValueError("a real-expedient score requires a confirmed match")
 
 
 def _merge_candidate(

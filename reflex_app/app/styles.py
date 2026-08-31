@@ -893,6 +893,9 @@ style = {
     ".tab-grid": {"width": "100%"},
     ".metrics-grid": {"width": "100%"},
     ".responsive-grid": {"width": "100%"},
+    ".search-results-grid": {"width": "100%"},
+    ".search-guided-results-grid": {"width": "100%"},
+    ".search-result-card": {"width": "100%", "min_width": "0"},
     ".horizontal-scroll": {"overflow_x": "auto", "width": "100%"},
     ".source-trace-scroll": {"overflow_x": "auto"},
     ".source-trace-strip": {"min_width": "fit-content"},
@@ -1193,8 +1196,14 @@ style = {
         ".topic-context-rail": {"display": "none"},
         ".topic-source-panel": {"position": "static", "max_height": "72vh"},
         ".footer-grid": {"grid_template_columns": "1fr"},
+        ".search-results-grid": {"grid_template_columns": "repeat(2, minmax(0, 1fr)) !important"},
+        ".search-guided-results-grid": {"grid_template_columns": "1fr !important"},
         ".topic-evidence-grid": {"grid_template_columns": "1fr"},
         ".reference-strip": {"grid_template_columns": "1fr"},
+    },
+    "@media (max-width: 640px)": {
+        ".search-results-grid": {"grid_template_columns": "1fr !important"},
+        ".search-guided-results-grid": {"grid_template_columns": "1fr !important"},
     },
 }
 

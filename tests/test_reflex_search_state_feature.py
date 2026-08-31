@@ -34,6 +34,17 @@ SEARCH_FIELDS = {
     "selected_guided_category_href",
     "selected_guided_category_path",
     "guided_option_rows",
+    "guided_question_active",
+    "manual_result_active",
+    "guided_journey_title",
+    "guided_journey_description",
+    "guided_journey_summary",
+    "guided_journey_scope_copy",
+    "guided_journey_count_copy",
+    "guided_journey_status",
+    "guided_journey_entity_rows",
+    "guided_journey_expedient_rows",
+    "public_expedient_rows",
     "search_error",
 }
 
@@ -93,7 +104,15 @@ def test_search_events_and_results_preserve_service_shape(monkeypatch) -> None:
     assert state.results == state.workspace_matches
     assert state.results[0]["canonical_entity_id"] == "canonical-1"
     assert state.results[0]["canonical_investigation_href"] == "/investigation?id=canonical-1"
-    assert state.results[0]["state_graph_badges_text"] == "Conexiones disponibles: compras | reuniones | eventos"
+    connections_copy = state.results[0]["state_graph_badges_text"]
+    assert connections_copy == "Información relacionada: Compras | Reuniones"
+    assert "Información relacionada" in connections_copy
+    assert "Compras" in connections_copy
+    assert "Reuniones" in connections_copy
+    assert "Conexiones disponibles" not in connections_copy
+    assert "eventos" not in connections_copy.lower()
+    assert "undefined" not in connections_copy.lower()
+    assert "none" not in connections_copy.lower()
 
 
 def test_guided_filters_loading_and_error_state(monkeypatch) -> None:
@@ -115,6 +134,7 @@ def test_guided_filters_loading_and_error_state(monkeypatch) -> None:
         selected_guided_category_id="",
         _load_guided_rows=lambda: None,
         _load_collection_counts=lambda: None,
+        _load_public_expedients=lambda: None,
         _select_category_row=lambda row: None,
     )
 

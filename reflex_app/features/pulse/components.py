@@ -29,3 +29,17 @@ def home_pulse_card(row: dict) -> rx.Component:
         ),
         class_name="current-topic-card home-pulse-card topic-card-document",
     )
+
+
+def featured_expedient_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text("Expediente público", class_name="badge badge-teal"),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["question"], class_name="muted small"),
+        rx.button(
+            "Abrir expediente",
+            on_click=rx.redirect(f"/laboratory/expedient?id={row['id']}"),
+            class_name="button button-secondary",
+        ),
+        class_name="card public-demo-card",
+    )

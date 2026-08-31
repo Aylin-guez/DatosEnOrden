@@ -13,6 +13,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 
@@ -24,6 +25,7 @@ QA_DATABASE_NAME = "datosenorden_pytest_goldenqa"
 QA_DATABASE_PORT = 55432
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EPHEMERAL_ROOT = PROJECT_ROOT / "data" / "tmp" / "ephemeral_postgres"
+POSTGRES_UNIX_SOCKET_PATH_MAX_BYTES = 107
 
 
 @dataclass(frozen=True)
@@ -59,6 +61,7 @@ def assert_isolated_test_database(test_url: str, runtime_url: str) -> None:
 class EphemeralPostgres:
     root: Path
     data_dir: Path
+    socket_dir: Path | None
     port: int
     database: str
     admin_url: str
@@ -83,6 +86,7 @@ class EphemeralPostgres:
         data_dir = root / "data"
         database = f"{TEST_DATABASE_PREFIX}{os.getpid()}_{uuid.uuid4().hex[:8]}"
         process: subprocess.Popen[str] | None = None
+        socket_dir: Path | None = None
         try:
             initdb_result = subprocess.run([
                 str(initdb),
@@ -102,7 +106,10 @@ class EphemeralPostgres:
                     "temporary PostgreSQL initdb failed before initialization: "
                     f"{initdb_result.stderr.strip()}"
                 )
-            process = _start_postgres(postgres, data_dir, port, root / "postgres.log")
+            socket_dir = _create_socket_dir()
+            process = _start_postgres(
+                postgres, data_dir, port, socket_dir, root / "postgres.log"
+            )
             _wait_until_ready(pg_isready, port)
             username = "datosenorden_test"
             _run([
@@ -122,10 +129,14 @@ class EphemeralPostgres:
             test_url = f"postgresql+psycopg://{username}@127.0.0.1:{port}/{database}"
             assert_isolated_test_database(test_url, runtime_url)
             _verify_connection(psql, port, username, database)
-            return cls(root, data_dir, port, database, admin_url, test_url, postgres, pg_ctl, process)
+            return cls(
+                root, data_dir, socket_dir, port, database, admin_url, test_url,
+                postgres, pg_ctl, process,
+            )
         except Exception:
             _stop_owned_cluster(pg_ctl, data_dir, process)
             shutil.rmtree(root, ignore_errors=True)
+            _remove_owned_socket_dir(socket_dir)
             raise
 
     def migrate_to_head(self) -> None:
@@ -147,6 +158,7 @@ class EphemeralPostgres:
     def close(self) -> None:
         _stop_owned_cluster(self.pg_ctl, self.data_dir, self.process)
         shutil.rmtree(self.root, ignore_errors=True)
+        _remove_owned_socket_dir(self.socket_dir)
 
 
 def _available_port() -> int:
@@ -192,14 +204,37 @@ def _is_initialized_cluster(data_dir: Path) -> bool:
     )
 
 
+def _create_socket_dir() -> Path | None:
+    """Create a private, short Unix socket directory for a single test cluster."""
+    if os.name == "nt":
+        return None
+    socket_dir = Path(tempfile.mkdtemp(prefix="deo-pg-"))
+    try:
+        socket_dir.chmod(0o700)
+        socket_path = socket_dir / ".s.PGSQL.65535"
+        if len(os.fsencode(socket_path)) > POSTGRES_UNIX_SOCKET_PATH_MAX_BYTES:
+            raise RuntimeError("temporary PostgreSQL socket path exceeds the Unix limit")
+        return socket_dir
+    except Exception:
+        _remove_owned_socket_dir(socket_dir)
+        raise
+
+
+def _remove_owned_socket_dir(socket_dir: Path | None) -> None:
+    """Best-effort cleanup for the unique directory created by this harness only."""
+    if socket_dir is not None:
+        shutil.rmtree(socket_dir, ignore_errors=True)
+
+
 def _start_postgres(
-    postgres: Path, data_dir: Path, port: int, log_path: Path
+    postgres: Path, data_dir: Path, port: int, socket_dir: Path | None, log_path: Path
 ) -> subprocess.Popen[str]:
     """Start an owned temporary server without pg_ctl's restricted-token wrapper."""
+    command = _postgres_command(postgres, data_dir, port, socket_dir)
     log = log_path.open("w", encoding="utf-8")
     try:
         process = subprocess.Popen(
-            [str(postgres), "-D", str(data_dir), "-p", str(port), "-h", "127.0.0.1"],
+            command,
             cwd=PROJECT_ROOT,
             stdout=log,
             stderr=subprocess.STDOUT,
@@ -208,6 +243,15 @@ def _start_postgres(
     finally:
         log.close()
     return process
+
+
+def _postgres_command(
+    postgres: Path, data_dir: Path, port: int, socket_dir: Path | None
+) -> list[str]:
+    command = [str(postgres), "-D", str(data_dir), "-p", str(port), "-h", "127.0.0.1"]
+    if socket_dir is not None:
+        command.extend(["-k", str(socket_dir)])
+    return command
 
 
 def _verify_connection(psql: Path, port: int, username: str, database: str) -> None:

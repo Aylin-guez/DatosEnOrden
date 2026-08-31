@@ -83,6 +83,11 @@ def test_pulse_state_loads_the_public_preview_from_its_owner(monkeypatch) -> Non
     )
     monkeypatch.setattr(pulse_state, "get_demo_status", lambda: {"missing": [{"label": "Carga lista"}]})
     monkeypatch.setattr(pulse_state, "get_current_topics", lambda limit=3: [{"title": "Tema", "updated_at": "2026-04-12"}])
+    monkeypatch.setattr(
+        pulse_state,
+        "list_public_expedient_catalog",
+        lambda: [{"id": "EXP-REAL-1", "provenance_class": "REAL", "updated_at": "2026-08-26"}],
+    )
 
     result = PulseState.load_home.fn(state)
 
@@ -90,6 +95,7 @@ def test_pulse_state_loads_the_public_preview_from_its_owner(monkeypatch) -> Non
     assert state.connection_rows[0]["datasets_text"] == "ChileCompra | Lobby"
     assert state.current_topic_rows[0]["updated_at"] == "12-04-2026"
     assert state.demo_missing == ["Carga lista"]
+    assert state.featured_expedient_rows[0]["id"] == "EXP-REAL-1"
     assert (state.total_datasets, state.active_datasets, state.total_claims, state.total_relationships) == (1, 1, 2, 3)
     source = inspect.getsource(PulseState.load_home.fn)
     assert "AppState.clear_global_error" in source
@@ -332,7 +338,7 @@ def test_search_feature_exposes_guided_entry_and_state_graph_badges() -> None:
     assert "run_workspace_search" in inspect.getsource(SearchState.run_search.fn)
     assert search_service.state_graph_badges_for_match(
         {"datasets": ["ChileCompra", "InfoLobby"], "entity_type": "Organismo", "relationship_count": 1, "evidence_count": 1}
-    ) == "Conexiones disponibles: compras | reuniones | eventos"
+    ) == "Información relacionada: Compras | Reuniones"
 
 
 def test_document_reader_components_and_state_keep_pdf_fallback_behavior() -> None:

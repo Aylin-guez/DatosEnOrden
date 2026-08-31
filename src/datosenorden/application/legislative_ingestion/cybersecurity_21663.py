@@ -430,7 +430,7 @@ def cybersecurity_citizen_context() -> CitizenProjectionContext:
             "Presidencia de la República",
             "Senado de Chile",
             "Cámara de Diputadas y Diputados",
-            "Agencia Nacional de Ciberseguridad",
+            "Agencia Nacional de Ciberseguridad (ANCI)",
             "Tribunal Constitucional",
         ),
         documents=(

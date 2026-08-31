@@ -23,6 +23,8 @@ def public_guided_questions(session: Session) -> list[dict]:
     rows = []
     for row in build_guided_questions():
         item = dict(row)
+        if item.get("interaction_type") == "CONTEXTUAL":
+            continue
         example = _first_title(session, _QUESTION_COLLECTIONS.get(str(item.get("id", ""))))
         if example:
             item["example_query"] = example

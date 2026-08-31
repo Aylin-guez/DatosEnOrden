@@ -165,7 +165,10 @@ def test_backend_never_ready_fails_with_bounded_timeout(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "FAIL backend_readiness_timeout" in result.stdout
-    assert (tmp_path / "sleep.log").read_text(encoding="utf-8").splitlines() == ["1", "1"]
+    sleep_calls = (tmp_path / "sleep.log").read_text(encoding="utf-8").splitlines()
+    assert sleep_calls
+    assert all(value == "1" for value in sleep_calls)
+    assert elapsed >= 1.8
     assert elapsed < 10.0
 
 

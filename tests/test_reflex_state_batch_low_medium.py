@@ -185,6 +185,7 @@ def test_extracted_state_defaults_and_events_match_domain_contracts() -> None:
             "explore_discovery_case",
             "explore_guided_question",
             "explore_another_question",
+            "return_to_explore",
             "select_guided_category",
             "select_result",
             "setvar",

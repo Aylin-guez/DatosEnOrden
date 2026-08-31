@@ -6,6 +6,7 @@ def get_guided_questions() -> dict[str, object]:
         "questions": [
             {
                 "id": "who_sells_to_this_body",
+                "interaction_type": "CONTEXTUAL",
                 "title": "¿Quién vende a este organismo?",
                 "description": "Explora proveedores y compras públicas asociadas a una entidad.",
                 "concepts": ["Organismo", "Proveedor", "Contrato"],
@@ -17,6 +18,7 @@ def get_guided_questions() -> dict[str, object]:
             },
             {
                 "id": "which_suppliers_appear",
+                "interaction_type": "DISCOVERY",
                 "title": "¿Qué proveedores aparecen?",
                 "description": "Revisa empresas conectadas con compras públicas o expedientes abiertos.",
                 "concepts": ["Proveedor", "Empresa", "Contrato"],
@@ -28,6 +30,7 @@ def get_guided_questions() -> dict[str, object]:
             },
             {
                 "id": "which_authorities_appear",
+                "interaction_type": "DISCOVERY",
                 "title": "¿Qué autoridades aparecen?",
                 "description": "Explora cargos públicos, nombramientos y periodos electorales.",
                 "concepts": ["Persona", "Cargo Público", "Nombramiento"],
@@ -39,6 +42,7 @@ def get_guided_questions() -> dict[str, object]:
             },
             {
                 "id": "which_official_publications_exist",
+                "interaction_type": "DOCUMENTAL",
                 "title": "¿Qué publicaciones oficiales existen?",
                 "description": "Revisa nombramientos, renuncias y actos administrativos.",
                 "concepts": ["Publicación oficial", "Decreto", "Nombramiento", "Renuncia"],
@@ -50,6 +54,7 @@ def get_guided_questions() -> dict[str, object]:
             },
             {
                 "id": "which_meetings_were_recorded",
+                "interaction_type": "FACTUAL",
                 "title": "¿Qué reuniones fueron registradas?",
                 "description": "Explora reuniones de lobby y sus contrapartes visibles.",
                 "concepts": ["Reunión", "Persona", "Organismo"],
@@ -61,6 +66,7 @@ def get_guided_questions() -> dict[str, object]:
             },
             {
                 "id": "which_related_companies_exist",
+                "interaction_type": "DISCOVERY",
                 "title": "¿Qué empresas relacionadas existen?",
                 "description": "Busca sociedades, representantes y socios vinculados a una empresa.",
                 "concepts": ["Empresa", "Persona", "Representante", "Socio"],

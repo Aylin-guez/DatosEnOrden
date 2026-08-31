@@ -18,7 +18,8 @@ def test_public_guidance_prefers_real_collection_titles(monkeypatch) -> None:
     questions = public_explore.public_guided_questions(object())
     categories = public_explore.public_guided_categories(object())
 
-    assert questions[0]["example_query"] == "Organismo real"
+    assert questions[0]["example_query"] == "Empresa real"
+    assert all(row["id"] != "who_sells_to_this_body" for row in questions)
     assert questions[0]["example_authority"] == "REAL"
     assert next(row for row in categories if row["id"] == "procurement")["examples"] == ["Orden real"]
     assert all("Servicio de Salud Arauco" not in str(row) for row in [*questions, *categories])

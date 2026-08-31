@@ -13,7 +13,7 @@ from reflex.page import DECORATED_PAGES
 
 from reflex_app.features.public_record.state import PublicRecordState
 from reflex_app.layouts.footer import footer_text_link
-from reflex_app.layouts.shell import app_footer, app_sidebar
+from reflex_app.layouts.shell import app_footer, app_sidebar, shell
 from reflex_app.layouts.page import _page_class
 from reflex_app.constants.routes import PAGE_HOME, PAGE_KNOWLEDGE, PAGE_SEARCH, PAGE_TOPIC
 from reflex_app.navigation.config import PRIMARY_NAVIGATION_ITEMS
@@ -254,7 +254,7 @@ def test_footer_links_scroll_control_and_page_classes_are_preserved() -> None:
         '"Explorar", "/search"',
         '"Sugerir una fuente", SUPPORT_SOURCE_SUGGESTION_URL',
         '"Acerca de", "/project"',
-        '"Studio", "/studio"',
+        '"Conocer Studio", "/studio"',
         '"Contacto comercial", STUDIO_CONVERSATION_URL',
     ]
     assert [footer_source.index(call) for call in footer_calls] == sorted(footer_source.index(call) for call in footer_calls)
@@ -266,8 +266,21 @@ def test_footer_links_scroll_control_and_page_classes_are_preserved() -> None:
     scroll_render = scroll_top_control().render()
     scroll_props = str(scroll_render)
     assert "scroll-top-button" in scroll_props
+    assert "data-deo-scroll-top" in scroll_props
+    assert "data-deo-scroll-top-owner" in scroll_props
+    assert "MutationObserver" in inspect.getsource(scroll_top_control)
     assert "window.__deoScrollTopReady" in scroll_props
     assert "window.scrollTo({ top: 0, behavior: 'smooth' })" in inspect.getsource(scroll_top_control)
+
+
+def test_scroll_top_has_one_authoritative_shell_owner_and_idempotent_route_cleanup() -> None:
+    shell_source = inspect.getsource(shell)
+    controls_source = inspect.getsource(scroll_top_control)
+
+    assert shell_source.count("scroll_top_control()") == 1
+    assert "data-deo-scroll-top-owner" in controls_source
+    assert "keepSingleScrollTopButton" in controls_source
+    assert "MutationObserver" in controls_source
 
     assert _page_class(PAGE_HOME) == "page-home"
     assert _page_class(PAGE_TOPIC) == "page-topic"

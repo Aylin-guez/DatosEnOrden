@@ -198,6 +198,20 @@ def guided_discovery_panel() -> rx.Component:
             subtitle="Consultas concretas que exploran datos locales.",
         ),
         page_section(
+            "Expedientes disponibles",
+            rx.cond(
+                SearchState.public_expedient_rows,
+                rx.grid(
+                    rx.foreach(SearchState.public_expedient_rows, public_expedient_card),
+                    columns="2",
+                    spacing="3",
+                    class_name="responsive-grid",
+                ),
+                rx.text("No hay expedientes públicos disponibles todavía.", class_name="muted small"),
+            ),
+            subtitle="Investigaciones públicas disponibles para leer directamente.",
+        ),
+        page_section(
             "Explora por categoria",
             rx.hstack(
                 rx.foreach(SearchState.guided_category_rows, guided_category_button),
@@ -210,6 +224,20 @@ def guided_discovery_panel() -> rx.Component:
         ),
         spacing="4",
         align="stretch",
+    )
+
+
+def public_expedient_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text("Expediente público", class_name="badge badge-teal"),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["question"], class_name="muted small"),
+        rx.button(
+            "Abrir expediente",
+            on_click=rx.redirect(f"/laboratory/expedient?id={row['id']}"),
+            class_name="button button-secondary",
+        ),
+        class_name="card example-card discovery-card",
     )
 
 
@@ -240,50 +268,136 @@ def search_empty_state() -> rx.Component:
 def workspace_match_card(row: dict) -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.text(row.get("entity_type_label", _human_label(row.get("entity_type", ""))), class_name=_entity_badge_class(str(row.get("entity_type", "")))),
+            rx.text(row["entity_type_label"], class_name=_entity_badge_class("entity")),
             rx.text(row["source_hint"], class_name="muted small"),
             justify="between",
             align="center",
         ),
         rx.text(row["entity_name"], class_name="card-title"),
         rx.cond(
-            row.get("classification", "REAL") == "DEMO",
+            row["classification"] == "DEMO",
             rx.text("DEMO", class_name="badge badge-amber"),
         ),
         rx.cond(
-            row.get("is_record", False),
+            row["is_record"],
             rx.text("Registro especifico", class_name="badge badge-amber"),
         ),
         rx.cond(
-            row.get("related_label", "") != "",
-            rx.text(row.get("related_label", ""), class_name="muted small"),
+            row["related_label"] != "",
+            rx.text(row["related_label"], class_name="muted small"),
         ),
         rx.text(row["datasets_text"], class_name="muted small"),
-        rx.text(row.get("match_reason", "Coincide con registros locales publicados."), class_name="source-fact"),
-        rx.text(row.get("coverage_summary", "Cobertura disponible pendiente de clasificacion."), class_name="muted small"),
-        rx.text(row.get("source_contribution", "Fuentes contribuyentes visibles en el expediente o documento."), class_name="muted small"),
+        rx.text(row["match_reason"], class_name="source-fact"),
+        rx.text(row["coverage_summary"], class_name="muted small"),
+        rx.text(row["source_contribution"], class_name="muted small"),
         rx.cond(
-            row.get("state_graph_badges_text", "") != "",
-            rx.text(row.get("state_graph_badges_text", ""), class_name="source-fact evidence-trust"),
+            row["state_graph_badges_text"] != "",
+            rx.text(row["state_graph_badges_text"], class_name="source-fact evidence-trust"),
         ),
         rx.hstack(
-            rx.text(f"Evidencia: {row['evidence_count']}", class_name="mini-pill"),
-            rx.text(f"Relaciones: {row['relationship_count']}", class_name="mini-pill"),
+            rx.cond(row["evidence_label"] != "", rx.text(row["evidence_label"], class_name="mini-pill")),
+            rx.cond(row["relationship_label"] != "", rx.text(row["relationship_label"], class_name="mini-pill")),
             spacing="2",
             wrap="wrap",
         ),
         rx.hstack(
             rx.cond(
-                row.get("action_href", "") != "",
-                rx.button(row.get("action_label", "Abrir"), on_click=rx.redirect(row["action_href"]), class_name="button button-secondary"),
-                rx.button(row.get("action_label", "Ver informacion disponible"), on_click=rx.redirect(row["canonical_investigation_href"]), class_name="button button-secondary"),
+                row["action_href"] != "",
+                rx.button(row["action_label"], on_click=rx.redirect(row["action_href"]), class_name="button button-secondary"),
+                rx.button(row["action_label"], on_click=rx.redirect(row["canonical_investigation_href"]), class_name="button button-secondary"),
             ),
             rx.cond(
-                row.get("is_record", False),
+                row["is_record"],
                 rx.text("Ver registro: pendiente", class_name="mini-pill"),
             ),
             spacing="2",
             wrap="wrap",
         ),
         class_name="card example-card search-result-card",
+    )
+
+
+def guided_journey_expedient_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text("Expediente disponible", class_name="badge badge-teal"),
+        rx.text(row["entity_name"], class_name="card-title"),
+        rx.text("Lectura ciudadana disponible.", class_name="muted small"),
+        rx.text(row["source_contribution"], class_name="source-fact"),
+        rx.button("Abrir expediente", on_click=rx.redirect(row["action_href"]), class_name="button button-secondary"),
+        class_name="card example-card discovery-card",
+    )
+
+
+def guided_journey_entity_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.text(row["entity_type_label"], class_name="badge badge-purple"),
+        rx.text(row["entity_name"], class_name="card-title"),
+        rx.text("Aparece en información pública incorporada para responder esta pregunta.", class_name="muted small"),
+        rx.text(row["source_contribution"], class_name="source-fact"),
+        rx.cond(
+            row["related_expedient_count_text"] != "",
+            rx.text(row["related_expedient_count_text"], class_name="source-fact evidence-trust"),
+        ),
+        rx.cond(
+            row["canonical_investigation_href"] != "/investigation",
+            rx.button("Ver información disponible", on_click=rx.redirect(row["canonical_investigation_href"]), class_name="button button-secondary"),
+        ),
+        class_name="card example-card discovery-card",
+    )
+
+
+def guided_journey_panel() -> rx.Component:
+    return rx.box(
+        page_section(
+            "Respuesta guiada",
+            rx.vstack(
+                rx.button("← Volver a Explorar", on_click=SearchState.return_to_explore, class_name="button button-secondary"),
+                rx.text(SearchState.guided_journey_title, class_name="title"),
+                rx.text(SearchState.guided_journey_description, class_name="subtitle"),
+                rx.cond(
+                    SearchState.guided_journey_status == "EMPTY",
+                    rx.vstack(
+                        rx.text(SearchState.guided_journey_summary, class_name="source-fact"),
+                        rx.text("Esto no significa que no existan registros; sólo que DatosEnOrden aún no cuenta con información suficiente para responder esta pregunta.", class_name="muted small"),
+                        spacing="2",
+                        align="stretch",
+                    ),
+                    rx.vstack(
+                        rx.text(SearchState.guided_journey_summary, class_name="muted small"),
+                        rx.text(SearchState.guided_journey_count_copy, class_name="source-fact"),
+                        rx.text(SearchState.guided_journey_scope_copy, class_name="muted small"),
+                        spacing="2",
+                        align="stretch",
+                    ),
+                ),
+                rx.cond(
+                    SearchState.guided_journey_entity_rows,
+                    rx.box(
+                        rx.text("Resultados", class_name="section-heading"),
+                        rx.grid(
+                            rx.foreach(SearchState.guided_journey_entity_rows, guided_journey_entity_card),
+                            columns="2",
+                            spacing="3",
+                            class_name="responsive-grid search-guided-results-grid",
+                        ),
+                    ),
+                ),
+                rx.cond(
+                    SearchState.guided_journey_expedient_rows,
+                    rx.box(
+                        rx.text("Expedientes relacionados", class_name="section-heading"),
+                        rx.grid(
+                            rx.foreach(SearchState.guided_journey_expedient_rows, guided_journey_expedient_card),
+                            columns="2",
+                            spacing="3",
+                            class_name="responsive-grid search-guided-results-grid",
+                        ),
+                    ),
+                ),
+                spacing="3",
+                align="stretch",
+            ),
+            subtitle="Los resultados describen información incorporada en DatosEnOrden, no el universo completo de Chile.",
+        ),
+        id="guided-journey",
     )

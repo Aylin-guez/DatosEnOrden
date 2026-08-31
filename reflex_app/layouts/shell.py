@@ -116,7 +116,7 @@ def app_footer() -> rx.Component:
             rx.box(
                 rx.text("DATOSENORDEN STUDIO", class_name="footer-column-title"),
                 rx.text("Herramientas para equipos que necesitan expedientes, conectores y evidencia verificable.", class_name="footer-copy footer-column-copy"),
-                footer_text_link("", "Studio", "/studio"),
+                footer_text_link("", "Conocer Studio", "/studio"),
                 footer_text_link("✉", "Contacto comercial", STUDIO_CONVERSATION_URL),
                 class_name="footer-column",
             ),

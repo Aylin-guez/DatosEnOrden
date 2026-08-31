@@ -8,6 +8,7 @@ from datosenorden.web.app_services import (
     get_dataset_summary,
     get_demo_status,
 )
+from datosenorden.application.real_expedient.public_facade import list_public_expedient_catalog
 from reflex_app.app.state import AppState
 from reflex_app.helpers.document import _format_chilean_date
 from reflex_app.serialization.json_safe import _json_list
@@ -17,6 +18,7 @@ class PulseState(rx.State):
     dataset_rows: list[dict] = []
     connection_rows: list[dict] = []
     current_topic_rows: list[dict] = []
+    featured_expedient_rows: list[dict] = []
     demo_missing: list[str] = []
     total_datasets: int = 0
     active_datasets: int = 0
@@ -42,6 +44,15 @@ class PulseState(rx.State):
                 }
                 for row in _json_list(get_current_topics(limit=3))
             ]
+            real_expedients = [
+                row for row in list_public_expedient_catalog()
+                if row.get("provenance_class") == "REAL"
+            ]
+            self.featured_expedient_rows = sorted(
+                real_expedients,
+                key=lambda row: (str(row.get("updated_at", "")), str(row.get("id", ""))),
+                reverse=True,
+            )[:4]
             demo_status = get_demo_status()
             self.demo_missing = [item.get("label", "") for item in demo_status.get("missing", [])]
             self.total_datasets = int(totals.get("datasets", 0))

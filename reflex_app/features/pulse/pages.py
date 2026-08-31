@@ -3,7 +3,7 @@ from __future__ import annotations
 import reflex as rx
 
 from reflex_app.constants.routes import PAGE_HOME
-from reflex_app.features.pulse.components import home_pulse_card
+from reflex_app.features.pulse.components import featured_expedient_card, home_pulse_card
 from reflex_app.features.pulse.state import PulseState
 from reflex_app.features.search.state import SearchState
 from reflex_app.layouts.page import page_section
@@ -78,27 +78,19 @@ def home() -> rx.Component:
             subtitle="Cada tarjeta indica que cambio, que fuente lo sostiene y que entidad, documento o lectura permite abrir.",
         ),
         page_section(
-            "Lecturas e investigaciones destacadas",
-            rx.grid(
-                rx.box(
-                    rx.text("Proyecto de ley", class_name="badge badge-teal"),
-                    rx.text("Tramitación del proyecto de Inteligencia Económica", class_name="card-title"),
-                    rx.text("¿Qué cambió durante la tramitación del proyecto de Inteligencia Económica y qué sabemos sobre la discusión del secreto bancario?", class_name="muted small"),
-                    rx.button("Abrir expediente", on_click=rx.redirect("/laboratory/expedient?id=EXP-REAL-LEGISLATIVE-15975-25"), class_name="button button-secondary"),
-                    class_name="card public-demo-card",
+            "Lecturas destacadas",
+            rx.cond(
+                PulseState.featured_expedient_rows,
+                rx.grid(
+                    rx.foreach(PulseState.featured_expedient_rows, featured_expedient_card),
+                    columns="2",
+                    spacing="3",
+                    class_name="responsive-grid",
                 ),
-                rx.box(
-                    rx.text("Documento", class_name="badge badge-purple"),
-                    rx.text("Ficha de documento fuente", class_name="card-title"),
-                    rx.text("Lectura contextual con documento original, fragmentos, evidencias y entidades relacionadas cuando el modelo lo permite.", class_name="muted small"),
-                    rx.button("Ver documento", on_click=rx.redirect("/official-document"), class_name="button button-secondary"),
-                    class_name="card public-demo-card",
-                ),
-                columns="2",
-                spacing="3",
-                class_name="responsive-grid",
+                rx.text("Todavía no hay expedientes públicos para destacar.", class_name="muted small"),
             ),
-            subtitle="Lecturas públicas disponibles; los fixtures de compatibilidad no son el centro del producto.",
+            rx.link("Ver todos los expedientes", href="/laboratory", class_name="document-inline-link"),
+            subtitle="Una selección actualizada desde el catálogo de expedientes públicos.",
         ),
         page_section(
             "Como funciona",

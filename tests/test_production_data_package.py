@@ -24,6 +24,7 @@ from datosenorden.application.data_release.contract import (
     package_id,
 )
 from datosenorden.application.data_release.importer import _database_row_matches, verify_package
+from tests.qa_artifacts import certified_data_package_path
 
 
 def _first_package() -> tuple[Path, str]:
@@ -76,7 +77,7 @@ def test_logical_hash_changes_for_semantic_expedient_content(table: str, field: 
 
 
 def test_verify_package_rejects_physically_tampered_jsonl(tmp_path: Path) -> None:
-    source = Path("private/releases/data/deo-prod-data-0001-81dc47c722518efb.zip")
+    source = certified_data_package_path()
     target = tmp_path / "tampered.zip"
     with zipfile.ZipFile(source) as archive, zipfile.ZipFile(target, "w") as altered:
         for info in archive.infolist():

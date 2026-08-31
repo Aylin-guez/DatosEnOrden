@@ -33,12 +33,13 @@ def test_public_components_do_not_stringify_reflex_conditional_state() -> None:
         assert "ObjectVar" not in source
 
 
-def test_guided_questions_execute_the_existing_search_route_without_a_second_click() -> None:
+def test_guided_questions_open_a_deterministic_citizen_journey_without_reusing_manual_search() -> None:
     source = _source("reflex_app/features/search/state.py")
     method = source[source.index("def explore_guided_question"):source.index("def select_guided_category")]
-    assert "self.run_search()" in method
-    assert "search-results" in method
-    assert "return rx.redirect(_search_href(query))" not in method
+    assert "_guided_href(question_id, self.query)" in method
+    assert "self.query = query" not in method
+    assert "self.run_search()" not in method
+    assert "return rx.redirect" in method
 
 
 def test_home_pulse_events_open_their_known_context_directly() -> None:
@@ -79,7 +80,8 @@ def test_guided_result_replaces_the_initial_question_block_until_reset() -> None
     assert "SearchState.guided_question_active" in pages
     assert "Explorar otra pregunta" in pages
     assert "def explore_another_question" in state
-    assert "self.run_search()" in state
+    assert "guided_journey_panel()" in pages
+    assert "_reset_guided_journey(self)" in state
 
 
 def test_collection_counts_and_human_labels_are_projection_backed() -> None:
@@ -136,4 +138,4 @@ def test_sources_prioritizes_persisted_real_coverage_before_the_technical_catalo
 def test_workspace_results_mark_demo_content_explicitly() -> None:
     source = _source("src/datosenorden/application/search/service.py")
     assert '"Contenido DEMO (separado de datos incorporados)"' in source
-    assert '"classification": str(row.get("classification", "REAL"))' in source
+    assert '"classification": _public_text(row.get("classification"), "REAL")' in source

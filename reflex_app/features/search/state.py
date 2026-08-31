@@ -5,13 +5,38 @@ import reflex as rx
 from datosenorden.application.public_deployment.sanitization import public_error
 from datosenorden.application.public_collections import public_collection_counts
 from datosenorden.application.public_explore import public_guided_categories, public_guided_questions
+from datosenorden.application.real_expedient.public_facade import list_public_expedient_catalog
 from datosenorden.db.session import SessionLocal
 
 from datosenorden.application.search.service import (
+    build_guided_journey,
     load_guided_options,
     run_workspace_search,
 )
 from reflex_app.helpers.routing import _investigation_href, _router_query_value, _search_href
+
+
+def _guided_href(question_id: str, manual_query: str = "") -> str:
+    from urllib.parse import quote_plus
+
+    identifier = str(question_id or "").strip()
+    if not identifier:
+        return "/search"
+    query = str(manual_query or "").strip()
+    suffix = f"&q={quote_plus(query)}" if query else ""
+    return f"/search?guided={quote_plus(identifier)}{suffix}"
+
+
+def _reset_guided_journey(state: object) -> None:
+    """Reset typed guided-response fields on Reflex state or lightweight test state."""
+    state.guided_journey_title = ""
+    state.guided_journey_description = ""
+    state.guided_journey_summary = ""
+    state.guided_journey_scope_copy = ""
+    state.guided_journey_count_copy = ""
+    state.guided_journey_status = ""
+    state.guided_journey_entity_rows = []
+    state.guided_journey_expedient_rows = []
 
 
 class SearchState(rx.State):
@@ -32,7 +57,17 @@ class SearchState(rx.State):
     selected_guided_category_path: str = ""
     guided_option_rows: list[dict] = []
     guided_question_active: bool = False
+    manual_result_active: bool = False
+    guided_journey_title: str = ""
+    guided_journey_description: str = ""
+    guided_journey_summary: str = ""
+    guided_journey_scope_copy: str = ""
+    guided_journey_count_copy: str = ""
+    guided_journey_status: str = ""
+    guided_journey_entity_rows: list[dict] = []
+    guided_journey_expedient_rows: list[dict] = []
     investigation_topic_rows: list[dict] = []
+    public_expedient_rows: list[dict] = []
     search_error: str = ""
     search_error_code: str = ""
 
@@ -43,9 +78,13 @@ class SearchState(rx.State):
 
     def load_discover(self) -> None:
         self.search_error = ""
+        self.guided_question_active = False
+        self.manual_result_active = False
+        _reset_guided_journey(self)
         try:
             self._load_guided_rows()
             self._load_collection_counts()
+            self._load_public_expedients()
             if self.guided_category_rows and not self.selected_guided_category_id:
                 self._select_category_row(self.guided_category_rows[0])
         except Exception as exc:  # noqa: BLE001
@@ -56,14 +95,25 @@ class SearchState(rx.State):
         self.results = []
         self.workspace_matches = []
         self.guided_search_title = ""
+        self.guided_question_active = False
+        self.manual_result_active = False
+        _reset_guided_journey(self)
         self._clear_selected_category()
         try:
             self._load_guided_rows()
             self._load_collection_counts()
+            self._load_public_expedients()
+            guided_id = _router_query_value(self.router, "guided")
             query_value = _router_query_value(self.router, "q")
-            if query_value:
+            if guided_id:
+                row = next((item for item in self.guided_question_rows if item.get("id") == guided_id), {})
+                if row:
+                    self._activate_guided_question(row)
+                if query_value:
+                    self.query = query_value
+            elif query_value:
                 self.query = query_value
-                self.guided_search_title = f"Alternativas para explorar: {query_value}"
+                self.manual_result_active = True
                 self.run_search()
             else:
                 self.query = ""
@@ -74,6 +124,8 @@ class SearchState(rx.State):
         self.query = value
         self.guided_search_title = ""
         self.guided_question_active = False
+        self.manual_result_active = False
+        _reset_guided_journey(self)
 
     def run_search(self) -> None:
         self.search_error = ""
@@ -92,30 +144,15 @@ class SearchState(rx.State):
         return rx.redirect(_search_href(query))
 
     def explore_guided_question(self, question_id: str, title: str, description: str, query: str):
-        self.guided_question_active = True
-        self.selected_guided_category_id = question_id
-        self.selected_guided_category_title = title
-        self.selected_guided_category_description = description
-        self.selected_guided_category_examples = [query] if query else []
-        self.selected_guided_category_sources = []
-        self.selected_guided_category_query = query
-        self.selected_guided_category_cta = "Buscar"
-        self.selected_guided_category_href = _search_href(query)
-        self.selected_guided_category_path = "Este recorrido mostrara opciones locales antes de abrir el expediente."
-        self.guided_option_rows = load_guided_options(question_id)
-        if query:
-            self.query = query
-            self.guided_search_title = f"Recorrido sugerido: {title}" if title else "Recorrido sugerido"
-            self.run_search()
-            return rx.call_script(
-                "setTimeout(() => document.getElementById('search-results')?.scrollIntoView({behavior: 'smooth', block: 'start'}), 0)"
-            )
+        _ = (title, description, query)
+        return rx.redirect(_guided_href(question_id, self.query))
 
     def explore_another_question(self) -> None:
         """Restore guided entry without discarding a manual query or its results."""
-        self.guided_question_active = False
-        self._clear_selected_category()
-        self.guided_search_title = ""
+        return rx.redirect(_search_href(self.query))
+
+    def return_to_explore(self):
+        return rx.redirect("/search")
 
     def select_guided_category(self, category_id: str) -> None:
         self.selected_guided_category_id = category_id
@@ -158,6 +195,12 @@ class SearchState(rx.State):
             rows.append(row)
         self.investigation_topic_rows = rows
 
+    def _load_public_expedients(self) -> None:
+        self.public_expedient_rows = [
+            row for row in list_public_expedient_catalog()
+            if row.get("provenance_class") == "REAL"
+        ]
+
     def _clear_selected_category(self) -> None:
         self.selected_guided_category_id = ""
         self.selected_guided_category_title = ""
@@ -169,6 +212,32 @@ class SearchState(rx.State):
         self.selected_guided_category_href = "/search"
         self.selected_guided_category_path = ""
         self.guided_option_rows = []
+
+    def _activate_guided_question(self, row: dict) -> None:
+        question_id = str(row.get("id", ""))
+        title = str(row.get("title", ""))
+        description = str(row.get("description", ""))
+        query = str(row.get("search_query", row.get("example_query", "")))
+        self.guided_question_active = True
+        self.selected_guided_category_id = question_id
+        self.selected_guided_category_title = title
+        self.selected_guided_category_description = description
+        self.selected_guided_category_examples = [query] if query else []
+        self.selected_guided_category_sources = []
+        self.selected_guided_category_query = query
+        self.selected_guided_category_cta = "Ver resultados"
+        self.selected_guided_category_href = _guided_href(question_id)
+        self.selected_guided_category_path = "Este recorrido muestra información disponible y lecturas ciudadanas relacionadas."
+        self.guided_option_rows = []
+        journey = build_guided_journey(question_id, title, description, query)
+        self.guided_journey_title = str(journey["title"])
+        self.guided_journey_description = str(journey["description"])
+        self.guided_journey_summary = str(journey["summary"])
+        self.guided_journey_scope_copy = str(journey["scope_copy"])
+        self.guided_journey_count_copy = str(journey["count_copy"])
+        self.guided_journey_status = str(journey["status"])
+        self.guided_journey_entity_rows = list(journey["entity_rows"])
+        self.guided_journey_expedient_rows = list(journey["expedient_rows"])
 
     def _select_category_row(self, row: dict) -> None:
         category_id = str(row.get("id", ""))
