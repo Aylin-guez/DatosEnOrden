@@ -37,6 +37,7 @@ from .contract import (
     sha256_file,
 )
 from .exporter import _security_scan_members
+from .semantic_integrity import PublicTextIntegrityError, validate_public_text_integrity
 
 
 @dataclass(frozen=True)
@@ -57,7 +58,12 @@ class ImportResult:
     public_metrics: dict[str, int]
 
 
-def verify_package(path: Path, *, expected_sha256: str) -> VerifiedPackage:
+def verify_package(
+    path: Path,
+    *,
+    expected_sha256: str,
+    allow_lossy_historical_recovery: bool = False,
+) -> VerifiedPackage:
     if not path.is_file():
         raise PackageIntegrityError("package file does not exist")
     if len(expected_sha256) != 64 or any(
@@ -134,12 +140,23 @@ def verify_package(path: Path, *, expected_sha256: str) -> VerifiedPackage:
         raise PackageIntegrityError("content hashes mismatch")
     if manifest["row_counts"] != {name: len(value) for name, value in sorted(rows.items())}:
         raise PackageIntegrityError("row counts mismatch")
+    if not allow_lossy_historical_recovery:
+        try:
+            validate_public_text_integrity(rows)
+        except PublicTextIntegrityError as exc:
+            raise PackageIntegrityError(f"public text integrity failed: {exc}") from exc
     identifier = manifest["package_id"]
     if not identifier.startswith(f"{PACKAGE_PREFIX}-") or not identifier.endswith(
         verified_logical_hash[:16]
     ):
         raise PackageIntegrityError("package ID is not derived from logical content")
-    return VerifiedPackage(path, archive_hash, manifest, rows)
+    return VerifiedPackage(
+        path,
+        archive_hash,
+        manifest,
+        rows,
+        semantic_integrity_verified=not allow_lossy_historical_recovery,
+    )
 
 
 def import_package(
@@ -148,6 +165,10 @@ def import_package(
     *,
     expectation: TargetExpectation,
 ) -> ImportResult:
+    if not package.semantic_integrity_verified and expectation.environment != "isolated-test":
+        raise PackageCompatibilityError(
+            "lossy historical recovery package can only target isolated-test"
+        )
     manifest = package.manifest
     _verify_code_compatibility(manifest, expectation.code_release)
     inserted = {table.name: 0 for table in TABLE_CONTRACTS}

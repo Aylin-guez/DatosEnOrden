@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 import json
 import os
 import subprocess
@@ -40,6 +41,7 @@ from datosenorden.infrastructure.real_expedient.repository import PostgresExpedi
 from datosenorden.maintenance.dataset_registry import list_datasets
 from datosenorden.maintenance.entity_explorer import list_entities
 from datosenorden.maintenance.search_workspace import search_workspace
+from tests.postgres_isolation import EphemeralPostgres
 
 
 def _first_package() -> tuple[Path, str]:
@@ -51,10 +53,12 @@ def _first_package() -> tuple[Path, str]:
 
 
 @pytest.fixture
-def postgres_url(monkeypatch: pytest.MonkeyPatch) -> str:
-    url = os.getenv("DEO_EXTERNAL_POSTGRES_URL") or os.environ["TEST_DATABASE_URL"]
-    monkeypatch.setenv("DATABASE_URL", url)
-    monkeypatch.setenv("TEST_DATABASE_URL", url)
+def postgres_url(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
+    runtime_url = os.getenv("DEO_EXTERNAL_POSTGRES_URL") or os.environ["TEST_DATABASE_URL"]
+    ephemeral = EphemeralPostgres.start(runtime_url)
+    ephemeral.migrate_to_head()
+    monkeypatch.setenv("DATABASE_URL", ephemeral.test_url)
+    monkeypatch.setenv("TEST_DATABASE_URL", ephemeral.test_url)
     import datosenorden.db.session as db_session
     from datosenorden.core.config import get_settings
 
@@ -63,7 +67,15 @@ def postgres_url(monkeypatch: pytest.MonkeyPatch) -> str:
     db_session._engine = None
     db_session._session_factory = None
     get_settings.cache_clear()
-    return url
+    try:
+        yield ephemeral.test_url
+    finally:
+        if db_session._engine is not None:
+            db_session._engine.dispose()
+        db_session._engine = None
+        db_session._session_factory = None
+        get_settings.cache_clear()
+        ephemeral.close()
 
 
 def _expected_code_release() -> str:
@@ -75,7 +87,11 @@ def test_first_package_restore_reimport_and_conflict(
     tmp_path: Path,
 ) -> None:
     path, digest = _first_package()
-    package = verify_package(path, expected_sha256=digest)
+    package = verify_package(
+        path,
+        expected_sha256=digest,
+        allow_lossy_historical_recovery=True,
+    )
     engine = create_engine(postgres_url)
     database = str(make_url(postgres_url).database)
     expected_code_release = _expected_code_release()
@@ -113,7 +129,10 @@ def test_first_package_restore_reimport_and_conflict(
                 code_release="0" * 40,
             ),
         )
-    with pytest.raises(PackageCompatibilityError, match="production confirmation"):
+    with pytest.raises(
+        PackageCompatibilityError,
+        match="lossy historical recovery package can only target isolated-test",
+    ):
         import_package(
             engine,
             package,
@@ -184,7 +203,11 @@ def test_first_package_restore_reimport_and_conflict(
         assert search["matches"]
 
     conflict_path = _conflicting_package(path, tmp_path)
-    conflict = verify_package(conflict_path, expected_sha256=sha256_file(conflict_path))
+    conflict = verify_package(
+        conflict_path,
+        expected_sha256=sha256_file(conflict_path),
+        allow_lossy_historical_recovery=True,
+    )
     with pytest.raises(PackageConflictError, match="target conflict in source"):
         import_package(engine, conflict, expectation=expectation)
     assert (

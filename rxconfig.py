@@ -26,6 +26,9 @@ config = rx.Config(
     deploy_url=PUBLIC_BASE_URL,
     api_url=API_URL,
     backend_path=BACKEND_PATH,
+    # The framework badge is intended for development and can obscure our
+    # application-owned fixed accessibility control in the public shell.
+    show_built_with_reflex=False,
     plugins=[
         rx.plugins.RadixThemesPlugin(),
         rx.plugins.SitemapPlugin(trailing_slash="never"),

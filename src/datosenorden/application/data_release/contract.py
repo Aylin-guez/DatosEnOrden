@@ -92,6 +92,7 @@ class VerifiedPackage:
     archive_sha256: str
     manifest: dict[str, Any]
     rows: dict[str, tuple[dict[str, Any], ...]]
+    semantic_integrity_verified: bool
 
 
 def canonical_value(value: Any) -> Any:

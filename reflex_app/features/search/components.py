@@ -184,6 +184,21 @@ def guided_category_panel() -> rx.Component:
 def guided_discovery_panel() -> rx.Component:
     return rx.vstack(
         page_section(
+            "Expedientes disponibles",
+            rx.cond(
+                SearchState.public_expedient_rows,
+                rx.grid(
+                    rx.foreach(SearchState.public_expedient_rows, public_expedient_card),
+                    columns="2",
+                    spacing="3",
+                    class_name="responsive-grid",
+                ),
+                rx.text("No hay expedientes públicos disponibles todavía.", class_name="muted small"),
+            ),
+            rx.link("Ver todos los expedientes", href="/laboratory", class_name="document-inline-link"),
+            subtitle="Una selección acotada; el Laboratorio ofrece el catálogo completo con su procedencia visible.",
+        ),
+        page_section(
             "Preguntas guiadas",
             rx.cond(
                 SearchState.guided_question_rows,
@@ -196,20 +211,6 @@ def guided_discovery_panel() -> rx.Component:
                 rx.text("Todavia no hay preguntas guiadas disponibles.", class_name="muted small"),
             ),
             subtitle="Consultas concretas que exploran datos locales.",
-        ),
-        page_section(
-            "Expedientes disponibles",
-            rx.cond(
-                SearchState.public_expedient_rows,
-                rx.grid(
-                    rx.foreach(SearchState.public_expedient_rows, public_expedient_card),
-                    columns="2",
-                    spacing="3",
-                    class_name="responsive-grid",
-                ),
-                rx.text("No hay expedientes públicos disponibles todavía.", class_name="muted small"),
-            ),
-            subtitle="Investigaciones públicas disponibles para leer directamente.",
         ),
         page_section(
             "Explora por categoria",

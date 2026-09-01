@@ -196,10 +196,12 @@ class SearchState(rx.State):
         self.investigation_topic_rows = rows
 
     def _load_public_expedients(self) -> None:
+        # Explore is a bounded entry point.  Laboratory remains the scalable
+        # complete catalog, including explicit provenance labels.
         self.public_expedient_rows = [
             row for row in list_public_expedient_catalog()
             if row.get("provenance_class") == "REAL"
-        ]
+        ][:4]
 
     def _clear_selected_category(self) -> None:
         self.selected_guided_category_id = ""

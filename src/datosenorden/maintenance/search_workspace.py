@@ -20,6 +20,7 @@ from datosenorden.models import Entity
 from datosenorden.infrastructure.real_expedient.repository import PostgresExpedientRepository
 from datosenorden.application.real_expedient.citizen_projection import citizen_expedient_projection
 from datosenorden.application.real_expedient.reader import _citizen_context
+from datosenorden.application.real_expedient.public_facade import list_public_expedient_catalog
 
 
 LEGISLATIVE_SOURCE_LABEL = "Datos Abiertos Legislativos"
@@ -117,6 +118,11 @@ def _collect_matches(session, query: str, *, limit: int) -> tuple[SearchWorkspac
         merged[f"tracking:{extra.entity_id}"] = extra
     for extra in _real_expedient_matches(session, query):
         merged[f"expedient:{extra.entity_id}"] = extra
+    for extra in _catalog_expedient_matches(query):
+        key = f"expedient:{extra.entity_id}"
+        existing = merged.get(key)
+        if existing is None or extra.score > existing.score:
+            merged[key] = extra
 
     return tuple(
         sorted(
@@ -203,6 +209,68 @@ def _real_expedient_matches(session, query: str) -> tuple[SearchWorkspaceMatch, 
                 root_match=root_match,
             )
             matches.append(SearchWorkspaceMatch(identifier, str(projection["title"]), str(projection.get("type", "Expediente público")), tuple(str(item) for item in projection.get("sources", [])), len(projection.get("facts", [])), 0, score, "expediente público", "Abrir expediente", f"/laboratory/expedient?id={identifier}", "REAL", exact_identifier_match or exact_title_match or exact_entity_reference_match))
+    return tuple(matches)
+
+
+def _catalog_expedient_matches(query: str) -> tuple[SearchWorkspaceMatch, ...]:
+    """Index every available public catalog entry, including Laboratorio DEMO.
+
+    This uses the same citizen-facing catalog that powers Laboratory rather than
+    aliases for individual expeditions.  Provenance remains part of every match.
+    """
+    normalized_query = _normalize(query)
+    if not normalized_query:
+        return ()
+    query_tokens = {token for token in normalized_query.split() if len(token) >= 3}
+    matches: list[SearchWorkspaceMatch] = []
+    for row in list_public_expedient_catalog():
+        identifier = str(row.get("id", "")).strip()
+        title_text = str(row.get("title", ""))
+        if not identifier or not title_text:
+            continue
+        title = _normalize(title_text)
+        question = _normalize(str(row.get("question", "")))
+        haystack = _normalize(" ".join((title_text, str(row.get("summary", "")), str(row.get("question", "")))))
+        haystack_tokens = set(haystack.split())
+        exact_identifier_match = normalized_query == _normalize(identifier)
+        exact_title_match = normalized_query == title
+        exact_phrase_match = normalized_query in title or normalized_query in question
+        exact_token_match = normalized_query in haystack_tokens
+        root_match = (
+            len(query_tokens) == 1
+            and len(normalized_query) >= 7
+            and any(token.startswith(normalized_query[:6]) for token in haystack_tokens)
+        )
+        contextual_match = len(query_tokens) > 1 and len(query_tokens.intersection(haystack_tokens)) >= 2
+        if not (exact_identifier_match or exact_title_match or exact_phrase_match or exact_token_match or root_match or contextual_match):
+            continue
+        provenance = str(row.get("provenance_class") or "DEMO").upper()
+        score = _real_expedient_match_score(
+            exact_identifier_match=exact_identifier_match,
+            exact_title_match=exact_title_match,
+            exact_phrase_match=exact_phrase_match,
+            exact_token_match=exact_token_match,
+            full_text_match=False,
+            compact_match=False,
+            contextual_match=contextual_match,
+            root_match=root_match,
+        )
+        matches.append(
+            SearchWorkspaceMatch(
+                identifier,
+                title_text,
+                "EXPEDIENTE PÚBLICO",
+                tuple(str(item) for item in row.get("sources", []) if item),
+                0,
+                0,
+                score,
+                "expediente público" if provenance == "REAL" else "expediente de laboratorio",
+                "Abrir expediente" if provenance == "REAL" else "Abrir en Laboratorio",
+                f"/laboratory/expedient?id={identifier}",
+                provenance,
+                exact_identifier_match or exact_title_match,
+            )
+        )
     return tuple(matches)
 
 

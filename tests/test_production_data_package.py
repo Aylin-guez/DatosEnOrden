@@ -104,7 +104,11 @@ def test_database_timestamp_comparison_uses_the_instant_not_the_rendered_offset(
 
 def test_first_package_manifest_is_real_only_and_operationally_minimal() -> None:
     path, digest = _first_package()
-    package = verify_package(path, expected_sha256=digest)
+    package = verify_package(
+        path,
+        expected_sha256=digest,
+        allow_lossy_historical_recovery=True,
+    )
     manifest = package.manifest
     assert manifest["contract"] == CONTRACT_ID
     assert manifest["required_schema_revision"] == REQUIRED_SCHEMA_REVISION

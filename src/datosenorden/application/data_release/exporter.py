@@ -51,6 +51,7 @@ from .contract import (
     sha256_file,
     write_deterministic_zip,
 )
+from .semantic_integrity import PublicTextIntegrityError, validate_public_text_integrity
 
 MODEL_BY_TABLE = {
     "source": Source,
@@ -122,6 +123,10 @@ def export_production_data_package(
                 key=lambda row, pk=table.primary_key: tuple(str(row[name]) for name in pk),
             )
         )
+    try:
+        validate_public_text_integrity(serialized)
+    except PublicTextIntegrityError as exc:
+        raise DataPackageError(f"public text integrity failed: {exc}") from exc
     members = {table.path: rows_bytes(serialized[table.name]) for table in TABLE_CONTRACTS}
     table_hashes = {table.name: sha256_bytes(members[table.path]) for table in TABLE_CONTRACTS}
     logical_hash = logical_content_hash(table_hashes=logical_table_hashes(rows=serialized))

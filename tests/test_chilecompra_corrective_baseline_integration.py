@@ -80,7 +80,11 @@ def _content(session: Session, order_id: str):
 
 
 def test_corrective_versions_against_certified_baseline(postgres_url: str, portable_tmp_path: Path) -> None:
-    package = verify_package(certified_data_package_path(), expected_sha256=SHA256)
+    package = verify_package(
+        certified_data_package_path(),
+        expected_sha256=SHA256,
+        allow_lossy_historical_recovery=True,
+    )
     engine = create_engine(postgres_url)
     expectation = TargetExpectation(str(make_url(postgres_url).database), "isolated-test", RELEASE)
     assert import_package(engine, package, expectation=expectation).inserted == package.manifest["row_counts"]
@@ -145,7 +149,11 @@ def test_historical_exported_package_rejects_incompatible_code_release() -> None
     try:
         ephemeral.migrate_to_head()
         engine = create_engine(ephemeral.test_url)
-        package = verify_package(certified_data_package_path(), expected_sha256=SHA256)
+        package = verify_package(
+            certified_data_package_path(),
+            expected_sha256=SHA256,
+            allow_lossy_historical_recovery=True,
+        )
         expectation = TargetExpectation(
             str(make_url(ephemeral.test_url).database),
             "isolated-test",
