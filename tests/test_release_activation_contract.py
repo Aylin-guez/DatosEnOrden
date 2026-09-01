@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
+import stat
 import subprocess
 import tarfile
 from pathlib import Path
@@ -136,6 +137,13 @@ def _install_prepare_fakes(fake_bin: Path, log: Path) -> None:
         '  [[ "${1:-}" == "-i" ]] && shift\n'
         '  while [[ "${1:-}" == *=* ]]; do shift; done\n'
         'fi\n'
+        'if [[ "${1:-}" == "install" ]]; then\n'
+        '  if [[ -n "${DEO_PRIVATE_CACHE_SYMLINK_TARGET:-}" ]]; then\n'
+        '    ln -s "$DEO_PRIVATE_CACHE_SYMLINK_TARGET" "${!#}"\n'
+        '    exit 0\n'
+        '  fi\n'
+        '  exec "$@"\n'
+        'fi\n'
         'if [[ "${1:-}" == "bash" ]]; then exec "$@"; fi\n'
         "while (($#)); do\n"
         "  if [[ \"$1\" == \"venv\" ]]; then\n"
@@ -261,6 +269,8 @@ def test_prepare_is_single_use_and_never_activates(tmp_path: Path) -> None:
     assert "env -i HOME=" in prepare_calls
     assert "USER=datosenorden" in prepare_calls
     assert "BUN_INSTALL=" in prepare_calls
+    assert f"BUN_INSTALL_CACHE_DIR={_msys(target / '.deo-bun-build-cache')}" in prepare_calls
+    assert not (target / ".deo-bun-build-cache").exists()
     assert (tmp_path / "prepare-cwd.log").read_text(encoding="utf-8").strip() == _msys(target)
 
     second = _run("scripts/deploy_release_ubuntu.sh", args, environment, tmp_path)
@@ -282,10 +292,79 @@ def test_prepare_uses_service_identity_for_bun_without_post_build_cache_chown() 
     assert 'runuser -u "$APP_USER" -- env -i' in deploy
     assert 'HOME="$app_home"' in deploy
     assert 'BUN_INSTALL="$app_home/.bun"' in deploy
+    assert 'BUN_INSTALL_CACHE_DIR="$private_bun_cache"' in deploy
     assert 'XDG_CACHE_HOME="$app_home/.cache"' in deploy
     assert '--preserve-environment' not in deploy
     assert 'chown -R "$APP_USER:$APP_USER" "$app_home/.bun"' not in deploy
-    assert 'find "$app_home/.bun" -xdev ! -user "$APP_USER"' in deploy
+    assert 'private_bun_cache="$target/.deo-bun-build-cache"' in deploy
+    assert 'run_as_app install -d -m 0700 "$private_bun_cache"' in deploy
+    assert deploy.count("assert_persistent_bun_ownership\n") == 2
+    assert deploy.index("remove_private_bun_cache\n") < deploy.index(
+        'chown -R root:"$APP_USER" "$target"'
+    )
+    assert 'rm -rf --one-file-system -- "$cache_real"' in deploy
+    assert '[[ "$cache_real" == "$target_real/.deo-bun-build-cache" ]]' in deploy
+
+
+def test_prepare_rejects_symlinked_private_cache_without_deleting_target(tmp_path: Path) -> None:
+    environment, app_root, fake_bin = _base_environment(tmp_path)
+    _install_prepare_fakes(fake_bin, tmp_path / "runuser.log")
+    outside = tmp_path / "outside-cache"
+    outside.mkdir()
+    sentinel = outside / "sentinel"
+    sentinel.write_text("preserve", encoding="utf-8")
+    environment["DEO_PRIVATE_CACHE_SYMLINK_TARGET"] = _msys(outside)
+    archive, digest = _artifact(tmp_path)
+
+    failed = _run(
+        "scripts/deploy_release_ubuntu.sh",
+        ["--prepare", "--artifact", _msys(archive), "--sha256", digest, "--release-id", R1],
+        environment,
+        tmp_path,
+    )
+
+    assert failed.returncode != 0
+    assert "Private Bun cache is missing or unsafe" in failed.stderr
+    assert sentinel.read_text(encoding="utf-8") == "preserve"
+    assert not (app_root / "releases" / R1 / ".deo-release-ready").exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="requires POSIX hardlink metadata semantics")
+def test_target_private_bun_cache_prevents_cross_boundary_inode_mutation(tmp_path: Path) -> None:
+    external_cache = tmp_path / "external-cache"
+    vulnerable_release = tmp_path / "vulnerable-release"
+    external_cache.mkdir()
+    (vulnerable_release / "node_modules").mkdir(parents=True)
+    external_file = external_cache / "package.js"
+    vulnerable_link = vulnerable_release / "node_modules" / "package.js"
+    external_file.write_text("module", encoding="utf-8")
+    os.link(external_file, vulnerable_link)
+
+    assert external_file.stat().st_ino == vulnerable_link.stat().st_ino
+    vulnerable_link.chmod(0o400)
+    assert stat.S_IMODE(external_file.stat().st_mode) == 0o400
+
+    safe_release = tmp_path / "safe-release"
+    private_cache = safe_release / ".deo-bun-build-cache"
+    node_modules = safe_release / ".web" / "node_modules"
+    private_cache.mkdir(parents=True)
+    node_modules.mkdir(parents=True)
+    private_file = private_cache / "package.js"
+    release_file = node_modules / "package.js"
+    outside_sentinel = tmp_path / "outside-sentinel"
+    private_file.write_text("module", encoding="utf-8")
+    outside_sentinel.write_text("outside", encoding="utf-8")
+    outside_mode = stat.S_IMODE(outside_sentinel.stat().st_mode)
+    os.link(private_file, release_file)
+
+    assert private_file.stat().st_ino == release_file.stat().st_ino
+    private_file.unlink()
+    private_cache.rmdir()
+    assert release_file.stat().st_nlink == 1
+    release_file.chmod(0o400)
+
+    assert outside_sentinel.read_text(encoding="utf-8") == "outside"
+    assert stat.S_IMODE(outside_sentinel.stat().st_mode) == outside_mode
 
 
 def test_prepare_compile_failure_never_writes_ready_marker(tmp_path: Path) -> None:

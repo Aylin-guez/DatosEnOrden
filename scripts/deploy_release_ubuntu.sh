@@ -23,6 +23,7 @@ app_home="$(getent passwd "$APP_USER" | awk -F: '{print $6}')"
 app_group="$(id -gn "$APP_USER")"
 [[ "$(sha256sum "$artifact" | awk '{print $1}')" == "${expected_sha,,}" ]] || { echo "ARTIFACT_INTEGRITY_FAILURE" >&2; exit 1; }
 target="$APP_ROOT/releases/$release_id"
+private_bun_cache="$target/.deo-bun-build-cache"
 safe_path="$target/.venv/bin:$app_home/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 run_as_app() {
     runuser -u "$APP_USER" -- env -i \
@@ -30,9 +31,38 @@ run_as_app() {
         USER="$APP_USER" \
         LOGNAME="$APP_USER" \
         BUN_INSTALL="$app_home/.bun" \
+        BUN_INSTALL_CACHE_DIR="$private_bun_cache" \
         XDG_CACHE_HOME="$app_home/.cache" \
         PATH="$safe_path" \
         "$@"
+}
+assert_persistent_bun_ownership() {
+    if find "$app_home/.bun" -xdev ! -user "$APP_USER" -print -quit | grep -q .; then
+        echo "Bun runtime tree contains entries not owned by $APP_USER; remediate the cache before preparing." >&2
+        exit 1
+    fi
+}
+remove_private_bun_cache() {
+    local target_real cache_real
+    [[ "$private_bun_cache" == "$target/.deo-bun-build-cache" && -n "$target" ]] || {
+        echo "Private Bun cache path is outside the release boundary." >&2
+        exit 1
+    }
+    [[ -d "$private_bun_cache" && ! -L "$private_bun_cache" ]] || {
+        echo "Private Bun cache is missing or unsafe." >&2
+        exit 1
+    }
+    target_real="$(cd "$target" && pwd -P)"
+    cache_real="$(cd "$private_bun_cache" && pwd -P)"
+    [[ "$cache_real" == "$target_real/.deo-bun-build-cache" ]] || {
+        echo "Private Bun cache resolved outside the release boundary." >&2
+        exit 1
+    }
+    rm -rf --one-file-system -- "$cache_real"
+    [[ ! -e "$private_bun_cache" && ! -L "$private_bun_cache" ]] || {
+        echo "Private Bun cache cleanup failed." >&2
+        exit 1
+    }
 }
 [[ ! -e "$target" ]] || { echo "Release already exists: $target" >&2; exit 1; }
 if ! entries="$(tar -tf "$artifact")"; then
@@ -48,37 +78,38 @@ install -d -o "$APP_USER" -g "$APP_USER" -m 0755 "$target"
 install -d -o "$APP_USER" -g "$app_group" -m 0750 "$app_home/.bun"
 install -d -o "$APP_USER" -g "$app_group" -m 0750 "$app_home/.bun/install"
 install -d -o "$APP_USER" -g "$app_group" -m 0750 "$app_home/.bun/install/cache"
-if find "$app_home/.bun" -xdev ! -user "$APP_USER" -print -quit | grep -q .; then
-    echo "Bun runtime tree contains entries not owned by $APP_USER; remediate the cache before preparing." >&2
-    exit 1
-fi
+assert_persistent_bun_ownership
 tar -xf "$artifact" -C "$target" --no-same-owner --no-same-permissions
 chown -R "$APP_USER:$APP_USER" "$target"
+run_as_app install -d -m 0700 "$private_bun_cache"
 run_as_app python3 -m venv "$target/.venv"
 run_as_app "$target/.venv/bin/python" -m pip install --upgrade pip
 run_as_app "$target/.venv/bin/python" -m pip install "$target"
 run_as_app "$target/.venv/bin/python" -m pip check
 run_as_app bash -c '
     set -euo pipefail
-    env_file="$1"; target="$2"; python="$3"; app_home="$4"; app_user="$5"; safe_path="$6"
+    env_file="$1"; target="$2"; python="$3"; app_home="$4"; app_user="$5"; safe_path="$6"; private_bun_cache="$7"
     set -a
     . "$env_file"
     set +a
     export HOME="$app_home" USER="$app_user" LOGNAME="$app_user"
-    export BUN_INSTALL="$app_home/.bun" XDG_CACHE_HOME="$app_home/.cache" PATH="$safe_path"
+    export BUN_INSTALL="$app_home/.bun" BUN_INSTALL_CACHE_DIR="$private_bun_cache"
+    export XDG_CACHE_HOME="$app_home/.cache" PATH="$safe_path"
     cd "$target"
     export REFLEX_WEB_WORKDIR="$target/.web"
     export REFLEX_STATES_WORKDIR="$target/.states"
     export REFLEX_CHECK_LATEST_VERSION=false
     exec "$python" -m reflex export --no-zip --env prod --no-ssr
-' -- "$ENV_FILE" "$target" "$target/.venv/bin/python" "$app_home" "$APP_USER" "$safe_path"
+' -- "$ENV_FILE" "$target" "$target/.venv/bin/python" "$app_home" "$APP_USER" "$safe_path" "$private_bun_cache"
 [[ -s "$target/.web/backend/stateful_pages.json" ]] || { echo "Prepared Reflex backend marker is missing." >&2; exit 1; }
 [[ -f "$target/.web/build/client/index.html" ]] || { echo "Prepared Reflex frontend artifact is missing." >&2; exit 1; }
+remove_private_bun_cache
 pending_marker="$target/.deo-release-ready.pending"
 ready_marker="$target/.deo-release-ready"
 printf 'release_id=%s\nartifact_sha256=%s\n' "$release_id" "${expected_sha,,}" > "$pending_marker"
 chown -R root:"$APP_USER" "$target"
 chmod -R go-w "$target"
+assert_persistent_bun_ownership
 if find "$target" -xdev \( -type f -o -type d \) -perm /022 -print -quit | grep -q .; then
     echo "Prepared release remains writable by its runtime user or group." >&2
     exit 1

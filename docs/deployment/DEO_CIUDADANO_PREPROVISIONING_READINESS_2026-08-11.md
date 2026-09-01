@@ -14,8 +14,12 @@ workstation drive assumption.
   deletes it after creating the beta role/database.
 - `deploy_release_ubuntu.sh --prepare`: validates SHA-256, rejects an existing
   release, prepares its venv, performs `pip check` and the Reflex production
-  export as the unprivileged service user with its own Bun cache, then writes
-  the readiness marker and removes runtime-user write permissions.
+  export as the unprivileged service user with a target-private disposable Bun
+  cache. Bun's Linux hardlinks therefore remain within the release boundary;
+  the private cache is removed before root hardening. The persistent service
+  cache must remain service-owned before and after preparation. Only then does
+  preparation write the readiness marker and remove runtime-user write
+  permissions.
 - `activate_release_ubuntu.sh`: accepts only a complete prepared release,
   atomically changes `current`, restarts and smokes the service, and restores
   the old `current` on failure without touching database state.

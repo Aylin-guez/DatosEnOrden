@@ -70,10 +70,14 @@ not deploy from a mutable clone, and it does not contain credentials.
    directory, creates the venv, installs dependencies, performs `pip check`
    and Reflex production export, then writes `.deo-release-ready`. Python,
    Reflex and Bun preparation run as `datosenorden` with a clean environment,
-   `HOME=/home/datosenorden` and `BUN_INSTALL=/home/datosenorden/.bun`; root
-   never writes package-cache contents there. Only after all
-   checks pass does it remove runtime-user/group write permissions. A second
-   prepare for the same release is intentionally rejected.
+   `HOME=/home/datosenorden` and `BUN_INSTALL=/home/datosenorden/.bun`. Because
+   Bun uses hardlinks by default on Linux, package installation uses the
+   target-private disposable cache `<release>/.deo-bun-build-cache`; it is
+   removed before the release is hardened as root. The persistent home cache
+   is checked both before and after preparation and must remain wholly owned by
+   `datosenorden`. Only after all checks pass does preparation remove
+   runtime-user/group write permissions. A second prepare for the same release
+   is intentionally rejected.
 6. **MANUAL/GATE**: create a mode-0600 password file outside the release, then
    execute `configure_postgres_beta.sh` from the verified artifact with the
    password-file path. PostgreSQL must remain loopback-only. Create the

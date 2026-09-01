@@ -18,7 +18,12 @@ def test_prepare_exports_the_artifacts_required_by_backend_only_runtime() -> Non
     assert '. "$env_file"' in prepare
     assert 'runuser -u "$APP_USER" -- env -i' in prepare
     assert 'BUN_INSTALL="$app_home/.bun"' in prepare
+    assert 'BUN_INSTALL_CACHE_DIR="$private_bun_cache"' in prepare
+    assert 'private_bun_cache="$target/.deo-bun-build-cache"' in prepare
     assert 'install -d -o root -g "$APP_USER" -m 0755 "$APP_ROOT/releases"' in prepare
+    assert prepare.index("remove_private_bun_cache\n") < prepare.index(
+        'chown -R root:"$APP_USER" "$target"'
+    )
     assert prepare.index("reflex export") < prepare.index('chmod -R go-w "$target"')
 
 
