@@ -113,8 +113,32 @@ def test_prelaunch_public_check_detects_public_routes(tmp_path: Path, monkeypatc
 
     assert "/support" in module.PUBLIC_ROUTES
     assert "/studio" in module.PUBLIC_ROUTES
+    assert "/collections" in module.PUBLIC_ROUTES
     assert "/laboratory/expedient" in module.PUBLIC_ROUTES
+    assert len(module.PUBLIC_ROUTES) == 22
     assert module._public_routes_check().ok is True
+
+
+def test_prelaunch_public_check_requires_exact_public_route_set(monkeypatch) -> None:
+    module = _load_script()
+
+    def route_result(routes: list[str]):
+        monkeypatch.setattr(
+            module.subprocess,
+            "run",
+            lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout=__import__("json").dumps(routes) + "\n", stderr=""),
+        )
+        return module._public_routes_check()
+
+    assert route_result(list(reversed(module.PUBLIC_ROUTES))).ok is True
+
+    unexpected = route_result([*module.PUBLIC_ROUTES, "/unexpected"])
+    assert unexpected.ok is False
+    assert "unexpected=/unexpected" in unexpected.detail
+
+    missing = route_result([route for route in module.PUBLIC_ROUTES if route != "/collections"])
+    assert missing.ok is False
+    assert "missing=/collections" in missing.detail
 
 
 def test_prelaunch_public_check_reflex_compile_uses_dry_run(monkeypatch) -> None:

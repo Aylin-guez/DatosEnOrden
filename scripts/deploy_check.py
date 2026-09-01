@@ -37,6 +37,7 @@ PUBLIC_ROUTES = (
     "/topic",
     "/knowledge",
     "/library",
+    "/collections",
     "/demo",
     "/search",
     "/discover",
@@ -144,10 +145,18 @@ def _route_check() -> Check:
         detail = (result.stderr or result.stdout or f"exit={result.returncode}").strip().splitlines()[-1]
         return Check("public routes registered", False, detail)
     routes = set(json.loads(result.stdout.strip().splitlines()[-1]))
-    missing = [route for route in PUBLIC_ROUTES if route not in routes]
-    unexpected_count = len(routes) != len(PUBLIC_ROUTES)
-    if missing or unexpected_count:
-        detail = "missing=" + ", ".join(missing) if missing else f"registered={len(routes)} expected={len(PUBLIC_ROUTES)}"
+    expected = set(PUBLIC_ROUTES)
+    missing = sorted(expected - routes)
+    unexpected = sorted(routes - expected)
+    if missing or unexpected:
+        detail = "; ".join(
+            part
+            for part in (
+                "missing=" + ", ".join(missing) if missing else "",
+                "unexpected=" + ", ".join(unexpected) if unexpected else "",
+            )
+            if part
+        )
         return Check("public routes registered", False, detail)
     return Check("public routes registered", True, ", ".join(PUBLIC_ROUTES))
 

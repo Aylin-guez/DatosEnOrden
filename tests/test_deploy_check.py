@@ -126,4 +126,28 @@ def test_deploy_check_recognizes_multiline_public_routes(tmp_path: Path, monkeyp
     result = module._route_check()
 
     assert result.ok is True
+    assert "/collections" in module.PUBLIC_ROUTES
+    assert len(module.PUBLIC_ROUTES) == 22
     assert "/laboratory/expedient" in result.detail
+
+
+def test_deploy_check_requires_exact_public_route_set(monkeypatch) -> None:
+    module = _load_script()
+
+    def route_result(routes: list[str]):
+        monkeypatch.setattr(
+            module.subprocess,
+            "run",
+            lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout=__import__("json").dumps(routes) + "\n", stderr=""),
+        )
+        return module._route_check()
+
+    assert route_result(list(reversed(module.PUBLIC_ROUTES))).ok is True
+
+    unexpected = route_result([*module.PUBLIC_ROUTES, "/unexpected"])
+    assert unexpected.ok is False
+    assert "unexpected=/unexpected" in unexpected.detail
+
+    missing = route_result([route for route in module.PUBLIC_ROUTES if route != "/collections"])
+    assert missing.ok is False
+    assert "missing=/collections" in missing.detail
