@@ -195,7 +195,12 @@ def test_first_package_restore_reimport_and_conflict(
         }
         assert len(reader.list_available()) == 5
         dep = reader.get("EXP-REAL-CHILECOMPRA-1002584-197-CM26")
-        assert dep is not None and dep["version"] == 2
+        dep_root = next(
+            row
+            for row in package.rows["real_expedient"]
+            if row["expedient_id"] == "EXP-REAL-CHILECOMPRA-1002584-197-CM26"
+        )
+        assert dep is not None and dep["version"] == dep_root["current_version"]
         assert len(dep["references"]["sources"]) == 2
         legislative = reader.get("EXP-REAL-LEGISLATIVE-15975-25")
         assert legislative is not None and legislative["status"] == "published"

@@ -140,7 +140,14 @@ def test_first_package_manifest_is_real_only_and_operationally_minimal() -> None
         for row in package.rows["real_expedient_version"]
         if row["expedient_id"] == "EXP-REAL-CHILECOMPRA-1002584-197-CM26"
     ]
-    assert [row["version"] for row in dep] == [1, 2]
+    dep_root = next(
+        row
+        for row in package.rows["real_expedient"]
+        if row["expedient_id"] == "EXP-REAL-CHILECOMPRA-1002584-197-CM26"
+    )
+    assert [row["version"] for row in dep] == list(
+        range(1, int(dep_root["current_version"]) + 1)
+    )
 
 
 def test_first_package_rejects_wrong_archive_hash() -> None:

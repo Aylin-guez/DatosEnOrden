@@ -111,22 +111,7 @@ def export_production_data_package(
         raise DataPackageError(
             f"source schema revision {revision!r} does not match {REQUIRED_SCHEMA_REVISION}"
         )
-    selected = _select_rows(session)
-    serialized = {
-        table.name: tuple(_serialize_row(row, table.name) for row in selected[table.name])
-        for table in TABLE_CONTRACTS
-    }
-    for table in TABLE_CONTRACTS:
-        serialized[table.name] = tuple(
-            sorted(
-                serialized[table.name],
-                key=lambda row, pk=table.primary_key: tuple(str(row[name]) for name in pk),
-            )
-        )
-    try:
-        validate_public_text_integrity(serialized)
-    except PublicTextIntegrityError as exc:
-        raise DataPackageError(f"public text integrity failed: {exc}") from exc
+    serialized = build_serialized_public_release_rows(session)
     members = {table.path: rows_bytes(serialized[table.name]) for table in TABLE_CONTRACTS}
     table_hashes = {table.name: sha256_bytes(members[table.path]) for table in TABLE_CONTRACTS}
     logical_hash = logical_content_hash(table_hashes=logical_table_hashes(rows=serialized))
@@ -167,6 +152,29 @@ def export_production_data_package(
         row_counts={name: len(rows) for name, rows in serialized.items()},
         manifest=manifest,
     )
+
+
+def build_serialized_public_release_rows(
+    session: Session,
+) -> dict[str, tuple[dict[str, Any], ...]]:
+    """Build canonical package rows without writing an artifact."""
+    selected = _select_rows(session)
+    serialized = {
+        table.name: tuple(_serialize_row(row, table.name) for row in selected[table.name])
+        for table in TABLE_CONTRACTS
+    }
+    for table in TABLE_CONTRACTS:
+        serialized[table.name] = tuple(
+            sorted(
+                serialized[table.name],
+                key=lambda row, pk=table.primary_key: tuple(str(row[name]) for name in pk),
+            )
+        )
+    try:
+        validate_public_text_integrity(serialized)
+    except PublicTextIntegrityError as exc:
+        raise DataPackageError(f"public text integrity failed: {exc}") from exc
+    return serialized
 
 
 def select_alembic_revision():  # noqa: ANN201

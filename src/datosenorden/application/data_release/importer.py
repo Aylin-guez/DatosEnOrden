@@ -298,6 +298,11 @@ def _verify_target(
     if expectation.environment == "isolated-test":
         if not actual_database.startswith("datosenorden_pytest_"):
             raise PackageCompatibilityError("isolated target must use datosenorden_pytest_ prefix")
+    elif expectation.environment == "release-staging":
+        if not actual_database.startswith("datosenorden_materialization_"):
+            raise PackageCompatibilityError(
+                "release staging target must use datosenorden_materialization_ prefix"
+            )
     elif expectation.environment == "production":
         if expectation.production_confirmation != package.manifest["package_id"]:
             raise PackageCompatibilityError("production confirmation must equal package ID")
