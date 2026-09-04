@@ -17,11 +17,13 @@ from datosenorden.application.data_release.importer import (
     import_package,
     verify_package,
 )
+from datosenorden.application.data_release.materialization import APPROVED_REAL_IDS
 from scripts.release_pair_config import (
     database_identity,
     release_database_name,
     render_candidate_environment,
 )
+from scripts.verify_production_snapshot import validate_approved_real_ids
 
 ROOT = Path(__file__).resolve().parents[1]
 OLD = "1" * 40
@@ -98,6 +100,17 @@ def test_snapshot_prepare_is_fail_closed_and_never_mutates_current_database() ->
     assert "truncate" not in script.lower()
     assert "DROP DATABASE" not in script
     assert "current_database" in script and "target_database" in script
+
+
+def test_snapshot_verifier_uses_exact_canonical_registry() -> None:
+    rows = tuple({"expedient_id": value} for value in APPROVED_REAL_IDS)
+    assert validate_approved_real_ids(rows) == tuple(sorted(APPROVED_REAL_IDS))
+    with pytest.raises(RuntimeError, match="missing="):
+        validate_approved_real_ids(rows[:-1])
+    with pytest.raises(RuntimeError, match="unexpected="):
+        validate_approved_real_ids(rows + ({"expedient_id": "EXP-REAL-UNEXPECTED"},))
+    with pytest.raises(RuntimeError, match="duplicates="):
+        validate_approved_real_ids(rows + (rows[0],))
 
 
 def _write_executable(path: Path, text: str) -> None:
@@ -337,6 +350,34 @@ def test_real_snapshot_transition_uses_new_database_and_preserves_old() -> None:
                 connection.execute(text("SELECT count(*) FROM real_expedient_version")).scalar_one()
                 == 14
             )
+        verifier_environment = os.environ.copy()
+        verifier_environment.update(
+            {
+                "DATABASE_URL": new_url,
+                "DATOSENORDEN_DATABASE_URL": new_url,
+            }
+        )
+        verified = subprocess.run(
+            [
+                sys.executable,
+                "scripts/verify_production_snapshot.py",
+                "--package",
+                str(new_path),
+                "--sha256",
+                new_sha,
+                "--expected-database",
+                new_name,
+                "--code-release",
+                new_package.manifest["code_compatibility"]["compatible_code_releases"][0],
+            ],
+            cwd=ROOT,
+            env=verifier_environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert verified.returncode == 0, verified.stdout + verified.stderr
+        assert '"real_count": 10' in verified.stdout
     finally:
         for engine in (locals().get("old_engine"), locals().get("new_engine")):
             if engine is not None:

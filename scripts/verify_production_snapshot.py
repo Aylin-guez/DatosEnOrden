@@ -20,7 +20,7 @@ from datosenorden.application.data_release.exporter import (
 )
 from datosenorden.application.data_release.importer import verify_package  # noqa: E402
 from datosenorden.application.data_release.materialization import (
-    APPROVED_REAL_EXPEDIENT_IDS,  # noqa: E402
+    APPROVED_REAL_IDS,  # noqa: E402
 )
 from datosenorden.core.config import get_settings  # noqa: E402
 from datosenorden.db.session import build_engine  # noqa: E402
@@ -45,9 +45,7 @@ def main(argv: list[str] | None = None) -> int:
         actual_rows = build_serialized_public_release_rows(session)
         if actual_rows != package.rows:
             raise RuntimeError("restored database does not exactly match package snapshot")
-        real_ids = tuple(row["expedient_id"] for row in actual_rows["real_expedient"])
-        if real_ids != tuple(sorted(APPROVED_REAL_EXPEDIENT_IDS)):
-            raise RuntimeError("restored REAL corpus does not match approved registry")
+        real_ids = validate_approved_real_ids(actual_rows["real_expedient"])
     print(
         json.dumps(
             {
@@ -62,6 +60,21 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     return 0
+
+
+def validate_approved_real_ids(rows: tuple[dict[str, object], ...]) -> tuple[str, ...]:
+    real_ids = tuple(str(row["expedient_id"]) for row in rows)
+    duplicates = sorted({value for value in real_ids if real_ids.count(value) > 1})
+    expected = set(APPROVED_REAL_IDS)
+    actual = set(real_ids)
+    missing = sorted(expected - actual)
+    unexpected = sorted(actual - expected)
+    if duplicates or missing or unexpected:
+        raise RuntimeError(
+            "restored REAL corpus does not match approved registry: "
+            f"duplicates={duplicates}, missing={missing}, unexpected={unexpected}"
+        )
+    return tuple(sorted(real_ids))
 
 
 if __name__ == "__main__":
