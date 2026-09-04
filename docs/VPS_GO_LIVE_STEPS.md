@@ -83,11 +83,14 @@ not deploy from a mutable clone, and it does not contain credentials.
    password-file path. PostgreSQL must remain loopback-only. Create the
    root-owned external `/etc/datosenorden/beta.env` only after the role and
    database exist; never write it inside the release.
-7. **GATE**: use the prepared release tooling, with the external environment,
-   to migrate from the certified Alembic revision and import the independently
+7. **GATE**: on an empty first deployment, use the prepared release tooling
+   with the external environment to migrate and import the independently
    verified production data package. Reimport the same package and require
-   zero inserts/count drift. `current` must still be absent on a first deploy
-   or unchanged on an update, and the application service must remain stopped:
+   zero inserts/count drift. On an update where a complete snapshot differs
+   under an existing immutable identity, never import into the active database.
+   Use `prepare_data_snapshot_ubuntu.sh --prepare` to create and verify the
+   deterministic database `datosenorden_rel_<first-16-release-hex>` while the
+   old pair remains live.
 
    ```bash
    release=/opt/datosenorden/releases/<RELEASE_ID>
@@ -164,7 +167,12 @@ not deploy from a mutable clone, and it does not contain credentials.
     stops the failed service and restores the old `current`. It then attempts
     to restart the old release; if that is unhealthy the service stays stopped.
     On a failed first activation, `current` is removed and `previous` remains
-    absent. Database state is never rolled back by application activation.
+    absent. The legacy code-only activation does not switch database state.
+
+    Snapshot replacements use `activate_release_pair_ubuntu.sh`. It stops the
+    service before switching the external database configuration and code
+    pointer, and restores both on any failure. Keep the prior database and use
+    `rollback_release_pair_ubuntu.sh <PREVIOUS_RELEASE_ID>` for a pair rollback.
 12. **STOP**: do not create the DNS record, enable HSTS, or cut over production
    in this runbook. DNS/TLS and browser/WebSocket QA are separate stages.
 

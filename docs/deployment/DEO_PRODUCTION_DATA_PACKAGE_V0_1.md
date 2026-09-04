@@ -12,6 +12,12 @@ the manifest; changing only data does not require rebuilding the application art
 V0.1 is an additive snapshot format. It is designed so a later contract can add delta operations
 without changing the canonical row representation, package lineage, or conflict rules.
 
+The exporter captures the complete eligible graph at a release boundary, but V0.1 import remains
+strictly additive: identical primary keys are no-ops and different content under an existing
+identity is rejected. A snapshot containing corrections, current-version advances, or regenerated
+operational timestamps must therefore be restored into a new empty release database. It is not an
+upsert package.
+
 ## Authority and selection
 
 The exporter calls the existing T1 provenance authority. It does not classify records itself.
@@ -150,3 +156,14 @@ withdrawals and deletions require explicit tombstones; absence from a package ne
 
 Autonomous production ingestion starts its own `import_job`, retry and rate-limit history. Local
 ingestion history is never promoted.
+
+## Snapshot replacement transitions
+
+For a complete snapshot transition, first use `prepare_data_snapshot_ubuntu.sh --plan`, then rerun
+the same validated identities with `--prepare`. Preparation creates a deterministic new release
+database, migrates it, imports the verified package, and proves that its exported public graph
+exactly equals the package. The active database is never mutated. Pair activation uses
+`activate_release_pair_ubuntu.sh`: while the service is stopped, it atomically replaces the
+external environment file and immutable code pointer, then runs bounded readiness. Any failure
+restores both. The previous database is retained and `rollback_release_pair_ubuntu.sh` restores
+the prior code/database pair without dropping either database.

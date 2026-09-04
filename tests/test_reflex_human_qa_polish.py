@@ -112,10 +112,14 @@ def test_detail_views_have_contextual_back_navigation_and_epistemic_classes() ->
 def test_public_copy_has_no_mojibake_markers() -> None:
     markers = tuple(map(chr, (0xC3, 0xC2, 0xE2, 0xF0, 0xFFFD)))
     public_roots = (ROOT / "reflex_app", ROOT / "src" / "datosenorden" / "application")
-    allowed_detector = ROOT / "src" / "datosenorden" / "application" / "chilecompra_expedient" / "models.py"
+    allowed_detectors = {
+        ROOT / "src" / "datosenorden" / "application" / "chilecompra_expedient" / "models.py",
+        ROOT / "src" / "datosenorden" / "application" / "data_release" / "semantic_integrity.py",
+    }
     matches = [
         path for root in public_roots for path in root.rglob("*.py")
-        if path != allowed_detector and any(marker in path.read_text(encoding="utf-8") for marker in markers)
+        if path not in allowed_detectors
+        and any(marker in path.read_text(encoding="utf-8") for marker in markers)
     ]
     assert matches == []
 

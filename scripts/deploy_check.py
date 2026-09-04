@@ -28,6 +28,11 @@ DEPLOYMENT_FILES = (
     ROOT / "scripts" / "deploy_release_ubuntu.sh",
     ROOT / "scripts" / "activate_release_ubuntu.sh",
     ROOT / "scripts" / "rollback_release_ubuntu.sh",
+    ROOT / "scripts" / "prepare_data_snapshot_ubuntu.sh",
+    ROOT / "scripts" / "activate_release_pair_ubuntu.sh",
+    ROOT / "scripts" / "rollback_release_pair_ubuntu.sh",
+    ROOT / "scripts" / "release_pair_config.py",
+    ROOT / "scripts" / "verify_production_snapshot.py",
     ROOT / "scripts" / "post_deploy_smoke.sh",
     ROOT / "docs" / "VPS_GO_LIVE_STEPS.md",
 )
