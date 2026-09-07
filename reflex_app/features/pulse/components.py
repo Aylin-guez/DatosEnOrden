@@ -24,7 +24,11 @@ def home_pulse_card(row: dict) -> rx.Component:
         ),
         rx.box(
             rx.text("Abrir contexto", class_name="pulse-field-label"),
-            rx.button("Ver lectura o documento", on_click=rx.redirect(row["href"]), class_name="button"),
+            rx.cond(
+                row["actionable"],
+                rx.link("Ver lectura o documento", href=row["href"], class_name="button"),
+                rx.text(row["action_notice"], class_name="muted small"),
+            ),
             class_name="pulse-field",
         ),
         class_name="current-topic-card home-pulse-card topic-card-document",

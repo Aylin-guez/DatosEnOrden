@@ -583,10 +583,12 @@ def _connector_pulse_events() -> list[dict[str, Any]]:
                     "updated_at": row.get("date", ""),
                     "organization": row.get("source", connector.get("display_name", "")),
                     "source": row.get("source", connector.get("display_name", "")),
-                    # A pulse event already identifies its canonical subject.  Sending
-                    # a reader to a prefilled search would require a second action and
-                    # can never add context, so open the published investigation.
-                    "href": "/investigation?id=SERVICIO+DE+SALUD+ARAUCO+HOSPITAL+DE+ARAUCO",
+                    # Connector samples are context, not automatically published
+                    # readings. They need an explicit public destination before a
+                    # citizen-facing CTA may be rendered.
+                    "href": "",
+                    "actionable": False,
+                    "action_notice": "Contexto incorporado; aún no hay una lectura o documento público para abrir.",
                 }
             )
     return events
@@ -683,7 +685,16 @@ def _population_query_matches(normalized_query: str, haystack: str) -> bool:
 def _source_population_pulse_events() -> list[dict[str, Any]]:
     population = _load_source_population()
     event = population.get("ui", {}).get("pulse_event", {}) if isinstance(population.get("ui", {}), dict) else {}
-    return [_jsonify(event)] if event else []
+    if not event:
+        return []
+    return [
+        {
+            **_jsonify(event),
+            "href": "",
+            "actionable": False,
+            "action_notice": "Contexto de fuente incorporado; aún no hay una lectura o documento público para abrir.",
+        }
+    ]
 
 
 def _normalize_for_population(value: str) -> str:
@@ -705,12 +716,26 @@ def _load_real_document_publication() -> dict[str, Any]:
 
 
 def get_current_topics(limit: int = 3) -> list[dict[str, Any]]:
-    topics = _jsonify(_list_current_topics(limit=limit))
+    topics = [_published_topic_pulse_row(row) for row in _jsonify(_list_current_topics(limit=limit))]
     for event in [*_connector_pulse_events(), *_source_population_pulse_events()]:
         if len(topics) >= limit:
             break
         topics.append(event)
     return topics[:limit]
+
+
+def _published_topic_pulse_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Expose a Home CTA only for a published topic's declared document view."""
+    primary_document = row.get("primary_document", {})
+    primary_href = str(primary_document.get("href", "")) if isinstance(primary_document, dict) else ""
+    href = str(row.get("href", ""))
+    actionable = bool(href and href == primary_href)
+    return {
+        **row,
+        "href": href if actionable else "",
+        "actionable": actionable,
+        "action_notice": "" if actionable else "Contexto incorporado; aún no hay una lectura o documento público para abrir.",
+    }
 
 
 def get_current_topic(slug: str) -> dict[str, Any]:

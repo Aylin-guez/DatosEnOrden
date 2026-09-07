@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import reflex as rx
 
-from reflex_app.components.common.cards import next_step_card
+from reflex_app.components.common.cards import next_step_card, return_navigation_link
 from reflex_app.components.common.metrics import metric_card
 from reflex_app.constants.routes import INVESTIGATION_STATUS_ERROR, INVESTIGATION_STATUS_LOADING, PAGE_INVESTIGATION
 from reflex_app.features.public_record.components import (
@@ -37,11 +37,7 @@ def investigation() -> rx.Component:
             rx.box(
                 rx.vstack(
                     rx.box(
-                        rx.button(
-                            "← Volver",
-                            on_click=rx.call_script("if (window.history.length > 1) { window.history.back(); } else { window.location.assign('/search'); }"),
-                            class_name="button button-secondary",
-                        ),
+                        return_navigation_link("← Volver", "/search"),
                         rx.text(PublicRecordState.entity_name, class_name="title"),
                         rx.text(PublicRecordState.entity_summary, class_name="subtitle"),
                         rx.hstack(

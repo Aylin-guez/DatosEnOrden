@@ -109,17 +109,17 @@ def topic_fragment_nav_item(row: dict) -> rx.Component:
     return rx.button(
         rx.vstack(
             rx.hstack(
-                rx.text(row["label"], class_name="fragment-number"),
-                rx.text(f"Página {row['page']}", class_name="mini-pill"),
+                rx.text("Página ", row["page"], class_name="fragment-number"),
+                rx.text("Fragmento", class_name="mini-pill"),
                 justify="between",
                 align="center",
                 spacing="2",
                 wrap="wrap",
             ),
-            rx.text(str(row.get("reference_label", "")), class_name="fragment-title"),
+            rx.text(row["reference_label"], class_name="fragment-title"),
             rx.hstack(
-                rx.text(str(row.get("type", "fragmento")), class_name="mini-pill mini-pill-purple"),
-                rx.text(str(row.get("source", "Documento oficial")), class_name="mini-pill evidence-trust"),
+                rx.text("Fragmento", class_name="mini-pill mini-pill-purple"),
+                rx.text("Documento oficial", class_name="mini-pill evidence-trust"),
                 spacing="2",
                 wrap="wrap",
             ),
@@ -305,7 +305,7 @@ def topic_no_change_card(row: dict) -> rx.Component:
     return rx.box(
         rx.text(row["claim"], class_name="guide-title"),
         rx.text(row["review_note"], class_name="guide-copy"),
-        rx.cond(row.get("fragment_id", "") != "", reference_button(row)),
+        rx.cond(row["fragment_id"] != "", reference_button(row)),
         class_name="topic-answer-card topic-card-no-change",
     )
 

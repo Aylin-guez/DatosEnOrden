@@ -75,7 +75,7 @@ def home() -> rx.Component:
                 ),
                 rx.text("Todavia no hay eventos publicos recientes para mostrar.", class_name="muted small"),
             ),
-            subtitle="Cada tarjeta indica que cambio, que fuente lo sostiene y que entidad, documento o lectura permite abrir.",
+            subtitle="Cada tarjeta indica qué cambió y qué fuente lo sostiene; cuando existe una lectura o documento público, permite abrirlo.",
         ),
         page_section(
             "Lecturas destacadas",

@@ -42,11 +42,12 @@ def test_guided_questions_open_a_deterministic_citizen_journey_without_reusing_m
     assert "return rx.redirect" in method
 
 
-def test_home_pulse_events_open_their_known_context_directly() -> None:
+def test_home_pulse_events_require_a_published_destination_before_rendering_a_cta() -> None:
     source = _source("src/datosenorden/web/app_services.py")
     method = source[source.index("def _connector_pulse_events"):source.index("def _apply_connectors_to_tracking")]
-    assert '"href": "/investigation?id=' in method
-    assert '"href": "/search?' not in method
+    assert '"actionable": False' in method
+    assert '"href": "/investigation?id=' not in method
+    assert "def _published_topic_pulse_row" in source
 
 
 def test_public_record_never_keeps_a_previous_expedient_for_a_failed_new_target() -> None:
@@ -102,11 +103,11 @@ def test_citizen_documents_use_exact_persisted_senate_urls() -> None:
 
 def test_detail_views_have_contextual_back_navigation_and_epistemic_classes() -> None:
     laboratory = _source("reflex_app/features/laboratory/components.py")
-    assert "window.history.back()" in laboratory
+    assert 'return_navigation_link("← Volver", "/laboratory")' in laboratory
     for css_class in ("epistemic-fact", "epistemic-unknown", "epistemic-limitation", "epistemic-evidence", "epistemic-question"):
         assert css_class in laboratory or css_class in _source("reflex_app/app/styles.py")
-    assert "window.history.back()" in _source("reflex_app/features/public_record/pages.py")
-    assert "window.history.back()" in _source("reflex_app/features/document_reading/pages.py")
+    assert 'return_navigation_link("← Volver", "/search")' in _source("reflex_app/features/public_record/pages.py")
+    assert 'return_navigation_link("← Volver", "/library")' in _source("reflex_app/features/document_reading/pages.py")
 
 
 def test_public_copy_has_no_mojibake_markers() -> None:

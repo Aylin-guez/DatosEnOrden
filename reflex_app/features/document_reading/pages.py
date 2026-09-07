@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import reflex as rx
 
-from reflex_app.components.common.cards import investigation_entry_card, next_step_card
+from reflex_app.components.common.cards import investigation_entry_card, next_step_card, return_navigation_link
 from reflex_app.components.common.cards import help_card, tracking_evidence_card
 from reflex_app.constants.routes import PAGE_DOCUMENT, PAGE_KNOWLEDGE, PAGE_LIBRARY, PAGE_TOPIC
 from reflex_app.features.document_reading.components import (
@@ -191,11 +191,7 @@ def official_document() -> rx.Component:
     return shell(
         rx.box(
             rx.box(
-                rx.button(
-                    "← Volver",
-                    on_click=rx.call_script("if (window.history.length > 1) { window.history.back(); } else { window.location.assign('/library'); }"),
-                    class_name="button button-secondary",
-                ),
+                return_navigation_link("← Volver", "/library"),
                 rx.text("Lectura documentada", class_name="document-kicker"),
                 rx.text(DocumentReadingState.knowledge_title, class_name="document-title"),
                 rx.text(

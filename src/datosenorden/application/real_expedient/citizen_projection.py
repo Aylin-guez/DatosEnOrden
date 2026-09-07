@@ -8,6 +8,8 @@ public labels supplied by a resolver.  It never needs to know an expedient id.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from re import compile as compile_pattern
+from urllib.parse import parse_qs, urlparse
 
 from datosenorden.application.public_money import PublicMoneySummary, public_money_projection
 
@@ -75,6 +77,9 @@ class CitizenProjectionContext:
     official_title: str | None = None
     public_money_summary: PublicMoneySummary | None = None
     section_titles: dict[str, str] | None = None
+
+
+_CHILECOMPRA_ORDER_CODE = compile_pattern(r"^\d{4,}-\d{1,}-[A-Z]+\d{2}$")
 
 
 def citizen_expedient_projection(
@@ -201,6 +206,7 @@ def _evidence(item: CitizenEvidence) -> dict[str, object]:
 
 
 def _document(item: CitizenDocument) -> dict[str, object]:
+    can_open = _has_public_document_destination(item.official_url)
     return {
         "title": item.title,
         "institution": item.institution,
@@ -208,7 +214,28 @@ def _document(item: CitizenDocument) -> dict[str, object]:
         "stage": item.stage,
         "official_url": item.official_url,
         "date": item.date,
+        "can_open": can_open,
+        "action_notice": "" if can_open else "La referencia está incorporada, pero no tiene una dirección pública directa verificable.",
     }
+
+
+def _has_public_document_destination(value: str | None) -> bool:
+    """Accept only a directly usable public document destination.
+
+    Mercado Público detail pages use an opaque ``qs`` token. A raw purchase
+    order code in that parameter is provenance metadata, not an openable
+    document URL, so it must not create a citizen-facing CTA.
+    """
+    parsed = urlparse(str(value or ""))
+    if parsed.scheme != "https" or not parsed.hostname:
+        return False
+    if (
+        parsed.hostname.casefold() == "www.mercadopublico.cl"
+        and parsed.path.casefold().endswith("/detailspurchaseorder.aspx")
+    ):
+        token = parse_qs(parsed.query).get("qs", [""])[0]
+        return bool(token) and not bool(_CHILECOMPRA_ORDER_CODE.fullmatch(token))
+    return True
 
 
 def _topics_from_answers(answers: tuple[CitizenQuestionAnswer, ...]) -> tuple[str, ...]:

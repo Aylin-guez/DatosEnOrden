@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import reflex as rx
 
+from reflex_app.components.common.cards import return_navigation_link
 from reflex_app.features.laboratory.state import LaboratoryState, REQUIRED_SECTIONS
 from reflex_app.models.public_money import (
     PublicMoneyActionRow,
@@ -54,11 +55,7 @@ def expedition_catalog_card(row: dict) -> rx.Component:
 
 def expedient_header() -> rx.Component:
     return rx.box(
-        rx.button(
-            "← Volver",
-            on_click=rx.call_script("if (window.history.length > 1) { window.history.back(); } else { window.location.assign('/laboratory'); }"),
-            class_name="button button-secondary",
-        ),
+        return_navigation_link("← Volver", "/laboratory"),
         rx.hstack(
             rx.text(LaboratoryState.expedient_id, class_name="badge badge-teal"),
             rx.text(LaboratoryState.expedient_status, class_name="mini-pill"),
@@ -354,7 +351,18 @@ def _citizen_document(row: dict) -> rx.Component:
         rx.text(row["title"], class_name="card-title"),
         rx.text(row["institution"], " · ", row["type"], " · ", row["stage"], class_name="source-fact"),
         rx.cond(row["date"] != "", rx.text(row["date"], class_name="muted small")),
-        rx.cond(row["official_url"] != "", rx.link("Ver documento oficial", href=row["official_url"], is_external=True, target="_blank", rel="noopener noreferrer", class_name="button button-secondary")),
+        rx.cond(
+            row["can_open"],
+            rx.link(
+                "Ver documento oficial",
+                href=row["official_url"],
+                is_external=True,
+                target="_blank",
+                rel="noopener noreferrer",
+                class_name="button button-secondary",
+            ),
+            rx.text(row["action_notice"], class_name="muted small"),
+        ),
         class_name="card laboratory-entity-card",
     )
 
@@ -437,11 +445,7 @@ def citizen_expedient_view() -> rx.Component:
     """Narrative UI for any CitizenExpedientProjection; it knows no expedient ID."""
     return rx.vstack(
         rx.box(
-            rx.button(
-                "← Volver",
-                on_click=rx.call_script("if (window.history.length > 1) { window.history.back(); } else { window.location.assign('/laboratory'); }"),
-                class_name="button button-secondary",
-            ),
+            return_navigation_link("← Volver", "/laboratory"),
             rx.text(LaboratoryState.citizen_type, class_name="badge badge-teal"),
             rx.text(LaboratoryState.expedient_title, class_name="title"),
             rx.cond(

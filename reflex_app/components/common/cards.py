@@ -33,6 +33,11 @@ def support_action_card(title: str, body: str, label: str, href: str) -> rx.Comp
     )
 
 
+def return_navigation_link(label: str, href: str) -> rx.Component:
+    """Render a deterministic public return target without relying on history."""
+    return rx.link(label, href=href, class_name="button button-secondary")
+
+
 def tracking_evidence_card(row: dict) -> rx.Component:
     return rx.box(
         rx.text(row["source"], class_name="mini-pill"),
