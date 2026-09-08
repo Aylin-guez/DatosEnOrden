@@ -4,7 +4,7 @@ import json
 import os
 import re
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -14,6 +14,7 @@ from datosenorden.application.data_release.contract import (
     BASELINE_CODE_RELEASE,
     CONTENT_CLASSIFICATION,
     CONTRACT_ID,
+    DataPackageError,
     REQUIRED_SCHEMA_REVISION,
     TABLE_CONTRACTS,
     PackageIntegrityError,
@@ -46,6 +47,26 @@ def test_contract_canonicalization_and_package_id_are_deterministic() -> None:
     assert canonical_value(left) == canonical_value(right)
     digest = logical_content_hash(table_hashes={"b": "2" * 64, "a": "1" * 64})
     assert package_id(1, digest) == f"DEO-PROD-DATA-0001-{digest[:16]}"
+
+
+def test_canonical_datetime_serialization_is_timezone_invariant() -> None:
+    utc_instant = datetime(2026, 9, 3, 1, 6, 13, 278424, tzinfo=UTC)
+    santiago_rendering = datetime.fromisoformat("2026-09-02T21:06:13.278424-04:00")
+    positive_offset_rendering = datetime.fromisoformat("2026-09-03T06:36:13.278424+05:30")
+
+    expected = "2026-09-03T01:06:13.278424+00:00"
+    assert canonical_value(utc_instant) == expected
+    assert canonical_value(santiago_rendering) == expected
+    assert canonical_value(positive_offset_rendering) == expected
+    assert canonical_value(utc_instant + timedelta(microseconds=1)) != expected
+
+
+def test_canonical_datetime_serialization_rejects_naive_values() -> None:
+    with pytest.raises(
+        DataPackageError,
+        match="canonical data-release datetimes must be timezone-aware",
+    ):
+        canonical_value(datetime(2026, 9, 3, 1, 6, 13, 278424))
 
 
 def test_logical_hash_ignores_real_expedient_updated_at() -> None:

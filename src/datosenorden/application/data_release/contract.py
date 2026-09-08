@@ -5,7 +5,7 @@ import json
 import zipfile
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -104,7 +104,13 @@ def canonical_value(value: Any) -> Any:
         return format(value, "f")
     if isinstance(value, UUID):
         return str(value)
-    if isinstance(value, (datetime, date)):
+    if isinstance(value, datetime):
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise DataPackageError(
+                "canonical data-release datetimes must be timezone-aware"
+            )
+        return value.astimezone(UTC).isoformat()
+    if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Mapping):
         return {
