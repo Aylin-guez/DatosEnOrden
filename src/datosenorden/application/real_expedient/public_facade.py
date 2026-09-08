@@ -15,6 +15,15 @@ def list_public_expedient_catalog() -> list[dict[str, object]]:
         ).list_available()
 
 
+def list_published_real_expedient_catalog() -> list[dict[str, object]]:
+    """Return the scalable public catalog boundary for published REAL work."""
+    return [
+        row
+        for row in list_public_expedient_catalog()
+        if row.get("provenance_class") == "REAL"
+    ]
+
+
 def get_public_expedient(expedient_id: str) -> dict[str, object] | None:
     with SessionLocal() as session:
         return ComposedPublicExpedientReader(

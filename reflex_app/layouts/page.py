@@ -6,6 +6,7 @@ from reflex_app.constants.routes import (
     PAGE_DEMO,
     PAGE_DISCOVER,
     PAGE_DOCUMENT,
+    PAGE_EXPEDIENTS,
     PAGE_ECOSYSTEM,
     PAGE_HOME,
     PAGE_INVESTIGATION,
@@ -77,4 +78,5 @@ def _page_class(active_page: str) -> str:
         PAGE_DEMO: "page-home",
         PAGE_LABORATORY: "page-laboratory",
         PAGE_LABORATORY_EXPEDIENT: "page-laboratory",
+        PAGE_EXPEDIENTS: "page-expedients",
     }.get(active_page, "page-home")

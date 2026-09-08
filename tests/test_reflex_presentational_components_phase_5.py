@@ -163,8 +163,8 @@ def test_components_are_owned_by_common_modules_without_entrypoint_reexports() -
         assert not hasattr(entrypoint, name)
 
     routes = [kwargs["route"] for _, kwargs in DECORATED_PAGES["reflex_app"]]
-    assert len(routes) == 22
-    assert len(set(routes)) == 22
+    assert len(routes) == 23
+    assert len(set(routes)) == 23
 
 def test_component_signatures_keep_current_props_defaults_and_annotations() -> None:
     assert str(inspect.signature(metric)) == "(label: 'str', value) -> 'rx.Component'"
@@ -257,6 +257,6 @@ print("APP_IMPORT=" + json.dumps({
     assert json.loads(payload_line.removeprefix("APP_IMPORT=")) == {
         "same_module": True,
         "app_count": 1,
-        "route_count": 22,
-        "unique_route_count": 22,
+        "route_count": 23,
+        "unique_route_count": 23,
     }

@@ -77,6 +77,7 @@ EXPECTED_ROUTES = {
     "/investigation": ("investigation", "Expediente - DatosEnOrden"),
     "/dashboard": ("dashboard", "Vista ciudadana - DatosEnOrden"),
     "/laboratory": ("laboratory", "Laboratorio de Políticas Públicas - DatosEnOrden"),
+    "/expedientes": ("expedients", "Expedientes - DatosEnOrden"),
     "/laboratory/expedient": ("laboratory_expedient", "Expediente del Laboratorio - DatosEnOrden"),
 }
 
@@ -205,8 +206,8 @@ def test_routes_paths_titles_metadata_and_no_laboratorio_routes() -> None:
     registered = _registered_pages()
 
     assert set(registered) == set(EXPECTED_ROUTES)
-    assert len(registered) == 22
-    assert len({metadata["route"] for _, metadata in registered.values()}) == 22
+    assert len(registered) == 23
+    assert len({metadata["route"] for _, metadata in registered.values()}) == 23
     assert not any("laboratorio" in route.lower() or "lab" == route.strip("/").lower() for route in registered)
 
     for route, (function_name, title) in EXPECTED_ROUTES.items():
@@ -270,7 +271,8 @@ def test_footer_links_scroll_control_and_page_classes_are_preserved() -> None:
     assert "data-deo-scroll-top-owner" in scroll_props
     assert "MutationObserver" in inspect.getsource(scroll_top_control)
     assert "window.__deoScrollTopReady" in scroll_props
-    assert "window.scrollTo({ top: 0, behavior: 'smooth' })" in inspect.getsource(scroll_top_control)
+    assert "document.scrollingElement || document.documentElement" in inspect.getsource(scroll_top_control)
+    assert "owner.scrollTo({ top: 0, behavior: 'smooth' })" in inspect.getsource(scroll_top_control)
 
 
 def test_scroll_top_has_one_authoritative_shell_owner_and_idempotent_route_cleanup() -> None:
@@ -340,6 +342,6 @@ print("APP_IMPORT=" + json.dumps({
     assert json.loads(payload_line.removeprefix("APP_IMPORT=")) == {
         "same_module": True,
         "app_count": 1,
-        "route_count": 22,
-        "unique_route_count": 22,
+        "route_count": 23,
+        "unique_route_count": 23,
     }

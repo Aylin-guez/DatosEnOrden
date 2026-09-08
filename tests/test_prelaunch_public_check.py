@@ -115,7 +115,8 @@ def test_prelaunch_public_check_detects_public_routes(tmp_path: Path, monkeypatc
     assert "/studio" in module.PUBLIC_ROUTES
     assert "/collections" in module.PUBLIC_ROUTES
     assert "/laboratory/expedient" in module.PUBLIC_ROUTES
-    assert len(module.PUBLIC_ROUTES) == 22
+    assert len(module.PUBLIC_ROUTES) == 23
+    assert "/expedientes" in module.PUBLIC_ROUTES
     assert module._public_routes_check().ok is True
 
 
@@ -230,7 +231,7 @@ Sitemap: https://datosenorden.cl/sitemap.xml
         encoding="utf-8",
     )
     sitemap.write_text(
-        "<urlset><url><loc>https://datosenorden.cl</loc></url><url><loc>https://datosenorden.cl/search</loc></url><url><loc>https://datosenorden.cl/sources</loc></url><url><loc>https://datosenorden.cl/official-document</loc></url><url><loc>https://datosenorden.cl/laboratory</loc></url><url><loc>https://datosenorden.cl/project</loc></url></urlset>",
+        "<urlset><url><loc>https://datosenorden.cl</loc></url><url><loc>https://datosenorden.cl/search</loc></url><url><loc>https://datosenorden.cl/sources</loc></url><url><loc>https://datosenorden.cl/official-document</loc></url><url><loc>https://datosenorden.cl/laboratory</loc></url><url><loc>https://datosenorden.cl/expedientes</loc></url><url><loc>https://datosenorden.cl/project</loc></url></urlset>",
         encoding="utf-8",
     )
     rxconfig.write_text(

@@ -59,6 +59,7 @@ PUBLIC_ROUTES = (
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/expedientes",
 )
 PUBLISHED_DIR = ROOT / "data" / "official_documents" / "published" / "senado-docto-9000-mensaje_mocion"
 ASSET_PDF = ROOT / "assets" / "official_documents" / "senado-docto-9000-mensaje_mocion" / "document.pdf"

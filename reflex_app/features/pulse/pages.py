@@ -89,7 +89,7 @@ def home() -> rx.Component:
                 ),
                 rx.text("Todavía no hay expedientes públicos para destacar.", class_name="muted small"),
             ),
-            rx.link("Ver todos los expedientes", href="/laboratory", class_name="document-inline-link"),
+            rx.link("Ver todos los expedientes", href="/expedientes", class_name="document-inline-link"),
             subtitle="Una selección actualizada desde el catálogo de expedientes públicos.",
         ),
         page_section(

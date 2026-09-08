@@ -37,6 +37,7 @@ EXPECTED_ROUTES = {
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/expedientes",
     "/collections",
 }
 
@@ -121,5 +122,5 @@ def test_document_reading_routes_remain_registered_without_new_routes() -> None:
     routes = {route for route, _ in route_rows}
 
     assert routes == EXPECTED_ROUTES
-    assert len(route_rows) == 22
+    assert len(route_rows) == 23
     assert {"/topic", "/knowledge", "/official-document", "/library"} <= routes

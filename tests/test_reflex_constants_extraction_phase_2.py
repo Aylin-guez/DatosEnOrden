@@ -197,7 +197,7 @@ def test_constants_are_owned_by_constant_modules_and_entrypoint_keeps_only_app()
         kwargs["route"]: page_function.__name__
         for page_function, kwargs in DECORATED_PAGES["reflex_app"]
     }
-    assert len(registered) == 22
+    assert len(registered) == 23
     assert set(registered) == {
         "404",
         "/",
@@ -220,6 +220,7 @@ def test_constants_are_owned_by_constant_modules_and_entrypoint_keeps_only_app()
             "/dashboard",
             "/laboratory",
             "/laboratory/expedient",
+            "/expedientes",
             "/collections",
         }
     assert [(name, value) for name, value in vars(entrypoint).items() if value is entrypoint.app] == [("app", entrypoint.app)]

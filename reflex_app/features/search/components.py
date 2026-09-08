@@ -195,8 +195,8 @@ def guided_discovery_panel() -> rx.Component:
                 ),
                 rx.text("No hay expedientes públicos disponibles todavía.", class_name="muted small"),
             ),
-            rx.link("Ver todos los expedientes", href="/laboratory", class_name="document-inline-link"),
-            subtitle="Una selección acotada; el Laboratorio ofrece el catálogo completo con su procedencia visible.",
+            rx.link("Ver todos los expedientes", href="/expedientes", class_name="document-inline-link"),
+            subtitle="Una selección acotada; el catálogo público ofrece todos los expedientes publicados con su procedencia visible.",
         ),
         page_section(
             "Preguntas guiadas",

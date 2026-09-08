@@ -41,6 +41,7 @@ EXPECTED_ROUTES = {
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/expedientes",
     "/collections",
 }
 
@@ -241,7 +242,7 @@ def test_routes_appstate_and_laboratory_absence_are_preserved() -> None:
 
     routes = {kwargs["route"] for _, kwargs in DECORATED_PAGES[APP_NAME]}
     assert routes == EXPECTED_ROUTES
-    assert len(routes) == 22
+    assert len(routes) == 23
     assert not any("laboratorio" in route.lower() or route.strip("/").lower() == "lab" for route in routes)
 
     functions, _ = _module_source_names(ROOT / "reflex_app" / "reflex_app.py")

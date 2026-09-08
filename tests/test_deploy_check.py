@@ -127,7 +127,8 @@ def test_deploy_check_recognizes_multiline_public_routes(tmp_path: Path, monkeyp
 
     assert result.ok is True
     assert "/collections" in module.PUBLIC_ROUTES
-    assert len(module.PUBLIC_ROUTES) == 22
+    assert len(module.PUBLIC_ROUTES) == 23
+    assert "/expedientes" in module.PUBLIC_ROUTES
     assert "/laboratory/expedient" in result.detail
 
 

@@ -50,6 +50,7 @@ EXPECTED_ROUTES = [
     "/dashboard",
     "/investigation",
     "/laboratory",
+    "/expedientes",
     "/laboratory/expedient",
     "/collections",
 ]
@@ -133,7 +134,7 @@ def test_explicit_registry_keeps_the_exact_21_route_order_without_duplicates() -
 
     routes = _registered_routes()
     assert {kwargs["route"] for _, kwargs in routes} == set(EXPECTED_ROUTES)
-    assert len({kwargs["route"] for _, kwargs in routes}) == 22
+    assert len({kwargs["route"] for _, kwargs in routes}) == 23
     assert _route_order_in_clean_process() == EXPECTED_ROUTES
 
 

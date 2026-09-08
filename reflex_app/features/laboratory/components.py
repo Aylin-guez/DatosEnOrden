@@ -53,6 +53,26 @@ def expedition_catalog_card(row: dict) -> rx.Component:
     )
 
 
+def published_expedient_catalog_card(row: dict) -> rx.Component:
+    return rx.box(
+        rx.hstack(
+            rx.text("Publicado", class_name="badge badge-teal"),
+            rx.text(row["status"], class_name="mini-pill"),
+            justify="between",
+            align="center",
+        ),
+        rx.text(row["title"], class_name="card-title"),
+        rx.text(row["question"], class_name="muted small"),
+        rx.text("Expediente REAL con referencias publicas incorporadas.", class_name="source-fact"),
+        rx.button(
+            "Abrir expediente",
+            on_click=rx.redirect(f"/laboratory/expedient?id={row['id']}"),
+            class_name="button",
+        ),
+        class_name="card laboratory-catalog-card",
+    )
+
+
 def expedient_header() -> rx.Component:
     return rx.box(
         return_navigation_link("← Volver", "/laboratory"),

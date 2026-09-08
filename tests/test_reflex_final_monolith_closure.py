@@ -30,8 +30,8 @@ def test_final_routes_are_unique_and_match_current_registry() -> None:
     pages = [(page, kwargs) for page, kwargs in DECORATED_PAGES["reflex_app"]]
     routes = [kwargs["route"] for _, kwargs in pages]
 
-    assert len(routes) == 22
-    assert len(set(routes)) == 22
+    assert len(routes) == 23
+    assert len(set(routes)) == 23
     assert "/investigation" in routes
     assert {"/laboratory", "/laboratory/expedient"} <= set(routes)
     assert not any(route == "/lab" or route == "/laboratorio" for route in routes)

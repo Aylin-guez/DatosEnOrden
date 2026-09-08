@@ -55,6 +55,7 @@ PAGE_BY_NAME = {
     "investigation": public_record_pages.investigation,
     "laboratory": laboratory_pages.laboratory,
     "laboratory_expedient": laboratory_pages.laboratory_expedient,
+    "expedients": laboratory_pages.expedients,
     "collections": collection_pages.collections,
 }
 EXPECTED_ROUTE_FUNCTIONS = {
@@ -79,6 +80,8 @@ EXPECTED_ROUTE_FUNCTIONS = {
     "/investigation": "investigation",
     "/laboratory": "laboratory",
     "/laboratory/expedient": "laboratory_expedient",
+    "/expedientes": "expedients",
+    "/expedientes": "expedients",
     "/collections": "collections",
 }
 EXPECTED_MOUNT_HANDLERS = {
@@ -125,6 +128,7 @@ EXPECTED_PAGE_METADATA = {
     "/investigation": ("Expediente - DatosEnOrden", "Expediente ciudadano para reunir entidades, relaciones, evidencia y trazabilidad en una sola lectura.", "/investigation"),
     "/laboratory": ("Laboratorio de Políticas Públicas - DatosEnOrden", "Lectura pública de problemas, hipótesis, evidencia, indicadores y fuentes.", "/laboratory"),
     "/laboratory/expedient": ("Expediente del Laboratorio - DatosEnOrden", "Ficha pública de un Expediente de políticas públicas.", "/laboratory/expedient"),
+    "/expedientes": ("Expedientes - DatosEnOrden", "Catalogo publico de expedientes publicados con referencias y procedencia visibles.", "/expedientes"),
     "/collections": ("Colección - DatosEnOrden Ciudadano", "Colecciones de información pública y expedientes conectados.", "/collections"),
 }
 
@@ -158,7 +162,7 @@ def test_entrypoint_creates_one_app_and_owns_no_pages_or_style() -> None:
 def test_registered_routes_keep_the_current_functions_and_owners() -> None:
     registered = _registered_pages()
 
-    assert len(registered) == 22
+    assert len(registered) == 23
     assert {route: page.__name__ for route, (page, _) in registered.items()} == EXPECTED_ROUTE_FUNCTIONS
     for route, name in EXPECTED_ROUTE_FUNCTIONS.items():
         assert registered[route][0] is PAGE_BY_NAME[name]
@@ -173,6 +177,8 @@ def test_registered_routes_keep_the_current_functions_and_owners() -> None:
         "/investigation": PublicRecordState.load_investigation.fn,
         "/laboratory": LaboratoryState.load_catalog.fn,
         "/laboratory/expedient": LaboratoryState.load_expedient.fn,
+        "/expedientes": LaboratoryState.load_published_catalog.fn,
+        "/expedientes": LaboratoryState.load_published_catalog.fn,
         "/collections": CollectionState.load_collection.fn,
     }
     assert {

@@ -4,6 +4,7 @@
   <url><loc>https://datosenorden.cl/search</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://datosenorden.cl/sources</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://datosenorden.cl/laboratory</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://datosenorden.cl/expedientes</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://datosenorden.cl/official-document</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://datosenorden.cl/investigation</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://datosenorden.cl/topic</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>

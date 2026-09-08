@@ -42,6 +42,7 @@ EXPECTED_ROUTES = [
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/expedientes",
     "/collections",
 ]
 FIELD_OWNERS = {
@@ -154,7 +155,7 @@ def _imports_for(path: Path) -> list[str]:
 def test_routes_and_on_mount_handlers_are_preserved_with_feature_state_owners() -> None:
     registered = _registered_pages()
     assert set(registered) == set(EXPECTED_ROUTES)
-    assert len(registered) == 22
+    assert len(registered) == 23
 
     expected_handlers = {
         "/ecosystem": SourcesState.load_ecosystem.fn,

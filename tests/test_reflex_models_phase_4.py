@@ -146,8 +146,8 @@ def test_models_are_owned_by_model_modules_without_entrypoint_reexports() -> Non
     assert not hasattr(entrypoint, "SOURCE_COVERAGE_TEMPLATE")
 
     routes = [kwargs["route"] for _, kwargs in DECORATED_PAGES["reflex_app"]]
-    assert len(routes) == 22
-    assert len(set(routes)) == 22
+    assert len(routes) == 23
+    assert len(set(routes)) == 23
 
 def test_reflex_app_no_longer_defines_extracted_models_directly() -> None:
     tree = ast.parse((ROOT / "reflex_app" / "reflex_app.py").read_text(encoding="utf-8"))

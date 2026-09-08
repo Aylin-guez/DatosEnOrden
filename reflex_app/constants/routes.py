@@ -17,6 +17,7 @@ PAGE_STUDIO = "studio"
 PAGE_NOT_FOUND = "not_found"
 PAGE_LABORATORY = "laboratory"
 PAGE_LABORATORY_EXPEDIENT = "laboratory_expedient"
+PAGE_EXPEDIENTS = "expedients"
 
 INVESTIGATION_STATUS_IDLE = "idle"
 INVESTIGATION_STATUS_LOADING = "loading"

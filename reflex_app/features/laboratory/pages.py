@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import reflex as rx
 
-from reflex_app.constants.routes import PAGE_LABORATORY, PAGE_LABORATORY_EXPEDIENT
+from reflex_app.constants.routes import PAGE_EXPEDIENTS, PAGE_LABORATORY, PAGE_LABORATORY_EXPEDIENT
 from reflex_app.features.laboratory.components import (
     expedient_header,
     citizen_expedient_view,
     expedition_catalog_card,
     laboratory_header,
     participation_gate,
+    published_expedient_catalog_card,
     section_tabs,
 )
 from reflex_app.features.laboratory.state import LaboratoryState
@@ -34,7 +35,7 @@ def laboratory() -> rx.Component:
     return shell(
         laboratory_header(),
         page_section(
-            "Catálogo de Expedientes",
+            "Investigaciones en desarrollo",
             rx.cond(
                 LaboratoryState.catalog_rows,
                 rx.grid(rx.foreach(LaboratoryState.catalog_rows, expedition_catalog_card), columns="2", spacing="3", class_name="responsive-grid"),
@@ -44,8 +45,9 @@ def laboratory() -> rx.Component:
                     rx.text("Datos en preparación.", class_name="muted small"),
                 ),
             ),
-            subtitle="Primera versión pública: un Expediente demostrativo, sin prometer investigación todavía no realizada.",
+            subtitle="El Laboratorio muestra trabajo en desarrollo; los expedientes publicados se consultan en el catálogo público.",
         ),
+        rx.link("Ver expedientes publicados", href="/expedientes", class_name="document-inline-link"),
         page_section(
             "Qué hace el Laboratorio",
             rx.grid(
@@ -62,6 +64,52 @@ def laboratory() -> rx.Component:
             rx.text("Primera versión pública. Los datos todavía están en investigación y la participación aún no está habilitada.", class_name="story-summary"),
         ),
         active_page=PAGE_LABORATORY,
+    )
+
+
+@rx.page(
+    route="/expedientes",
+    title="Expedientes - DatosEnOrden",
+    description="Catalogo publico de expedientes publicados con referencias y procedencia visibles.",
+    image=PUBLIC_OG_IMAGE_URL,
+    meta=_page_meta(
+        "/expedientes",
+        "expedientes publicos, referencias, procedencia, lectura ciudadana",
+        "Expedientes - DatosEnOrden",
+        "Catalogo publico de expedientes publicados con referencias y procedencia visibles.",
+    ),
+    on_load=LaboratoryState.load_published_catalog,
+)
+def expedients() -> rx.Component:
+    return shell(
+        rx.box(
+            rx.text("Expedientes", class_name="title"),
+            rx.text(
+                "Lecturas publicas publicadas a partir de fuentes y referencias incorporadas. El catalogo crece sin mezclar investigaciones en desarrollo.",
+                class_name="subtitle",
+            ),
+            rx.link("Volver a Explorar", href="/search", class_name="button button-secondary"),
+            class_name="hero",
+        ),
+        page_section(
+            "Expedientes publicados",
+            rx.cond(
+                LaboratoryState.catalog_rows,
+                rx.grid(
+                    rx.foreach(LaboratoryState.catalog_rows, published_expedient_catalog_card),
+                    columns="2",
+                    spacing="3",
+                    class_name="responsive-grid",
+                ),
+                rx.cond(
+                    LaboratoryState.load_status == "error",
+                    rx.text(LaboratoryState.error_message, class_name="muted small"),
+                    rx.text("No hay expedientes publicados disponibles todavia.", class_name="muted small"),
+                ),
+            ),
+            subtitle="Orden determinista de la proyeccion publica; la cuadrícula es responsiva y no presupone un maximo de expedientes.",
+        ),
+        active_page=PAGE_EXPEDIENTS,
     )
 
 

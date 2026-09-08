@@ -6,6 +6,7 @@ from datosenorden.application.real_expedient.public_facade import (
     get_citizen_expedient,
     get_public_expedient,
     list_public_expedient_catalog,
+    list_published_real_expedient_catalog,
 )
 from datosenorden.application.public_deployment.sanitization import public_error
 from reflex_app.helpers.routing import _router_query_value
@@ -92,7 +93,21 @@ class LaboratoryState(rx.State):
         self.load_status = "loading"
         self.error_message = ""
         try:
-            self.catalog_rows = list_public_expedient_catalog()
+            self.catalog_rows = [
+                row for row in list_public_expedient_catalog()
+                if row.get("provenance_class") != "REAL"
+            ]
+            self.load_status = "loaded" if self.catalog_rows else "empty"
+        except Exception:  # noqa: BLE001
+            self.catalog_rows = []
+            self.load_status = "error"
+            self.public_error_code, self.error_message = public_error()
+
+    def load_published_catalog(self) -> None:
+        self.load_status = "loading"
+        self.error_message = ""
+        try:
+            self.catalog_rows = list_published_real_expedient_catalog()
             self.load_status = "loaded" if self.catalog_rows else "empty"
         except Exception:  # noqa: BLE001
             self.catalog_rows = []

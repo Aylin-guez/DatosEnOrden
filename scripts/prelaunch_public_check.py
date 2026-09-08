@@ -56,10 +56,11 @@ PUBLIC_ROUTES = (
     "/dashboard",
     "/laboratory",
     "/laboratory/expedient",
+    "/expedientes",
 )
 MAX_DEMO_ASSET_BYTES = 10 * 1024 * 1024
 PUBLIC_SITE_URL = "https://datosenorden.cl"
-SITEMAP_REQUIRED_ROUTES = ("/", "/search", "/sources", "/official-document", "/laboratory", "/project")
+SITEMAP_REQUIRED_ROUTES = ("/", "/search", "/sources", "/official-document", "/laboratory", "/expedientes", "/project")
 
 
 @dataclass(frozen=True)

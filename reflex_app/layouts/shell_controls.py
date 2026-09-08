@@ -4,6 +4,12 @@ import reflex as rx
 
 
 def scroll_top_control() -> rx.Component:
+    scroll_to_document_top = """
+    (() => {
+      const owner = document.scrollingElement || document.documentElement;
+      owner.scrollTo({ top: 0, behavior: 'smooth' });
+    })()
+    """
     return rx.box(
         rx.script(
             """
@@ -21,7 +27,8 @@ def scroll_top_control() -> rx.Component:
               const updateScrollTopButton = () => {
                 const button = keepSingleScrollTopButton();
                 if (!button) return;
-                button.classList.toggle('scroll-top-visible', window.scrollY > window.innerHeight * 0.9);
+                const scrollOwner = document.scrollingElement || document.documentElement;
+                button.classList.toggle('scroll-top-visible', scrollOwner.scrollTop > window.innerHeight * 0.9);
               };
               window.__deoUpdateScrollTop = updateScrollTopButton;
               if (!window.__deoScrollTopObserver) {
@@ -42,7 +49,7 @@ def scroll_top_control() -> rx.Component:
                 "Volver arriba",
                 id="scroll-top-button",
                 data_deo_scroll_top="true",
-                on_click=rx.call_script("window.scrollTo({ top: 0, behavior: 'smooth' })"),
+                on_click=rx.call_script(scroll_to_document_top),
                 class_name="scroll-top-button",
             ),
             data_deo_scroll_top_owner="true",
