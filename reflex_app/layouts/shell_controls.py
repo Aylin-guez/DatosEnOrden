@@ -35,7 +35,7 @@ def scroll_top_control() -> rx.Component:
                 id="scroll-top-button",
                 type="button",
                 data_deo_scroll_top="true",
-                on_click=rx.call_script(scroll_to_document_top),
+                on_click=rx.run_script(scroll_to_document_top),
                 class_name="scroll-top-button",
             ),
             data_deo_scroll_top_owner="true",

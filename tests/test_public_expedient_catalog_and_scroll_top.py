@@ -44,8 +44,17 @@ def test_scroll_top_targets_the_document_scrolling_owner_after_hydration() -> No
     source = inspect.getsource(scroll_top_control)
     assert "document.scrollingElement || document.documentElement" in source
     assert "owner.scrollTo({ top: 0, behavior: 'smooth' })" in source
+    assert "rx.run_script(scroll_to_document_top)" in source
+    assert "rx.call_script" not in source
     assert "scrollOwner.scrollTop" in source
     assert "MutationObserver" not in source
     assert ".remove()" not in source
     assert inspect.getsource(shell).count("scroll_top_control()") == 1
     assert "show_built_with_reflex=False" in Path("rxconfig.py").read_text(encoding="utf-8")
+
+
+def test_scroll_top_click_compiles_to_a_csp_safe_client_function() -> None:
+    rendered = str(scroll_top_control().render())
+    assert 'ReflexEvent("_call_function"' in rendered
+    assert '["function"] : (() =>' in rendered
+    assert 'ReflexEvent("_call_script"' not in rendered

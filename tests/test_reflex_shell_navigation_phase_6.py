@@ -274,6 +274,8 @@ def test_footer_links_scroll_control_and_page_classes_are_preserved() -> None:
     assert 'type:"button"' in scroll_props
     assert "document.scrollingElement || document.documentElement" in inspect.getsource(scroll_top_control)
     assert "owner.scrollTo({ top: 0, behavior: 'smooth' })" in inspect.getsource(scroll_top_control)
+    assert 'ReflexEvent("_call_function"' in scroll_props
+    assert 'ReflexEvent("_call_script"' not in scroll_props
 
 
 def test_scroll_top_has_one_authoritative_shell_owner_and_framework_lifecycle() -> None:

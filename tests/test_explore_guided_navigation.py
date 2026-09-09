@@ -182,7 +182,10 @@ def test_footer_and_scroll_controls_have_single_public_identity_contract() -> No
     assert shell_source.count('"DATOSENORDEN STUDIO"') == 1
     assert '"Conocer Studio"' in shell_source
     assert "data-deo-scroll-top" in scroll_source
-    assert "querySelectorAll" in scroll_source
+    assert "document.querySelector" in scroll_source
+    assert "querySelectorAll" not in scroll_source
+    assert "MutationObserver" not in scroll_source
+    assert "rx.run_script" in scroll_source
 
 
 def test_workspace_projection_rejects_internal_object_representations() -> None:
