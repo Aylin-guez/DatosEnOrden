@@ -269,20 +269,22 @@ def test_footer_links_scroll_control_and_page_classes_are_preserved() -> None:
     assert "scroll-top-button" in scroll_props
     assert "data-deo-scroll-top" in scroll_props
     assert "data-deo-scroll-top-owner" in scroll_props
-    assert "MutationObserver" in inspect.getsource(scroll_top_control)
-    assert "window.__deoScrollTopReady" in scroll_props
+    assert "MutationObserver" not in inspect.getsource(scroll_top_control)
+    assert "window.__deoScrollTopVisibilityReady" in scroll_props
+    assert 'type:"button"' in scroll_props
     assert "document.scrollingElement || document.documentElement" in inspect.getsource(scroll_top_control)
     assert "owner.scrollTo({ top: 0, behavior: 'smooth' })" in inspect.getsource(scroll_top_control)
 
 
-def test_scroll_top_has_one_authoritative_shell_owner_and_idempotent_route_cleanup() -> None:
+def test_scroll_top_has_one_authoritative_shell_owner_and_framework_lifecycle() -> None:
     shell_source = inspect.getsource(shell)
     controls_source = inspect.getsource(scroll_top_control)
 
     assert shell_source.count("scroll_top_control()") == 1
-    assert "data-deo-scroll-top-owner" in controls_source
-    assert "keepSingleScrollTopButton" in controls_source
-    assert "MutationObserver" in controls_source
+    assert "data_deo_scroll_top_owner" in controls_source
+    assert "document.querySelector('[data-deo-scroll-top=\"true\"]')" in controls_source
+    assert "MutationObserver" not in controls_source
+    assert ".remove()" not in controls_source
 
     assert _page_class(PAGE_HOME) == "page-home"
     assert _page_class(PAGE_TOPIC) == "page-topic"

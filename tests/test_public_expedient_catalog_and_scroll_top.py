@@ -45,5 +45,7 @@ def test_scroll_top_targets_the_document_scrolling_owner_after_hydration() -> No
     assert "document.scrollingElement || document.documentElement" in source
     assert "owner.scrollTo({ top: 0, behavior: 'smooth' })" in source
     assert "scrollOwner.scrollTop" in source
+    assert "MutationObserver" not in source
+    assert ".remove()" not in source
     assert inspect.getsource(shell).count("scroll_top_control()") == 1
     assert "show_built_with_reflex=False" in Path("rxconfig.py").read_text(encoding="utf-8")

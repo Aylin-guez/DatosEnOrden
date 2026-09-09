@@ -10,7 +10,7 @@ from reflex_app.features.search.state import SearchState
 def test_explore_is_bounded_and_orders_catalog_before_guided_questions() -> None:
     source = inspect.getsource(search_components.guided_discovery_panel)
     assert source.index('"Expedientes disponibles"') < source.index('"Preguntas guiadas"')
-    assert 'href="/laboratory"' in source
+    assert 'href="/expedientes"' in source
     state_source = inspect.getsource(SearchState._load_public_expedients)
     assert "][:4]" in state_source
 
